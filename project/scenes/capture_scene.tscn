@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/main_viewer.tscn" id="1_viewer"]
+[ext_resource type="Script" path="res://scripts/auto_capture.gd" id="2_capture"]
+
+[node name="CaptureScene" type="Node3D"]
+
+[node name="MainViewer" parent="." instance=ExtResource("1_viewer")]
+
+[node name="AutoCapture" type="Node" parent="MainViewer"]
+script = ExtResource("2_capture")

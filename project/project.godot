@@ -1,0 +1,21 @@
+config_version=5
+
+[application]
+
+config/name="ARBORIA ENGINE — Virtual Geometry Viewer"
+config/description="Visualizador de Geometria Virtualizada (Cluster LOD) para Godot Engine"
+run/main_scene="res://scenes/main_viewer.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/resizable=true
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

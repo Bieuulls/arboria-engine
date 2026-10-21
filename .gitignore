@@ -1,0 +1,39 @@
+# Godot 4 specific ignores
+.godot/
+*.translation
+
+# C++ & CMake build artifacts
+build/
+bin/
+*.obj
+*.o
+*.a
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archives & Temporary files
+*.rar
+*.zip
+*.7z
+*.tar
+*.gz
+*.tmp
+*.log

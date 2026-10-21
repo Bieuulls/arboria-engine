@@ -1,0 +1,102 @@
+[gd_scene load_steps=10 format=3 uid="uid://c7mainworld01"]
+
+[ext_resource type="Environment" uid="uid://b8vorldenv01" path="res://scenes/world_environment.tres" id="1_env"]
+[ext_resource type="Shader" path="res://shaders/water_realistic.gdshader" id="2_water_shader"]
+[ext_resource type="Script" path="res://scripts/pve_ecosystem_grower.gd" id="3_pve"]
+[ext_resource type="Script" path="res://scripts/player_controller_3d.gd" id="4_player"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_water"]
+render_priority = 0
+shader = ExtResource("2_water_shader")
+shader_parameter/shallow_color = Color(0.18, 0.72, 0.86, 0.82)
+shader_parameter/deep_color = Color(0.06, 0.28, 0.52, 0.95)
+shader_parameter/depth_distance = 3.5
+shader_parameter/foam_color = Color(0.96, 0.98, 1, 1)
+shader_parameter/foam_distance = 0.85
+shader_parameter/foam_speed = 1.2
+shader_parameter/foam_intensity = 1.8
+shader_parameter/wave_speed_1 = Vector2(0.03, 0.02)
+shader_parameter/wave_speed_2 = Vector2(-0.025, 0.035)
+shader_parameter/wave_scale_1 = 0.08
+shader_parameter/wave_scale_2 = 0.16
+shader_parameter/normal_strength = 1.2
+shader_parameter/roughness = 0.04
+shader_parameter/metallic = 0.1
+shader_parameter/refraction_strength = 0.035
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_water"]
+material = SubResource("ShaderMaterial_water")
+size = Vector2(120, 600)
+subdivide_width = 64
+subdivide_depth = 64
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.28, 0.65, 0.2, 1)
+roughness = 0.85
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+material = SubResource("StandardMaterial3D_ground")
+size = Vector2(500, 500)
+subdivide_width = 64
+subdivide_depth = 64
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.4
+height = 1.8
+
+[node name="MainWorld" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("1_env")
+
+[node name="SunLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.819152, -0.40558, 0.398227, 0, 0.700909, 0.71325, -0.573576, -0.58426, 0.57415, 0, 50, 0)
+light_color = Color(1, 0.96, 0.90, 1)
+light_energy = 2.4
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_normal_bias = 2.0
+directional_shadow_mode = 2
+directional_shadow_split_1 = 0.1
+directional_shadow_split_2 = 0.25
+directional_shadow_split_3 = 0.55
+directional_shadow_blend_splits = true
+
+[node name="Terrain" type="StaticBody3D" parent="."]
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Terrain"]
+mesh = SubResource("PlaneMesh_ground")
+
+[node name="CollisionPolygon3D" type="CollisionShape3D" parent="Terrain"]
+
+[node name="WaterBody" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.92, 0)
+mesh = SubResource("PlaneMesh_water")
+
+[node name="PVEEcosystemGrower" type="Node3D" parent="."]
+script = ExtResource("3_pve")
+grass_count = 8000
+fern_count = 1500
+flower_count = 1200
+rock_count = 250
+area_size = Vector2(300, 300)
+
+[node name="Player" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 10)
+script = ExtResource("4_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="VisualMesh" type="Node3D" parent="Player"]
+
+[node name="SpringArm3D" type="SpringArm3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 1.6, 0)
+spring_length = 6.5
+margin = 0.2
+
+[node name="Camera3D" type="Camera3D" parent="Player/SpringArm3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
+current = true
+fov = 68.0

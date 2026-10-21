@@ -1,0 +1,239 @@
+[gd_scene load_steps=6 format=3 uid="uid://b5k8x9y7w2e1q"]
+
+[ext_resource type="Script" path="res://scripts/main_viewer.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/orbit_camera.gd" id="2_cam"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+sky_top_color = Color(0.12, 0.15, 0.22, 1)
+sky_horizon_color = Color(0.2, 0.24, 0.3, 1)
+ground_bottom_color = Color(0.08, 0.09, 0.12, 1)
+ground_horizon_color = Color(0.18, 0.2, 0.25, 1)
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+ambient_light_source = 2
+ambient_light_color = Color(0.4, 0.45, 0.55, 1)
+ambient_light_energy = 0.8
+tonemap_mode = 2
+
+[node name="MainViewer" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 10, 0)
+light_color = Color(1, 0.98, 0.92, 1)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="DirectionalLight3D_Fill" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866025, 0.353553, -0.353553, 0, 0.707107, 0.707107, 0.5, 0.612372, -0.612372, 0, 10, 0)
+light_color = Color(0.5, 0.65, 0.85, 1)
+light_energy = 0.5
+
+[node name="CameraPivot" type="Node3D" parent="."]
+script = ExtResource("2_cam")
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+current = true
+fov = 55.0
+
+[node name="ModelInstance" type="MeshInstance3D" parent="."]
+
+[node name="OriginalInstance" type="MeshInstance3D" parent="."]
+visible = false
+
+[node name="WireframeInstance" type="MeshInstance3D" parent="."]
+visible = false
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Header" type="Panel" parent="UI"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 44.0
+grow_horizontal = 2
+
+[node name="Title" type="Label" parent="UI/Header"]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 16.0
+offset_top = -11.5
+offset_right = 650.0
+offset_bottom = 11.5
+grow_vertical = 2
+theme_override_font_sizes/font_size = 15
+text = "ARBORIA ENGINE — VIRTUAL GEOMETRY VIEWER | VALIDACAO DE CLUSTER LOD"
+
+[node name="Panel" type="Panel" parent="UI"]
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_top = 44.0
+offset_right = 320.0
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = -14.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="LblModel" type="Label" parent="UI/Panel/VBox"]
+layout_mode = 2
+text = "Modelo Ativo:"
+
+[node name="ModelOption" type="OptionButton" parent="UI/Panel/VBox"]
+layout_mode = 2
+
+[node name="HSeparator1" type="HSeparator" parent="UI/Panel/VBox"]
+layout_mode = 2
+
+[node name="LODLabel" type="Label" parent="UI/Panel/VBox"]
+layout_mode = 2
+text = "Nivel de LOD: 0 / 8"
+
+[node name="LODSlider" type="HSlider" parent="UI/Panel/VBox"]
+layout_mode = 2
+max_value = 8.0
+
+[node name="DynamicLODCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+text = "LOD Dinamico por Distancia"
+
+[node name="GPUPipelineCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+button_pressed = true
+text = "Pipeline GPU Real (Vulkan)"
+
+[node name="AutoOrbitCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+text = "Câmera Demonstração Auto"
+
+[node name="FrustumCullCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+button_pressed = true
+text = "GPU Frustum Culling"
+
+[node name="HSeparator2" type="HSeparator" parent="UI/Panel/VBox"]
+layout_mode = 2
+
+[node name="LblRender" type="Label" parent="UI/Panel/VBox"]
+layout_mode = 2
+text = "Modos de Visualizacao:"
+
+[node name="ClusterColorCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+button_pressed = true
+text = "Cores por Cluster"
+
+[node name="WireframeCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+text = "Wireframe / Arestas"
+
+[node name="CompareCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+text = "Comparar com OBJ Original"
+
+[node name="HSeparator3" type="HSeparator" parent="UI/Panel/VBox"]
+layout_mode = 2
+
+[node name="IsolateClusterCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+text = "Isolar Cluster Individual"
+
+[node name="ClusterSpin" type="SpinBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+max_value = 500.0
+
+[node name="HSeparator4" type="HSeparator" parent="UI/Panel/VBox"]
+layout_mode = 2
+
+[node name="LblHelp" type="Label" parent="UI/Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.7, 0.75, 1)
+theme_override_font_sizes/font_size = 12
+text = "Controles da Camera:\n- Botao Esquerdo/Direito: Orbitar\n- Scroll Mouse: Zoom in/out\n- Botao do Meio: Pan lateral"
+
+[node name="StatsPanel" type="Panel" parent="UI"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -340.0
+offset_top = 54.0
+offset_right = -16.0
+offset_bottom = 330.0
+grow_horizontal = 0
+
+[node name="VBox" type="VBoxContainer" parent="UI/StatsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = -14.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 5
+
+[node name="StatHeader" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.0, 1.0, 0.6, 1)
+text = "METRICAS DE GEOMETRIA (FASE 3)"
+
+[node name="StatTriangles" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Triangulos Ativos: 0"
+
+[node name="StatClusters" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Clusters Ativos: 0"
+
+[node name="StatError" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Erro Metrico (max): 0.0000"
+
+[node name="StatRatio" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Reducao Geometria: 100%"
+
+[node name="StatCamDist" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+text = "Distancia Camera: 6.0 m"
+
+[node name="StatFPS" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.2, 1)
+text = "FPS: 60 (16.6 ms)"
+
+[node name="StatGPUTime" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.85, 1.0, 1)
+text = "Tempo GPU Compute: 0.00 ms"
+
+[node name="StatVRAM" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.7, 1.0, 1)
+text = "Memória VRAM: 0 KB"
+
+[node name="StatComparison" type="Label" parent="UI/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1.0, 0.75, 0.3, 1)
+text = "vs Convencional: 0% redução"
