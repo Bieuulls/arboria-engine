@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://test_v4_depth"]
+
+[ext_resource type="Script" path="res://scripts/test_v4_depth_investigation.gd" id="1_depth"]
+
+[node name="TestV4Depth" type="Node3D"]
+script = ExtResource("1_depth")

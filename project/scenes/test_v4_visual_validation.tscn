@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://test_v4_vis"]
+
+[ext_resource type="Script" path="res://scripts/test_v4_visual_validation.gd" id="1_vis"]
+
+[node name="TestV4Vis" type="Node3D"]
+script = ExtResource("1_vis")

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://test_lod_sel"]
+
+[ext_resource type="Script" path="res://scripts/test_lod_selection.gd" id="1_lod"]
+
+[node name="TestLODSel" type="Node3D"]
+script = ExtResource("1_lod")

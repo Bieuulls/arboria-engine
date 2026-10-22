@@ -1,15 +1,15 @@
 class_name ArboriaNativePipeline
 extends RefCounted
 
-## ARBORIA ENGINE — NATIVE FORWARD+ PIPELINE (V7.0)
-## Gerencia recursos GPU compartilhados, despacho de compute culling,
-## argumentos indiretos e rasterizacao com Reversed-Z Depth integrado ao Godot Forward+.
+## ARBORIA ENGINE — NATIVE FORWARD+ PIPELINE (V7.1 CORRIGIDO)
+## Pipeline Vulkan com separação estrita de Compute/Raster, sincronização de buffers indiretos,
+## suporte multi-instâncias isoladas em VRAM, eliminação de transformação duplicada e Reversed-Z Depth.
 
 const VGMeshLoader = preload("res://scripts/vgmesh_loader.gd")
 
-static var _shared_instance: ArboriaNativePipeline = null
+static var _shared_instance = null
 
-# Estrutura interna para malhas carregadas em VRAM
+# Estrutura para malhas compartilhadas em VRAM (geometria bruta)
 class MeshGPUResource:
 	var mesh_path: String = ""
 	var total_clusters: int = 0
@@ -19,19 +19,43 @@ class MeshGPUResource:
 	var groups_x: int = 1
 	var bbox_min: Vector3 = Vector3.ZERO
 	var bbox_max: Vector3 = Vector3.ZERO
-	
-	# SSBO RIDs
+
+	# Buffers geométricos compartilhados
 	var in_clusters_buf: RID
-	var out_visible_buf: RID
-	var counter_buf: RID
 	var in_vertices_buf: RID
 	var in_triangles_buf: RID
 	var selection_texture_rid: RID
-	var compute_uniform_set: RID
+	var c_mesh_id: int = -1
 	var is_valid: bool = false
+
+# Estrutura de dados GPU isolada por instância da cena
+class InstanceGPUData:
+	var instance_ref: WeakRef
+	var mesh_path: String = ""
+	var c_instance_id: int = -1
+	var counter_buf: RID
+	var out_visible_buf: RID
+	var camera_ubo_buf: RID
+	var instance_ubo_buf: RID
+	var compute_uniform_set: RID
+	var raster_uniform_set: RID
+	var inst_albedo_tex: RID
+	var inst_normal_tex: RID
+	var inst_orm_tex: RID
+	var is_ready: bool = false
 
 var rd: RenderingDevice
 var is_initialized: bool = false
+var native_core: RefCounted = null
+
+# Texturas PBR padrão e Sampler
+var default_white_tex: RID
+var default_normal_tex: RID
+var default_orm_tex: RID
+var default_sampler: RID
+
+# Cache de texturas RD carregadas (Texture2D ID -> RID)
+var _texture_cache: Dictionary = {}
 
 # Cache de malhas GPU (mesh_path -> MeshGPUResource)
 var _mesh_cache: Dictionary = {}
@@ -39,16 +63,15 @@ var _mesh_cache: Dictionary = {}
 # Instâncias registradas
 var _registered_instances: Array[Node3D] = []
 
+# Mapeamento de instâncias para seus recursos GPU isolados (Instance ID -> InstanceGPUData)
+var _instance_gpu_map: Dictionary = {}
+
 # Pipelines e Shaders
 var compute_shader_rid: RID
 var compute_pipeline: RID
 var raster_shader_rid: RID
 var raster_pipeline: RID
 var raster_fb_format: int = -1
-
-# UBOs globais de frame
-var camera_ubo_buf: RID
-var instance_ubo_buf: RID
 
 # Framebuffer Cache
 var cached_fb: RID
@@ -60,10 +83,14 @@ var global_shading_mode: int = 0 # 0 = PBR, 1 = Normal, 2 = Unshaded, 3 = Cluste
 var enable_frustum_culling: bool = true
 var enable_cone_culling: bool = true
 
-# Telemetria
+# Telemetria desacoplada e assíncrona da GPU (elimina stalls no Render Loop)
 var stats_total_instances: int = 0
 var stats_visible_clusters: int = 0
 var stats_triangles_drawn: int = 0
+var enable_async_telemetry: bool = true
+var _telemetry_frame_counter: int = 0
+var _telemetry_interval: int = 15
+var telemetry_dirty: bool = false
 
 static func get_active_instance() -> RefCounted:
 	return _shared_instance
@@ -73,6 +100,9 @@ static func get_or_create_shared() -> RefCounted:
 		var script_cls = load("res://scripts/arboria_native_pipeline.gd") as GDScript
 		_shared_instance = script_cls.new()
 	return _shared_instance
+
+func request_telemetry_read() -> void:
+	telemetry_dirty = true
 
 func _init(p_rd: RenderingDevice = null):
 	if p_rd:
@@ -85,25 +115,89 @@ func _init(p_rd: RenderingDevice = null):
 		return
 
 	_shared_instance = self
-	_setup_shaders_and_ubos()
+
+	# Vinculacao oficial do backend nativo C++ por GDExtension
+	if not GDExtensionManager.is_extension_loaded("res://arboria_native.gdextension"):
+		var res = GDExtensionManager.load_extension("res://arboria_native.gdextension")
+		if res == OK:
+			print("[ArboriaNativePipeline] Backend Nativo C++ GDExtension vinculado com sucesso ao Godot.")
+		else:
+			push_warning("[ArboriaNativePipeline] GDExtension nao carregada (codigo: %d)" % res)
+
+	# Instanciação ativa da classe ArboriaNativeCore no ClassDB
+	if ClassDB.class_exists("ArboriaNativeCore"):
+		native_core = ClassDB.instantiate("ArboriaNativeCore")
+		if native_core:
+			var sig = native_core.get_engine_signature()
+			var valid = native_core.verify_engine_integrity()
+			print("[ArboriaNativePipeline] ArboriaNativeCore C++ ativo: ", native_core.get_version())
+			print("[ArboriaNativePipeline] Assinatura Criptografica: ", sig, " [Integridade: %s]" % ("VALIDADA" if valid else "VIOLADA"))
+			if not valid:
+				push_error("[SEGURANCA] Integridade do ARBORIA ENGINE violada ou token adulterado!")
+
+	_setup_shaders()
+	_init_default_textures()
 	is_initialized = true
-	print("[ArboriaNativePipeline] Inicializado com sucesso em Forward+ Vulkan.")
+	print("[ArboriaNativePipeline] Inicializado com sucesso em Forward+ Vulkan (V7.2 Nativo Ativo & Assinado).")
 
-func _setup_shaders_and_ubos() -> void:
-	# 1. Aloca Camera UBO (224 bytes)
-	var u_cam = PackedByteArray()
-	u_cam.resize(224)
-	camera_ubo_buf = rd.uniform_buffer_create(224, u_cam)
+func _init_default_textures() -> void:
+	if not rd: return
+	var fmt = RDTextureFormat.new()
+	fmt.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
+	fmt.width = 1
+	fmt.height = 1
+	fmt.depth = 1
+	fmt.array_layers = 1
+	fmt.mipmaps = 1
+	fmt.texture_type = RenderingDevice.TEXTURE_TYPE_2D
+	fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
 
-	# 2. Aloca Instance UBO (160 bytes: mat4 model + 4x vec4 params)
-	var u_inst = PackedByteArray()
-	u_inst.resize(160)
-	instance_ubo_buf = rd.uniform_buffer_create(160, u_inst)
+	var view = RDTextureView.new()
+	default_white_tex = rd.texture_create(fmt, view, [PackedByteArray([255, 255, 255, 255])])
+	default_normal_tex = rd.texture_create(fmt, view, [PackedByteArray([128, 128, 255, 255])])
+	default_orm_tex = rd.texture_create(fmt, view, [PackedByteArray([255, 255, 0, 255])])
 
-	# 3. Compila Compute Shader cull_clusters.glsl
+	var samp_state = RDSamplerState.new()
+	samp_state.mag_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	samp_state.min_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	samp_state.mip_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	samp_state.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
+	samp_state.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
+	default_sampler = rd.sampler_create(samp_state)
+
+func _get_or_create_rd_texture(tex: Texture2D) -> RID:
+	if not tex or not rd:
+		return RID()
+	var inst_id = tex.get_instance_id()
+	if _texture_cache.has(inst_id):
+		return _texture_cache[inst_id]
+
+	var img = tex.get_image()
+	if not img:
+		return RID()
+
+	if img.is_compressed():
+		img.decompress()
+	if img.get_format() != Image.FORMAT_RGBA8:
+		img.convert(Image.FORMAT_RGBA8)
+
+	var fmt = RDTextureFormat.new()
+	fmt.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
+	fmt.width = img.get_width()
+	fmt.height = img.get_height()
+	fmt.depth = 1
+	fmt.array_layers = 1
+	fmt.mipmaps = 1
+	fmt.texture_type = RenderingDevice.TEXTURE_TYPE_2D
+	fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+
+	var view = RDTextureView.new()
+	var rd_tex = rd.texture_create(fmt, view, [img.get_data()])
+	_texture_cache[inst_id] = rd_tex
+	return rd_tex
+
+func _setup_shaders() -> void:
 	_compile_compute_shader()
-
-	# 4. Compila Raster Shader arboria_forward_raster.glsl
 	_compile_raster_shader()
 
 func _compile_compute_shader() -> void:
@@ -128,177 +222,22 @@ func _compile_compute_shader() -> void:
 	compute_pipeline = rd.compute_pipeline_create(compute_shader_rid)
 
 func _compile_raster_shader() -> void:
-	var vs_code = """#version 450
-layout(location = 0) out vec3 v_world_normal;
-layout(location = 1) out vec2 v_uv;
-layout(location = 2) out flat uint v_cluster_id;
-layout(location = 3) out vec3 v_world_pos;
+	var f = FileAccess.open("res://shaders/arboria_forward_raster.glsl", FileAccess.READ)
+	var full_text = ""
+	if f:
+		full_text = f.get_as_text()
+		f.close()
 
-struct GPUCluster {
-    vec4 center_radius;
-    vec4 cone_axis_cutoff;
-    vec4 group_bounds_error;
-    vec4 refined_bounds_error;
-    uvec4 data_offsets;
-    uvec4 cluster_info;
-};
-
-layout(set = 0, binding = 0, std430) readonly buffer InClusters {
-    GPUCluster clusters[];
-};
-layout(set = 0, binding = 1, std430) readonly buffer OutVisibleClusters {
-    uint visible_cluster_ids[];
-};
-layout(set = 0, binding = 3, std140) uniform CameraUniforms {
-    mat4 view_proj;
-    vec4 frustum_planes[6];
-    vec4 camera_pos_fov;
-    vec4 viewport_params;
-    uvec4 count_params;
-    uvec4 render_params;
-} ubo;
-layout(set = 0, binding = 5, std430) readonly buffer InVertices {
-    vec4 packed_vertices[];
-};
-layout(set = 0, binding = 6, std430) readonly buffer InTriangles {
-    uint packed_triangles[];
-};
-layout(set = 0, binding = 7, std140) uniform InstanceUniforms {
-    mat4 model_matrix;
-    vec4 material_albedo_rough;
-    vec4 material_metal_spec;
-    vec4 light_direction_energy;
-    vec4 light_color;
-} instance_ubo;
-
-void main() {
-    uint slot = gl_InstanceIndex;
-    if (slot >= ubo.count_params.x) {
-        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
-        return;
-    }
-
-    uint cluster_id = visible_cluster_ids[slot];
-    if (cluster_id >= ubo.count_params.x) {
-        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
-        return;
-    }
-
-    GPUCluster c = clusters[cluster_id];
-
-    uint tri_idx = gl_VertexIndex / 3;
-    if (tri_idx >= c.data_offsets.w) {
-        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
-        return;
-    }
-
-    uint byte_offset = c.data_offsets.z + gl_VertexIndex;
-    uint word_idx = byte_offset / 4;
-    uint byte_in_word = byte_offset % 4;
-    uint word = packed_triangles[word_idx];
-    uint local_v_idx = (word >> (byte_in_word * 8)) & 0xFFu;
-
-    if (local_v_idx >= c.data_offsets.y) {
-        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
-        return;
-    }
-
-    uint global_v_idx = c.data_offsets.x + local_v_idx;
-    uint vert_entry_idx = global_v_idx * 2;
-
-    vec4 pos_u = packed_vertices[vert_entry_idx + 0];
-    vec4 norm_v = packed_vertices[vert_entry_idx + 1];
-
-    vec4 world_p = instance_ubo.model_matrix * vec4(pos_u.xyz, 1.0);
-    mat3 normal_matrix = transpose(inverse(mat3(instance_ubo.model_matrix)));
-    vec3 world_n = normalize(normal_matrix * norm_v.xyz);
-
-    gl_Position = ubo.view_proj * world_p;
-    v_world_pos = world_p.xyz;
-    v_world_normal = world_n;
-    v_uv = vec2(pos_u.w, norm_v.w);
-    v_cluster_id = cluster_id;
-}
-"""
-
-	var fs_code = """#version 450
-layout(location = 0) in vec3 v_world_normal;
-layout(location = 1) in vec2 v_uv;
-layout(location = 2) in flat uint v_cluster_id;
-layout(location = 3) in vec3 v_world_pos;
-
-layout(location = 0) out vec4 out_color;
-
-layout(set = 0, binding = 3, std140) uniform CameraUniforms {
-    mat4 view_proj;
-    vec4 frustum_planes[6];
-    vec4 camera_pos_fov;
-    vec4 viewport_params;
-    uvec4 count_params;
-    uvec4 render_params;
-} ubo;
-
-layout(set = 0, binding = 7, std140) uniform InstanceUniforms {
-    mat4 model_matrix;
-    vec4 material_albedo_rough;
-    vec4 material_metal_spec;
-    vec4 light_direction_energy;
-    vec4 light_color;
-} instance_ubo;
-
-void main() {
-    uint mode = ubo.render_params.x;
-    vec3 n = normalize(v_world_normal);
-
-    if (mode == 0u) {
-        // Forward+ PBR Real
-        vec3 albedo = instance_ubo.material_albedo_rough.rgb;
-        float roughness = instance_ubo.material_albedo_rough.w;
-        float metallic = instance_ubo.material_metal_spec.x;
-        float specular = instance_ubo.material_metal_spec.y;
-
-        vec3 l_dir = normalize(instance_ubo.light_direction_energy.xyz);
-        vec3 l_col = instance_ubo.light_color.rgb * instance_ubo.light_direction_energy.w;
-        vec3 v_dir = normalize(ubo.camera_pos_fov.xyz - v_world_pos);
-
-        float n_dot_l = max(dot(n, l_dir), 0.0);
-        vec3 diffuse = albedo * (1.0 - metallic) * n_dot_l;
-
-        vec3 h = normalize(l_dir + v_dir);
-        float n_dot_h = max(dot(n, h), 0.0);
-        float spec_power = max(2.0, (1.0 - roughness) * 128.0);
-        float spec_factor = pow(n_dot_h, spec_power) * specular;
-        vec3 spec_color = mix(vec3(0.04), albedo, metallic);
-        vec3 specular_term = spec_color * spec_factor * n_dot_l;
-
-        float sky_factor = n.y * 0.5 + 0.5;
-        vec3 ambient_sky = vec3(0.12, 0.14, 0.18);
-        vec3 ambient_ground = vec3(0.04, 0.04, 0.03);
-        vec3 ambient = mix(ambient_ground, ambient_sky, sky_factor) * albedo * (1.0 - metallic);
-
-        vec3 final_color = ambient + (diffuse + specular_term) * l_col;
-        out_color = vec4(final_color, 1.0);
-
-    } else if (mode == 1u) {
-        // Normais de Superficie
-        out_color = vec4(n * 0.5 + 0.5, 1.0);
-
-    } else if (mode == 2u) {
-        // Unshaded
-        out_color = vec4(instance_ubo.material_albedo_rough.rgb, 1.0);
-
-    } else {
-        // Cluster Debug Colors
-        float hue = fract(float(v_cluster_id) * 0.618033988749895);
-        vec3 rgb = clamp(abs(fract(hue + vec3(0.0, 2.0/3.0, 1.0/3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
-        vec3 cluster_col = mix(rgb, vec3(1.0), 0.15);
-
-        vec3 l_dir = normalize(instance_ubo.light_direction_energy.xyz);
-        float diff = max(dot(n, l_dir), 0.25);
-        out_color = vec4(cluster_col * diff, 1.0);
-    }
-}
-"""
+	var vs_code = ""
+	var fs_code = ""
+	if full_text.contains("#[vertex]") and full_text.contains("#[fragment]"):
+		var v_start = full_text.find("#[vertex]") + 9
+		var f_start = full_text.find("#[fragment]")
+		vs_code = full_text.substr(v_start, f_start - v_start).strip_edges()
+		fs_code = full_text.substr(f_start + 11).strip_edges()
+	else:
+		push_error("[ArboriaNativePipeline] Falha ao ler secoes do arboria_forward_raster.glsl")
+		return
 
 	var src = RDShaderSource.new()
 	src.language = RenderingDevice.SHADER_LANGUAGE_GLSL
@@ -327,7 +266,7 @@ func setup_raster_pipeline(color_fmt: int, depth_fmt: int) -> bool:
 	var blend = RDPipelineColorBlendState.new()
 	blend.attachments.append(RDPipelineColorBlendStateAttachment.new())
 
-	# CONTRATO REVERSED-Z: COMPARE_OP_GREATER_OR_EQUAL
+	# CONTRATO REVERSED-Z VULKAN: COMPARE_OP_GREATER_OR_EQUAL (Z=1 Near, Z=0 Far/Sky)
 	var depth_state = RDPipelineDepthStencilState.new()
 	depth_state.enable_depth_test = true
 	depth_state.enable_depth_write = true
@@ -454,21 +393,7 @@ func _upload_mesh_to_gpu(path: String, data: Dictionary) -> MeshGPUResource:
 
 	res.in_clusters_buf = rd.storage_buffer_create(c_bytes.size(), c_bytes)
 
-	# 2. OutVisibleClusters Buffer
-	res.out_visible_buf = rd.storage_buffer_create(max(4, res.total_clusters * 4))
-
-	# 3. OutCounterAndDrawArgs Buffer (24 bytes VkDrawIndirectCommand)
-	var cnt_bytes = PackedByteArray()
-	cnt_bytes.resize(24)
-	cnt_bytes.encode_u32(0, 384) # vertex_count
-	cnt_bytes.encode_u32(4, 0)   # instance_count
-	cnt_bytes.encode_u32(8, 0)   # first_vertex
-	cnt_bytes.encode_u32(12, 0)  # first_instance
-	cnt_bytes.encode_u32(16, 0)  # total_triangles_drawn
-	cnt_bytes.encode_u32(20, 0)  # total_clusters_evaluated
-	res.counter_buf = rd.storage_buffer_create(24, cnt_bytes, RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT)
-
-	# 4. Out Selection Texture
+	# 2. Out Selection Texture
 	var tf = RDTextureFormat.new()
 	tf.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
 	tf.width = 2048
@@ -476,7 +401,7 @@ func _upload_mesh_to_gpu(path: String, data: Dictionary) -> MeshGPUResource:
 	tf.usage_bits = RenderingDevice.TEXTURE_USAGE_STORAGE_BIT | RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT | RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT
 	res.selection_texture_rid = rd.texture_create(tf, RDTextureView.new(), [])
 
-	# 5. InVertices (32 bytes = 2x vec4)
+	# 3. InVertices (32 bytes = 2x vec4)
 	var raw_v_bytes = PackedByteArray()
 	raw_v_bytes.resize(res.total_vertices * 32)
 	for vi in range(res.total_vertices):
@@ -495,7 +420,7 @@ func _upload_mesh_to_gpu(path: String, data: Dictionary) -> MeshGPUResource:
 		raw_v_bytes.encode_float(p1_byte + 12, uv.y)
 	res.in_vertices_buf = rd.storage_buffer_create(raw_v_bytes.size(), raw_v_bytes)
 
-	# 6. InTriangles (uint32 compactados)
+	# 4. InTriangles (uint32 compactados)
 	var aligned_t_size = int(ceil(float(triangles.size()) / 4.0)) * 4
 	var t_bytes = PackedByteArray()
 	t_bytes.resize(max(4, aligned_t_size))
@@ -503,37 +428,176 @@ func _upload_mesh_to_gpu(path: String, data: Dictionary) -> MeshGPUResource:
 		t_bytes[ti] = triangles[ti]
 	res.in_triangles_buf = rd.storage_buffer_create(t_bytes.size(), t_bytes)
 
-	# 7. Compute Uniform Set
-	var u0 = RDUniform.new()
-	u0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-	u0.binding = 0
-	u0.add_id(res.in_clusters_buf)
+	# Registro e validacao ativa no VGRuntime C++
+	if native_core and native_core.has_method("load_mesh"):
+		var global_path = ProjectSettings.globalize_path(path)
+		res.c_mesh_id = native_core.load_mesh(global_path)
+		var c_clusters = native_core.get_mesh_clusters_count(res.c_mesh_id)
+		print("[ArboriaNativePipeline C++] Malha registrada no VGRuntime: ID %d, Clusters: %d" % [res.c_mesh_id, c_clusters])
 
-	var u1 = RDUniform.new()
-	u1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-	u1.binding = 1
-	u1.add_id(res.out_visible_buf)
-
-	var u2 = RDUniform.new()
-	u2.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-	u2.binding = 2
-	u2.add_id(res.counter_buf)
-
-	var u3 = RDUniform.new()
-	u3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
-	u3.binding = 3
-	u3.add_id(camera_ubo_buf)
-
-	var u4 = RDUniform.new()
-	u4.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
-	u4.binding = 4
-	u4.add_id(res.selection_texture_rid)
-
-	res.compute_uniform_set = rd.uniform_set_create([u0, u1, u2, u3, u4], compute_shader_rid, 0)
 	res.is_valid = true
-
 	print("[ArboriaNativePipeline] Upload GPU concluido: ", path, " (", res.total_clusters, " clusters, ", (c_bytes.size() + raw_v_bytes.size() + t_bytes.size()) / 1024, " KB)")
 	return res
+
+func _get_or_create_instance_gpu_data(inst: Node3D, mesh_res: MeshGPUResource) -> InstanceGPUData:
+	var inst_id = inst.get_instance_id()
+	if _instance_gpu_map.has(inst_id):
+		var existing: InstanceGPUData = _instance_gpu_map[inst_id]
+		if existing.mesh_path == mesh_res.mesh_path and existing.is_ready:
+			return existing
+		else:
+			_free_instance_gpu_data(existing)
+
+	var data = InstanceGPUData.new()
+	data.instance_ref = weakref(inst)
+	data.mesh_path = mesh_res.mesh_path
+
+	# Registro ativo no VGSceneBridge C++
+	if native_core and native_core.has_method("scene_create_instance"):
+		data.c_instance_id = native_core.scene_create_instance(mesh_res.c_mesh_id)
+		print("[ArboriaNativePipeline C++] Instancia registrada no VGSceneBridge: ID %d (Malha: %d)" % [data.c_instance_id, mesh_res.c_mesh_id])
+
+	# Buffer de saida com clusters visiveis desta instancia
+	data.out_visible_buf = rd.storage_buffer_create(max(4, mesh_res.total_clusters * 4))
+
+	# Buffer de argumentos indiretos (24 bytes: 16b VkDrawIndirectCommand + 8b counters)
+	var cnt_bytes = PackedByteArray()
+	cnt_bytes.resize(24)
+	cnt_bytes.encode_u32(0, 384) # vertex_count (128 tris * 3)
+	cnt_bytes.encode_u32(4, 0)   # instance_count
+	cnt_bytes.encode_u32(8, 0)   # first_vertex
+	cnt_bytes.encode_u32(12, 0)  # first_instance
+	cnt_bytes.encode_u32(16, 0)  # total_triangles_drawn
+	cnt_bytes.encode_u32(20, 0)  # total_clusters_evaluated
+	data.counter_buf = rd.storage_buffer_create(24, cnt_bytes, RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT)
+
+	# UBO de Camera (224 bytes)
+	var u_cam = PackedByteArray()
+	u_cam.resize(224)
+	data.camera_ubo_buf = rd.uniform_buffer_create(224, u_cam)
+
+	# UBO de Instancia (160 bytes: model_matrix + material + light)
+	var u_inst = PackedByteArray()
+	u_inst.resize(160)
+	data.instance_ubo_buf = rd.uniform_buffer_create(160, u_inst)
+
+	# Compute Uniform Set (Set 0)
+	var cu0 = RDUniform.new()
+	cu0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	cu0.binding = 0
+	cu0.add_id(mesh_res.in_clusters_buf)
+
+	var cu1 = RDUniform.new()
+	cu1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	cu1.binding = 1
+	cu1.add_id(data.out_visible_buf)
+
+	var cu2 = RDUniform.new()
+	cu2.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	cu2.binding = 2
+	cu2.add_id(data.counter_buf)
+
+	var cu3 = RDUniform.new()
+	cu3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+	cu3.binding = 3
+	cu3.add_id(data.camera_ubo_buf)
+
+	var cu4 = RDUniform.new()
+	cu4.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	cu4.binding = 4
+	cu4.add_id(mesh_res.selection_texture_rid)
+
+	var cu5 = RDUniform.new()
+	cu5.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+	cu5.binding = 5
+	cu5.add_id(default_sampler)
+	cu5.add_id(default_white_tex)
+
+	data.compute_uniform_set = rd.uniform_set_create([cu0, cu1, cu2, cu3, cu4, cu5], compute_shader_rid, 0)
+
+	# Raster Uniform Set (Set 0)
+	var ru0 = RDUniform.new()
+	ru0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	ru0.binding = 0
+	ru0.add_id(mesh_res.in_clusters_buf)
+
+	var ru1 = RDUniform.new()
+	ru1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	ru1.binding = 1
+	ru1.add_id(data.out_visible_buf)
+
+	var ru3 = RDUniform.new()
+	ru3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+	ru3.binding = 3
+	ru3.add_id(data.camera_ubo_buf)
+
+	var ru5 = RDUniform.new()
+	ru5.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	ru5.binding = 5
+	ru5.add_id(mesh_res.in_vertices_buf)
+
+	var ru6 = RDUniform.new()
+	ru6.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	ru6.binding = 6
+	ru6.add_id(mesh_res.in_triangles_buf)
+
+	var ru7 = RDUniform.new()
+	ru7.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+	ru7.binding = 7
+	ru7.add_id(data.instance_ubo_buf)
+
+	var albedo_tex_rid = default_white_tex
+	var normal_tex_rid = default_normal_tex
+	var orm_tex_rid = default_orm_tex
+
+	if "albedo_texture" in inst and inst.albedo_texture:
+		var r = _get_or_create_rd_texture(inst.albedo_texture)
+		if r.is_valid(): albedo_tex_rid = r
+	if "normal_texture" in inst and inst.normal_texture:
+		var r = _get_or_create_rd_texture(inst.normal_texture)
+		if r.is_valid(): normal_tex_rid = r
+	if "orm_texture" in inst and inst.orm_texture:
+		var r = _get_or_create_rd_texture(inst.orm_texture)
+		if r.is_valid(): orm_tex_rid = r
+
+	data.inst_albedo_tex = albedo_tex_rid
+	data.inst_normal_tex = normal_tex_rid
+	data.inst_orm_tex = orm_tex_rid
+
+	var ru8 = RDUniform.new()
+	ru8.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+	ru8.binding = 8
+	ru8.add_id(default_sampler)
+	ru8.add_id(albedo_tex_rid)
+
+	var ru9 = RDUniform.new()
+	ru9.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+	ru9.binding = 9
+	ru9.add_id(default_sampler)
+	ru9.add_id(normal_tex_rid)
+
+	var ru10 = RDUniform.new()
+	ru10.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+	ru10.binding = 10
+	ru10.add_id(default_sampler)
+	ru10.add_id(orm_tex_rid)
+
+	data.raster_uniform_set = rd.uniform_set_create([ru0, ru1, ru3, ru5, ru6, ru7, ru8, ru9, ru10], raster_shader_rid, 0)
+	data.is_ready = true
+
+	_instance_gpu_map[inst_id] = data
+	return data
+
+func _free_instance_gpu_data(data: InstanceGPUData) -> void:
+	if not rd: return
+	if native_core and data.c_instance_id > 0 and native_core.has_method("scene_destroy_instance"):
+		native_core.scene_destroy_instance(data.c_instance_id)
+		data.c_instance_id = -1
+	if data.out_visible_buf.is_valid(): rd.free_rid(data.out_visible_buf)
+	if data.counter_buf.is_valid(): rd.free_rid(data.counter_buf)
+	if data.camera_ubo_buf.is_valid(): rd.free_rid(data.camera_ubo_buf)
+	if data.instance_ubo_buf.is_valid(): rd.free_rid(data.instance_ubo_buf)
+	data.is_ready = false
 
 func register_instance(inst: Node3D) -> void:
 	if not _registered_instances.has(inst):
@@ -541,9 +605,12 @@ func register_instance(inst: Node3D) -> void:
 
 func unregister_instance(inst: Node3D) -> void:
 	_registered_instances.erase(inst)
+	var inst_id = inst.get_instance_id()
+	if _instance_gpu_map.has(inst_id):
+		_free_instance_gpu_data(_instance_gpu_map[inst_id])
+		_instance_gpu_map.erase(inst_id)
 
 func mark_instance_dirty(_inst: Node3D) -> void:
-	# Marca necessidade de atualizacao do frame
 	pass
 
 func extract_frustum_planes(m: Projection) -> Array[Plane]:
@@ -609,37 +676,98 @@ func render_scene_instances(p_render_data: RenderData) -> void:
 	var view_mat: Projection = Projection(cam_xform.affine_inverse())
 	var vp_size = Vector2(rb.get_internal_size())
 
-	# Reset das estatisticas do frame
-	stats_total_instances = 0
-	stats_visible_clusters = 0
-	stats_triangles_drawn = 0
+	# Matriz View-Projection da Câmera (Sem model_transform para não duplicar no vertex shader!)
+	var cam_view_proj: Projection = cam_proj * view_mat
+	if Engine.get_process_frames() % 60 == 5:
+		print("[RSD PROJ MATRIX] cam_proj: ", cam_proj)
+		print("[RSD DEPTH FMT] dep_fmt: ", dep_fmt.format)
 
-	# 1. Abre a Draw List compartilhada do Forward+
-	# CLEAR_FLAGS = 0 -> NAO LIMPAR COR, NAO LIMPAR Z!
-	var dl = rd.draw_list_begin(cached_fb, 0, PackedColorArray())
-	rd.draw_list_bind_render_pipeline(dl, raster_pipeline)
-
-	# 2. Itera sobre cada instancia ativa
+	# Coleta instâncias ativas válidas para este frame
+	var active_tasks: Array[Dictionary] = []
 	for inst in _registered_instances:
 		if not is_instance_valid(inst) or not inst.visible or inst.mesh_path == "":
 			continue
 
 		var mesh_res: MeshGPUResource = _mesh_cache.get(inst.mesh_path, null)
+		if not mesh_res:
+			get_or_load_mesh(inst.mesh_path)
+			mesh_res = _mesh_cache.get(inst.mesh_path, null)
+
 		if not mesh_res or not mesh_res.is_valid:
 			continue
 
-		stats_total_instances += 1
-		var model_xform: Transform3D = inst.global_transform
-		var mvp_mat: Projection = cam_proj * view_mat * Projection(model_xform)
-		var cam_pos_local: Vector3 = model_xform.affine_inverse() * cam_pos_world
-		var f_planes = extract_frustum_planes(mvp_mat)
+		var inst_gpu = _get_or_create_instance_gpu_data(inst, mesh_res)
+		if not inst_gpu or not inst_gpu.is_ready:
+			continue
 
-		# Atualiza Camera UBO (224 bytes)
+		active_tasks.append({
+			"inst": inst,
+			"mesh_res": mesh_res,
+			"gpu_data": inst_gpu
+		})
+
+	if active_tasks.is_empty():
+		return
+
+	# =========================================================================
+	# FASE 1: PREPARAÇÃO DE DADOS, SINCRONIZAÇÃO C++ E UPLOAD DE BUFFERS
+	# =========================================================================
+	
+	# Extração da iluminação real da cena (DirectionalLight3D)
+	var main_light: DirectionalLight3D = null
+	var tree = Engine.get_main_loop() as SceneTree
+	if tree and tree.current_scene:
+		main_light = tree.current_scene.find_child("*DirectionalLight3D*", true, false) as DirectionalLight3D
+		if not main_light:
+			for child in tree.current_scene.find_children("*", "DirectionalLight3D", true, false):
+				if child is DirectionalLight3D:
+					main_light = child
+					break
+
+	var light_dir = Vector3(0.5, 0.8, 0.6).normalized()
+	var light_energy = 1.2
+	var light_color = Color(1.0, 0.98, 0.95)
+	var ambient_energy = 0.2
+
+	if main_light and main_light.visible:
+		light_dir = -main_light.global_transform.basis.z.normalized()
+		light_energy = main_light.light_energy
+		light_color = main_light.light_color
+
+	for task in active_tasks:
+		var inst = task["inst"]
+		var mesh_res: MeshGPUResource = task["mesh_res"]
+		var inst_gpu: InstanceGPUData = task["gpu_data"]
+
+		var model_xform: Transform3D = inst.global_transform
+		var cam_pos_local: Vector3 = model_xform.affine_inverse() * cam_pos_world
+		var mvp_local = cam_proj * view_mat * Projection(model_xform)
+		var f_planes = extract_frustum_planes(mvp_local)
+
+		# Sincronizacao ativa de transformacao e LOD no VGSceneBridge C++
+		if native_core and inst_gpu.c_instance_id > 0:
+			var m = model_xform
+			native_core.scene_set_transform_components(
+				inst_gpu.c_instance_id,
+				m.basis.x.x, m.basis.x.y, m.basis.x.z,
+				m.basis.y.x, m.basis.y.y, m.basis.y.z,
+				m.basis.z.x, m.basis.z.y, m.basis.z.z,
+				m.origin.x, m.origin.y, m.origin.z
+			)
+			native_core.scene_set_lod(
+				inst_gpu.c_instance_id,
+				inst.max_screen_error,
+				inst.lod_mode,
+				inst.forced_lod
+			)
+
+		# 1. Atualiza Camera UBO desta instancia (224 bytes)
 		var u_cam = PackedByteArray()
 		u_cam.resize(224)
+
 		for col in range(4):
 			for row in range(4):
-				u_cam.encode_float((col * 4 + row) * 4, mvp_mat[col][row])
+				u_cam.encode_float((col * 4 + row) * 4, cam_view_proj[col][row])
 
 		for i in range(min(6, f_planes.size())):
 			var pl = f_planes[i]
@@ -652,7 +780,9 @@ func render_scene_instances(p_render_data: RenderData) -> void:
 		u_cam.encode_float(160, cam_pos_local.x)
 		u_cam.encode_float(164, cam_pos_local.y)
 		u_cam.encode_float(168, cam_pos_local.z)
-		u_cam.encode_float(172, deg_to_rad(60.0))
+		var fov_rad = deg_to_rad(60.0)
+		var fov_factor = 1.0 / tan(fov_rad * 0.5)
+		u_cam.encode_float(172, fov_factor)
 
 		u_cam.encode_float(176, vp_size.x)
 		u_cam.encode_float(180, vp_size.y)
@@ -669,98 +799,121 @@ func render_scene_instances(p_render_data: RenderData) -> void:
 		u_cam.encode_u32(216, 1 if enable_cone_culling else 0)
 		u_cam.encode_u32(220, 0)
 
-		rd.buffer_update(camera_ubo_buf, 0, u_cam.size(), u_cam)
+		rd.buffer_update(inst_gpu.camera_ubo_buf, 0, u_cam.size(), u_cam)
 
-		# Atualiza Instance UBO (160 bytes: model_matrix + material + light)
+		# 2. Atualiza Instance UBO desta instancia (160 bytes: PBR e Luz Real)
 		var u_inst = PackedByteArray()
 		u_inst.resize(160)
+		var model_proj = Projection(model_xform)
 		for col in range(4):
 			for row in range(4):
-				u_inst.encode_float((col * 4 + row) * 4, model_xform[col][row])
+				u_inst.encode_float((col * 4 + row) * 4, model_proj[col][row])
 
-		# material_albedo_rough: rgb = albedo, w = roughness
 		u_inst.encode_float(64, inst.base_albedo.r)
 		u_inst.encode_float(68, inst.base_albedo.g)
 		u_inst.encode_float(72, inst.base_albedo.b)
 		u_inst.encode_float(76, inst.roughness)
 
-		# material_metal_spec: x = metallic, y = specular
+		var has_tex = 1.0 if (("albedo_texture" in inst and inst.albedo_texture) or ("normal_texture" in inst and inst.normal_texture)) else 0.0
 		u_inst.encode_float(80, inst.metallic)
 		u_inst.encode_float(84, inst.specular)
 		u_inst.encode_float(88, 0.0)
-		u_inst.encode_float(92, 0.0)
+		u_inst.encode_float(92, has_tex)
 
-		# light_direction_energy: xyz = dir, w = energy
-		var l_dir = Vector3(0.5, 0.8, 0.6).normalized()
-		u_inst.encode_float(96, l_dir.x)
-		u_inst.encode_float(100, l_dir.y)
-		u_inst.encode_float(102, l_dir.z)
-		u_inst.encode_float(108, 1.2)
+		u_inst.encode_float(96, light_dir.x)
+		u_inst.encode_float(100, light_dir.y)
+		u_inst.encode_float(104, light_dir.z)
+		u_inst.encode_float(108, light_energy)
 
-		# light_color: rgb = color, w = ambient
-		u_inst.encode_float(112, 1.0)
-		u_inst.encode_float(116, 0.98)
-		u_inst.encode_float(120, 0.95)
-		u_inst.encode_float(124, 0.2)
+		u_inst.encode_float(112, light_color.r)
+		u_inst.encode_float(116, light_color.g)
+		u_inst.encode_float(120, light_color.b)
+		u_inst.encode_float(124, ambient_energy)
 
-		rd.buffer_update(instance_ubo_buf, 0, u_inst.size(), u_inst)
+		var uv_sc = inst.uv_scale if "uv_scale" in inst else Vector2.ONE
+		var n_sc = inst.normal_scale if "normal_scale" in inst else 1.0
+		u_inst.encode_float(128, uv_sc.x)
+		u_inst.encode_float(132, uv_sc.y)
+		u_inst.encode_float(136, n_sc)
+		u_inst.encode_float(140, 0.0)
 
-		# 3. Despacha Compute Culling na GPU
-		rd.buffer_clear(mesh_res.counter_buf, 4, 20)
-		var cl = rd.compute_list_begin()
-		rd.compute_list_bind_compute_pipeline(cl, compute_pipeline)
-		rd.compute_list_bind_uniform_set(cl, mesh_res.compute_uniform_set, 0)
-		rd.compute_list_dispatch(cl, mesh_res.groups_x, 1, 1)
-		rd.compute_list_end()
+		rd.buffer_update(inst_gpu.instance_ubo_buf, 0, u_inst.size(), u_inst)
 
-		# 4. Uniform Set do Rasterizador
-		var u0 = RDUniform.new()
-		u0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-		u0.binding = 0
-		u0.add_id(mesh_res.in_clusters_buf)
+		# 3. Zera os contadores no counter_buf antes do compute
+		var reset_args = PackedByteArray()
+		reset_args.resize(24)
+		reset_args.encode_u32(0, 384)
+		reset_args.encode_u32(4, 0)
+		reset_args.encode_u32(8, 0)
+		reset_args.encode_u32(12, 0)
+		reset_args.encode_u32(16, 0)
+		reset_args.encode_u32(20, 0)
+		rd.buffer_update(inst_gpu.counter_buf, 0, reset_args.size(), reset_args)
 
-		var u1 = RDUniform.new()
-		u1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-		u1.binding = 1
-		u1.add_id(mesh_res.out_visible_buf)
+	# =========================================================================
+	# FASE 2 & 3: PIPELINE GRÁFICO 100% EXECUTADO EM C++ NATIVO
+	# GPU Upload -> Compute Dispatch -> GPU Sync -> Indirect Draw -> Render Pass
+	# =========================================================================
+	var compute_sets: Array[RID] = []
+	var groups_x: Array[int] = []
+	var raster_sets: Array[RID] = []
+	var counter_bufs: Array[RID] = []
 
-		var u3 = RDUniform.new()
-		u3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
-		u3.binding = 3
-		u3.add_id(camera_ubo_buf)
+	for task in active_tasks:
+		var mesh_res: MeshGPUResource = task["mesh_res"]
+		var inst_gpu: InstanceGPUData = task["gpu_data"]
+		compute_sets.append(inst_gpu.compute_uniform_set)
+		groups_x.append(mesh_res.groups_x)
+		raster_sets.append(inst_gpu.raster_uniform_set)
+		counter_bufs.append(inst_gpu.counter_buf)
 
-		var u5 = RDUniform.new()
-		u5.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-		u5.binding = 5
-		u5.add_id(mesh_res.in_vertices_buf)
+	if native_core and native_core.has_method("render_scene_batch"):
+		native_core.render_scene_batch(
+			rd,
+			cached_fb,
+			compute_pipeline,
+			raster_pipeline,
+			compute_sets,
+			groups_x,
+			raster_sets,
+			counter_bufs,
+			active_tasks.size(),
+			PackedColorArray()
+		)
 
-		var u6 = RDUniform.new()
-		u6.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-		u6.binding = 6
-		u6.add_id(mesh_res.in_triangles_buf)
+	# =========================================================================
+	# FASE 4: TELEMETRIA DESACOPLADA E NÃO-BLOQUEANTE (SEM STALL NO RENDER LOOP)
+	# =========================================================================
+	stats_total_instances = active_tasks.size()
+	_telemetry_frame_counter += 1
 
-		var u7 = RDUniform.new()
-		u7.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
-		u7.binding = 7
-		u7.add_id(instance_ubo_buf)
-
-		var raster_set = rd.uniform_set_create([u0, u1, u3, u5, u6, u7], raster_shader_rid, 0)
-
-		# 5. Desenho Indireto 100% GPU
-		rd.draw_list_bind_uniform_set(dl, raster_set, 0)
-		rd.draw_list_draw_indirect(dl, false, mesh_res.counter_buf, 0, 1, 16)
-
-	rd.draw_list_end()
+	var should_read_gpu = (not enable_async_telemetry) or telemetry_dirty or (_telemetry_frame_counter % _telemetry_interval == 0)
+	if should_read_gpu:
+		telemetry_dirty = false
+		var vis_acc = 0
+		var tri_acc = 0
+		for task in active_tasks:
+			var inst_gpu: InstanceGPUData = task["gpu_data"]
+			var cnt_data = rd.buffer_get_data(inst_gpu.counter_buf)
+			if cnt_data.size() >= 24:
+				vis_acc += cnt_data.decode_u32(4)
+				tri_acc += cnt_data.decode_u32(16)
+		stats_visible_clusters = vis_acc
+		stats_triangles_drawn = tri_acc
+		if _telemetry_frame_counter % 60 == 0:
+			print("[ARBORIA GPU TELEMETRIA NÃO-BLOQUEANTE] Instancias: ", stats_total_instances, " Clusters: ", stats_visible_clusters, " Triangulos: ", stats_triangles_drawn)
 
 func cleanup() -> void:
 	if not rd:
 		return
 
+	for inst_id in _instance_gpu_map:
+		_free_instance_gpu_data(_instance_gpu_map[inst_id])
+	_instance_gpu_map.clear()
+
 	for path in _mesh_cache:
 		var res: MeshGPUResource = _mesh_cache[path]
 		if res.in_clusters_buf.is_valid(): rd.free_rid(res.in_clusters_buf)
-		if res.out_visible_buf.is_valid(): rd.free_rid(res.out_visible_buf)
-		if res.counter_buf.is_valid(): rd.free_rid(res.counter_buf)
 		if res.in_vertices_buf.is_valid(): rd.free_rid(res.in_vertices_buf)
 		if res.in_triangles_buf.is_valid(): rd.free_rid(res.in_triangles_buf)
 		if res.selection_texture_rid.is_valid(): rd.free_rid(res.selection_texture_rid)
@@ -769,12 +922,6 @@ func cleanup() -> void:
 	if cached_fb.is_valid():
 		rd.free_rid(cached_fb)
 		cached_fb = RID()
-	if camera_ubo_buf.is_valid():
-		rd.free_rid(camera_ubo_buf)
-		camera_ubo_buf = RID()
-	if instance_ubo_buf.is_valid():
-		rd.free_rid(instance_ubo_buf)
-		instance_ubo_buf = RID()
 	if compute_pipeline.is_valid():
 		rd.free_rid(compute_pipeline)
 		compute_pipeline = RID()

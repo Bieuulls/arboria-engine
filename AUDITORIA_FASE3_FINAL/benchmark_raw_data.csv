@@ -1,0 +1,1201 @@
+scenario,frame_idx,frame_time_ms,cpu_sub_us,fps
+A. Godot Convencional (Malha Original),1,16.7230,0.00,59.80
+A. Godot Convencional (Malha Original),2,16.5750,0.00,60.33
+A. Godot Convencional (Malha Original),3,16.8960,0.00,59.19
+A. Godot Convencional (Malha Original),4,16.4390,0.00,60.83
+A. Godot Convencional (Malha Original),5,16.9430,0.00,59.02
+A. Godot Convencional (Malha Original),6,16.5040,0.00,60.59
+A. Godot Convencional (Malha Original),7,17.2850,0.00,57.85
+A. Godot Convencional (Malha Original),8,15.7450,0.00,63.51
+A. Godot Convencional (Malha Original),9,14.7320,0.00,67.88
+A. Godot Convencional (Malha Original),10,16.5760,0.00,60.33
+A. Godot Convencional (Malha Original),11,17.0970,0.00,58.49
+A. Godot Convencional (Malha Original),12,16.6370,0.00,60.11
+A. Godot Convencional (Malha Original),13,16.7910,0.00,59.56
+A. Godot Convencional (Malha Original),14,16.7810,0.00,59.59
+A. Godot Convencional (Malha Original),15,16.6220,0.00,60.16
+A. Godot Convencional (Malha Original),16,16.5580,0.00,60.39
+A. Godot Convencional (Malha Original),17,16.8320,0.00,59.41
+A. Godot Convencional (Malha Original),18,16.9820,0.00,58.89
+A. Godot Convencional (Malha Original),19,16.3400,0.00,61.20
+A. Godot Convencional (Malha Original),20,16.7940,0.00,59.55
+A. Godot Convencional (Malha Original),21,16.7360,0.00,59.75
+A. Godot Convencional (Malha Original),22,16.6560,0.00,60.04
+A. Godot Convencional (Malha Original),23,16.7430,0.00,59.73
+A. Godot Convencional (Malha Original),24,16.4680,0.00,60.72
+A. Godot Convencional (Malha Original),25,17.1770,0.00,58.22
+A. Godot Convencional (Malha Original),26,16.4650,0.00,60.73
+A. Godot Convencional (Malha Original),27,16.4850,0.00,60.66
+A. Godot Convencional (Malha Original),28,17.0160,0.00,58.77
+A. Godot Convencional (Malha Original),29,16.6690,0.00,59.99
+A. Godot Convencional (Malha Original),30,17.0280,0.00,58.73
+A. Godot Convencional (Malha Original),31,16.2650,0.00,61.48
+A. Godot Convencional (Malha Original),32,16.7260,0.00,59.79
+A. Godot Convencional (Malha Original),33,16.2170,0.00,61.66
+A. Godot Convencional (Malha Original),34,17.2620,0.00,57.93
+A. Godot Convencional (Malha Original),35,16.6250,0.00,60.15
+A. Godot Convencional (Malha Original),36,16.7200,0.00,59.81
+A. Godot Convencional (Malha Original),37,16.4060,0.00,60.95
+A. Godot Convencional (Malha Original),38,17.0860,0.00,58.53
+A. Godot Convencional (Malha Original),39,16.5750,0.00,60.33
+A. Godot Convencional (Malha Original),40,16.5770,0.00,60.32
+A. Godot Convencional (Malha Original),41,16.5870,0.00,60.29
+A. Godot Convencional (Malha Original),42,16.8740,0.00,59.26
+A. Godot Convencional (Malha Original),43,16.8440,0.00,59.37
+A. Godot Convencional (Malha Original),44,16.7350,0.00,59.76
+A. Godot Convencional (Malha Original),45,16.5780,0.00,60.32
+A. Godot Convencional (Malha Original),46,16.8100,0.00,59.49
+A. Godot Convencional (Malha Original),47,16.7400,0.00,59.74
+A. Godot Convencional (Malha Original),48,16.6180,0.00,60.18
+A. Godot Convencional (Malha Original),49,16.6160,0.00,60.18
+A. Godot Convencional (Malha Original),50,17.4940,0.00,57.16
+A. Godot Convencional (Malha Original),51,15.9660,0.00,62.63
+A. Godot Convencional (Malha Original),52,16.7550,0.00,59.68
+A. Godot Convencional (Malha Original),53,16.3800,0.00,61.05
+A. Godot Convencional (Malha Original),54,17.1220,0.00,58.40
+A. Godot Convencional (Malha Original),55,16.5770,0.00,60.32
+A. Godot Convencional (Malha Original),56,16.7610,0.00,59.66
+A. Godot Convencional (Malha Original),57,17.3590,0.00,57.61
+A. Godot Convencional (Malha Original),58,15.9960,0.00,62.52
+A. Godot Convencional (Malha Original),59,16.7620,0.00,59.66
+A. Godot Convencional (Malha Original),60,16.7550,0.00,59.68
+A. Godot Convencional (Malha Original),61,16.4950,0.00,60.62
+A. Godot Convencional (Malha Original),62,16.6580,0.00,60.03
+A. Godot Convencional (Malha Original),63,16.9990,0.00,58.83
+A. Godot Convencional (Malha Original),64,16.6140,0.00,60.19
+A. Godot Convencional (Malha Original),65,16.5870,0.00,60.29
+A. Godot Convencional (Malha Original),66,16.7480,0.00,59.71
+A. Godot Convencional (Malha Original),67,16.7490,0.00,59.71
+A. Godot Convencional (Malha Original),68,17.1930,0.00,58.16
+A. Godot Convencional (Malha Original),69,16.0600,0.00,62.27
+A. Godot Convencional (Malha Original),70,17.0490,0.00,58.65
+A. Godot Convencional (Malha Original),71,16.4790,0.00,60.68
+A. Godot Convencional (Malha Original),72,17.0050,0.00,58.81
+A. Godot Convencional (Malha Original),73,17.1630,0.00,58.26
+A. Godot Convencional (Malha Original),74,16.1970,0.00,61.74
+A. Godot Convencional (Malha Original),75,17.0840,0.00,58.53
+A. Godot Convencional (Malha Original),76,15.7520,0.00,63.48
+A. Godot Convencional (Malha Original),77,17.0800,0.00,58.55
+A. Godot Convencional (Malha Original),78,16.9070,0.00,59.15
+A. Godot Convencional (Malha Original),79,17.2420,0.00,58.00
+A. Godot Convencional (Malha Original),80,17.7370,0.00,56.38
+A. Godot Convencional (Malha Original),81,17.2970,0.00,57.81
+A. Godot Convencional (Malha Original),82,16.4810,0.00,60.68
+A. Godot Convencional (Malha Original),83,17.1000,0.00,58.48
+A. Godot Convencional (Malha Original),84,15.6910,0.00,63.73
+A. Godot Convencional (Malha Original),85,17.3780,0.00,57.54
+A. Godot Convencional (Malha Original),86,17.2160,0.00,58.09
+A. Godot Convencional (Malha Original),87,16.0360,0.00,62.36
+A. Godot Convencional (Malha Original),88,16.9430,0.00,59.02
+A. Godot Convencional (Malha Original),89,18.6310,0.00,53.67
+A. Godot Convencional (Malha Original),90,14.2810,0.00,70.02
+A. Godot Convencional (Malha Original),91,17.0050,0.00,58.81
+A. Godot Convencional (Malha Original),92,16.4860,0.00,60.66
+A. Godot Convencional (Malha Original),93,16.4120,0.00,60.93
+A. Godot Convencional (Malha Original),94,16.8660,0.00,59.29
+A. Godot Convencional (Malha Original),95,17.3540,0.00,57.62
+A. Godot Convencional (Malha Original),96,16.0300,0.00,62.38
+A. Godot Convencional (Malha Original),97,16.8020,0.00,59.52
+A. Godot Convencional (Malha Original),98,17.0050,0.00,58.81
+A. Godot Convencional (Malha Original),99,17.1480,0.00,58.32
+A. Godot Convencional (Malha Original),100,16.3730,0.00,61.08
+A. Godot Convencional (Malha Original),101,16.8600,0.00,59.31
+A. Godot Convencional (Malha Original),102,16.4020,0.00,60.97
+A. Godot Convencional (Malha Original),103,16.0000,0.00,62.50
+A. Godot Convencional (Malha Original),104,16.7910,0.00,59.56
+A. Godot Convencional (Malha Original),105,16.8140,0.00,59.47
+A. Godot Convencional (Malha Original),106,17.3550,0.00,57.62
+A. Godot Convencional (Malha Original),107,17.0930,0.00,58.50
+A. Godot Convencional (Malha Original),108,16.2500,0.00,61.54
+A. Godot Convencional (Malha Original),109,16.7940,0.00,59.55
+A. Godot Convencional (Malha Original),110,16.5470,0.00,60.43
+A. Godot Convencional (Malha Original),111,17.7710,0.00,56.27
+A. Godot Convencional (Malha Original),112,16.2090,0.00,61.69
+A. Godot Convencional (Malha Original),113,16.5120,0.00,60.56
+A. Godot Convencional (Malha Original),114,15.8530,0.00,63.08
+A. Godot Convencional (Malha Original),115,17.7260,0.00,56.41
+A. Godot Convencional (Malha Original),116,17.0660,0.00,58.60
+A. Godot Convencional (Malha Original),117,15.5420,0.00,64.34
+A. Godot Convencional (Malha Original),118,17.2430,0.00,57.99
+A. Godot Convencional (Malha Original),119,16.7430,0.00,59.73
+A. Godot Convencional (Malha Original),120,16.5910,0.00,60.27
+A. Godot Convencional (Malha Original),121,16.4900,0.00,60.64
+A. Godot Convencional (Malha Original),122,16.2570,0.00,61.51
+A. Godot Convencional (Malha Original),123,17.6660,0.00,56.61
+A. Godot Convencional (Malha Original),124,16.3320,0.00,61.23
+A. Godot Convencional (Malha Original),125,17.2350,0.00,58.02
+A. Godot Convencional (Malha Original),126,15.6400,0.00,63.94
+A. Godot Convencional (Malha Original),127,17.3510,0.00,57.63
+A. Godot Convencional (Malha Original),128,16.1120,0.00,62.07
+A. Godot Convencional (Malha Original),129,16.9580,0.00,58.97
+A. Godot Convencional (Malha Original),130,16.5020,0.00,60.60
+A. Godot Convencional (Malha Original),131,17.2280,0.00,58.05
+A. Godot Convencional (Malha Original),132,15.9830,0.00,62.57
+A. Godot Convencional (Malha Original),133,16.5640,0.00,60.37
+A. Godot Convencional (Malha Original),134,17.2680,0.00,57.91
+A. Godot Convencional (Malha Original),135,17.0980,0.00,58.49
+A. Godot Convencional (Malha Original),136,15.7950,0.00,63.31
+A. Godot Convencional (Malha Original),137,16.7340,0.00,59.76
+A. Godot Convencional (Malha Original),138,17.1680,0.00,58.25
+A. Godot Convencional (Malha Original),139,17.1420,0.00,58.34
+A. Godot Convencional (Malha Original),140,15.8440,0.00,63.12
+A. Godot Convencional (Malha Original),141,16.4950,0.00,60.62
+A. Godot Convencional (Malha Original),142,17.0340,0.00,58.71
+A. Godot Convencional (Malha Original),143,17.2450,0.00,57.99
+A. Godot Convencional (Malha Original),144,16.1030,0.00,62.10
+A. Godot Convencional (Malha Original),145,17.7040,0.00,56.48
+A. Godot Convencional (Malha Original),146,15.8510,0.00,63.09
+A. Godot Convencional (Malha Original),147,17.1440,0.00,58.33
+A. Godot Convencional (Malha Original),148,15.9340,0.00,62.76
+A. Godot Convencional (Malha Original),149,15.6300,0.00,63.98
+A. Godot Convencional (Malha Original),150,18.2310,0.00,54.85
+A. Godot Convencional (Malha Original),151,17.8030,0.00,56.17
+A. Godot Convencional (Malha Original),152,14.9970,0.00,66.68
+A. Godot Convencional (Malha Original),153,17.2090,0.00,58.11
+A. Godot Convencional (Malha Original),154,16.8790,0.00,59.25
+A. Godot Convencional (Malha Original),155,17.4640,0.00,57.26
+A. Godot Convencional (Malha Original),156,18.3400,0.00,54.53
+A. Godot Convencional (Malha Original),157,13.9440,0.00,71.72
+A. Godot Convencional (Malha Original),158,17.0030,0.00,58.81
+A. Godot Convencional (Malha Original),159,17.2010,0.00,58.14
+A. Godot Convencional (Malha Original),160,15.8400,0.00,63.13
+A. Godot Convencional (Malha Original),161,17.2660,0.00,57.92
+A. Godot Convencional (Malha Original),162,16.3220,0.00,61.27
+A. Godot Convencional (Malha Original),163,17.1550,0.00,58.29
+A. Godot Convencional (Malha Original),164,15.9740,0.00,62.60
+A. Godot Convencional (Malha Original),165,16.4460,0.00,60.81
+A. Godot Convencional (Malha Original),166,16.8240,0.00,59.44
+A. Godot Convencional (Malha Original),167,17.4830,0.00,57.20
+A. Godot Convencional (Malha Original),168,17.5720,0.00,56.91
+A. Godot Convencional (Malha Original),169,15.6240,0.00,64.00
+A. Godot Convencional (Malha Original),170,16.9580,0.00,58.97
+A. Godot Convencional (Malha Original),171,17.0620,0.00,58.61
+A. Godot Convencional (Malha Original),172,16.0300,0.00,62.38
+A. Godot Convencional (Malha Original),173,16.1060,0.00,62.09
+A. Godot Convencional (Malha Original),174,17.5500,0.00,56.98
+A. Godot Convencional (Malha Original),175,16.8300,0.00,59.42
+A. Godot Convencional (Malha Original),176,15.9940,0.00,62.52
+A. Godot Convencional (Malha Original),177,16.4650,0.00,60.73
+A. Godot Convencional (Malha Original),178,17.1890,0.00,58.18
+A. Godot Convencional (Malha Original),179,17.0840,0.00,58.53
+A. Godot Convencional (Malha Original),180,19.0580,0.00,52.47
+A. Godot Convencional (Malha Original),181,16.0640,0.00,62.25
+A. Godot Convencional (Malha Original),182,14.4410,0.00,69.25
+A. Godot Convencional (Malha Original),183,17.3430,0.00,57.66
+A. Godot Convencional (Malha Original),184,15.7520,0.00,63.48
+A. Godot Convencional (Malha Original),185,19.0330,0.00,52.54
+A. Godot Convencional (Malha Original),186,14.2840,0.00,70.01
+A. Godot Convencional (Malha Original),187,13.6560,0.00,73.23
+A. Godot Convencional (Malha Original),188,16.5120,0.00,60.56
+A. Godot Convencional (Malha Original),189,16.5790,0.00,60.32
+A. Godot Convencional (Malha Original),190,16.6710,0.00,59.98
+A. Godot Convencional (Malha Original),191,16.8040,0.00,59.51
+A. Godot Convencional (Malha Original),192,16.5360,0.00,60.47
+A. Godot Convencional (Malha Original),193,16.9230,0.00,59.09
+A. Godot Convencional (Malha Original),194,17.2260,0.00,58.05
+A. Godot Convencional (Malha Original),195,15.9800,0.00,62.58
+A. Godot Convencional (Malha Original),196,16.7590,0.00,59.67
+A. Godot Convencional (Malha Original),197,16.6810,0.00,59.95
+A. Godot Convencional (Malha Original),198,16.6530,0.00,60.05
+A. Godot Convencional (Malha Original),199,16.7730,0.00,59.62
+A. Godot Convencional (Malha Original),200,16.8090,0.00,59.49
+A. Godot Convencional (Malha Original),201,17.0050,0.00,58.81
+A. Godot Convencional (Malha Original),202,16.1840,0.00,61.79
+A. Godot Convencional (Malha Original),203,16.8600,0.00,59.31
+A. Godot Convencional (Malha Original),204,16.6770,0.00,59.96
+A. Godot Convencional (Malha Original),205,16.6490,0.00,60.06
+A. Godot Convencional (Malha Original),206,16.7160,0.00,59.82
+A. Godot Convencional (Malha Original),207,16.9780,0.00,58.90
+A. Godot Convencional (Malha Original),208,16.3620,0.00,61.12
+A. Godot Convencional (Malha Original),209,16.7220,0.00,59.80
+A. Godot Convencional (Malha Original),210,16.5890,0.00,60.28
+A. Godot Convencional (Malha Original),211,16.7960,0.00,59.54
+A. Godot Convencional (Malha Original),212,16.9250,0.00,59.08
+A. Godot Convencional (Malha Original),213,16.6410,0.00,60.09
+A. Godot Convencional (Malha Original),214,16.6230,0.00,60.16
+A. Godot Convencional (Malha Original),215,16.5710,0.00,60.35
+A. Godot Convencional (Malha Original),216,16.7910,0.00,59.56
+A. Godot Convencional (Malha Original),217,16.6830,0.00,59.94
+A. Godot Convencional (Malha Original),218,16.6410,0.00,60.09
+A. Godot Convencional (Malha Original),219,16.9810,0.00,58.89
+A. Godot Convencional (Malha Original),220,16.6600,0.00,60.02
+A. Godot Convencional (Malha Original),221,16.4420,0.00,60.82
+A. Godot Convencional (Malha Original),222,16.9010,0.00,59.17
+A. Godot Convencional (Malha Original),223,16.8190,0.00,59.46
+A. Godot Convencional (Malha Original),224,16.4630,0.00,60.74
+A. Godot Convencional (Malha Original),225,16.6780,0.00,59.96
+A. Godot Convencional (Malha Original),226,16.6610,0.00,60.02
+A. Godot Convencional (Malha Original),227,16.7060,0.00,59.86
+A. Godot Convencional (Malha Original),228,16.6880,0.00,59.92
+A. Godot Convencional (Malha Original),229,16.7520,0.00,59.69
+A. Godot Convencional (Malha Original),230,16.7120,0.00,59.84
+A. Godot Convencional (Malha Original),231,16.6730,0.00,59.98
+A. Godot Convencional (Malha Original),232,16.7460,0.00,59.72
+A. Godot Convencional (Malha Original),233,16.5750,0.00,60.33
+A. Godot Convencional (Malha Original),234,16.7790,0.00,59.60
+A. Godot Convencional (Malha Original),235,16.6710,0.00,59.98
+A. Godot Convencional (Malha Original),236,16.7310,0.00,59.77
+A. Godot Convencional (Malha Original),237,16.8480,0.00,59.35
+A. Godot Convencional (Malha Original),238,16.5730,0.00,60.34
+A. Godot Convencional (Malha Original),239,16.9240,0.00,59.09
+A. Godot Convencional (Malha Original),240,16.3420,0.00,61.19
+A. Godot Convencional (Malha Original),241,16.8780,0.00,59.25
+A. Godot Convencional (Malha Original),242,16.7310,0.00,59.77
+A. Godot Convencional (Malha Original),243,16.6630,0.00,60.01
+A. Godot Convencional (Malha Original),244,16.6470,0.00,60.07
+A. Godot Convencional (Malha Original),245,16.6370,0.00,60.11
+A. Godot Convencional (Malha Original),246,16.9630,0.00,58.95
+A. Godot Convencional (Malha Original),247,16.5970,0.00,60.25
+A. Godot Convencional (Malha Original),248,16.6500,0.00,60.06
+A. Godot Convencional (Malha Original),249,16.7340,0.00,59.76
+A. Godot Convencional (Malha Original),250,16.6240,0.00,60.15
+A. Godot Convencional (Malha Original),251,16.5900,0.00,60.28
+A. Godot Convencional (Malha Original),252,16.7510,0.00,59.70
+A. Godot Convencional (Malha Original),253,16.7920,0.00,59.55
+A. Godot Convencional (Malha Original),254,16.5900,0.00,60.28
+A. Godot Convencional (Malha Original),255,16.7090,0.00,59.85
+A. Godot Convencional (Malha Original),256,16.9520,0.00,58.99
+A. Godot Convencional (Malha Original),257,16.4060,0.00,60.95
+A. Godot Convencional (Malha Original),258,16.6920,0.00,59.91
+A. Godot Convencional (Malha Original),259,17.0710,0.00,58.58
+A. Godot Convencional (Malha Original),260,16.6290,0.00,60.14
+A. Godot Convencional (Malha Original),261,16.4090,0.00,60.94
+A. Godot Convencional (Malha Original),262,16.7000,0.00,59.88
+A. Godot Convencional (Malha Original),263,16.8040,0.00,59.51
+A. Godot Convencional (Malha Original),264,16.6590,0.00,60.03
+A. Godot Convencional (Malha Original),265,16.6360,0.00,60.11
+A. Godot Convencional (Malha Original),266,16.7520,0.00,59.69
+A. Godot Convencional (Malha Original),267,16.6040,0.00,60.23
+A. Godot Convencional (Malha Original),268,16.8310,0.00,59.41
+A. Godot Convencional (Malha Original),269,16.5710,0.00,60.35
+A. Godot Convencional (Malha Original),270,16.7850,0.00,59.58
+A. Godot Convencional (Malha Original),271,16.6800,0.00,59.95
+A. Godot Convencional (Malha Original),272,16.7850,0.00,59.58
+A. Godot Convencional (Malha Original),273,16.6640,0.00,60.01
+A. Godot Convencional (Malha Original),274,16.6570,0.00,60.03
+A. Godot Convencional (Malha Original),275,16.6990,0.00,59.88
+A. Godot Convencional (Malha Original),276,16.7510,0.00,59.70
+A. Godot Convencional (Malha Original),277,16.7040,0.00,59.87
+A. Godot Convencional (Malha Original),278,16.6680,0.00,60.00
+A. Godot Convencional (Malha Original),279,16.6490,0.00,60.06
+A. Godot Convencional (Malha Original),280,16.6640,0.00,60.01
+A. Godot Convencional (Malha Original),281,16.8110,0.00,59.48
+A. Godot Convencional (Malha Original),282,16.7050,0.00,59.86
+A. Godot Convencional (Malha Original),283,16.6630,0.00,60.01
+A. Godot Convencional (Malha Original),284,16.6920,0.00,59.91
+A. Godot Convencional (Malha Original),285,16.6380,0.00,60.10
+A. Godot Convencional (Malha Original),286,16.6910,0.00,59.91
+A. Godot Convencional (Malha Original),287,16.7260,0.00,59.79
+A. Godot Convencional (Malha Original),288,16.6380,0.00,60.10
+A. Godot Convencional (Malha Original),289,16.8170,0.00,59.46
+A. Godot Convencional (Malha Original),290,16.6440,0.00,60.08
+A. Godot Convencional (Malha Original),291,16.9780,0.00,58.90
+A. Godot Convencional (Malha Original),292,16.4020,0.00,60.97
+A. Godot Convencional (Malha Original),293,16.7390,0.00,59.74
+A. Godot Convencional (Malha Original),294,16.7410,0.00,59.73
+A. Godot Convencional (Malha Original),295,16.7860,0.00,59.57
+A. Godot Convencional (Malha Original),296,16.6800,0.00,59.95
+A. Godot Convencional (Malha Original),297,16.6440,0.00,60.08
+A. Godot Convencional (Malha Original),298,16.8120,0.00,59.48
+A. Godot Convencional (Malha Original),299,16.5540,0.00,60.41
+A. Godot Convencional (Malha Original),300,16.7250,0.00,59.79
+B. Godot Convencional (LOD Equivalente),1,17.3830,0.00,57.53
+B. Godot Convencional (LOD Equivalente),2,17.0260,0.00,58.73
+B. Godot Convencional (LOD Equivalente),3,16.1450,0.00,61.94
+B. Godot Convencional (LOD Equivalente),4,16.6000,0.00,60.24
+B. Godot Convencional (LOD Equivalente),5,16.8790,0.00,59.25
+B. Godot Convencional (LOD Equivalente),6,16.5170,0.00,60.54
+B. Godot Convencional (LOD Equivalente),7,16.7670,0.00,59.64
+B. Godot Convencional (LOD Equivalente),8,16.4700,0.00,60.72
+B. Godot Convencional (LOD Equivalente),9,16.7700,0.00,59.63
+B. Godot Convencional (LOD Equivalente),10,16.9510,0.00,58.99
+B. Godot Convencional (LOD Equivalente),11,16.5890,0.00,60.28
+B. Godot Convencional (LOD Equivalente),12,16.5940,0.00,60.26
+B. Godot Convencional (LOD Equivalente),13,16.6700,0.00,59.99
+B. Godot Convencional (LOD Equivalente),14,16.8370,0.00,59.39
+B. Godot Convencional (LOD Equivalente),15,16.9500,0.00,59.00
+B. Godot Convencional (LOD Equivalente),16,16.0820,0.00,62.18
+B. Godot Convencional (LOD Equivalente),17,16.8960,0.00,59.19
+B. Godot Convencional (LOD Equivalente),18,16.5770,0.00,60.32
+B. Godot Convencional (LOD Equivalente),19,17.0570,0.00,58.63
+B. Godot Convencional (LOD Equivalente),20,17.5280,0.00,57.05
+B. Godot Convencional (LOD Equivalente),21,15.9350,0.00,62.75
+B. Godot Convencional (LOD Equivalente),22,16.9680,0.00,58.93
+B. Godot Convencional (LOD Equivalente),23,16.1750,0.00,61.82
+B. Godot Convencional (LOD Equivalente),24,16.4840,0.00,60.66
+B. Godot Convencional (LOD Equivalente),25,17.0130,0.00,58.78
+B. Godot Convencional (LOD Equivalente),26,16.5330,0.00,60.49
+B. Godot Convencional (LOD Equivalente),27,16.8380,0.00,59.39
+B. Godot Convencional (LOD Equivalente),28,16.2450,0.00,61.56
+B. Godot Convencional (LOD Equivalente),29,17.2190,0.00,58.08
+B. Godot Convencional (LOD Equivalente),30,16.7180,0.00,59.82
+B. Godot Convencional (LOD Equivalente),31,16.3390,0.00,61.20
+B. Godot Convencional (LOD Equivalente),32,16.7530,0.00,59.69
+B. Godot Convencional (LOD Equivalente),33,16.6590,0.00,60.03
+B. Godot Convencional (LOD Equivalente),34,16.7360,0.00,59.75
+B. Godot Convencional (LOD Equivalente),35,16.7180,0.00,59.82
+B. Godot Convencional (LOD Equivalente),36,16.6060,0.00,60.22
+B. Godot Convencional (LOD Equivalente),37,17.7410,0.00,56.37
+B. Godot Convencional (LOD Equivalente),38,16.4630,0.00,60.74
+B. Godot Convencional (LOD Equivalente),39,16.3240,0.00,61.26
+B. Godot Convencional (LOD Equivalente),40,17.1680,0.00,58.25
+B. Godot Convencional (LOD Equivalente),41,16.1850,0.00,61.79
+B. Godot Convencional (LOD Equivalente),42,16.4870,0.00,60.65
+B. Godot Convencional (LOD Equivalente),43,17.1710,0.00,58.24
+B. Godot Convencional (LOD Equivalente),44,16.0740,0.00,62.21
+B. Godot Convencional (LOD Equivalente),45,17.8940,0.00,55.88
+B. Godot Convencional (LOD Equivalente),46,16.0510,0.00,62.30
+B. Godot Convencional (LOD Equivalente),47,16.1340,0.00,61.98
+B. Godot Convencional (LOD Equivalente),48,17.2100,0.00,58.11
+B. Godot Convencional (LOD Equivalente),49,16.3180,0.00,61.28
+B. Godot Convencional (LOD Equivalente),50,16.8320,0.00,59.41
+B. Godot Convencional (LOD Equivalente),51,16.4780,0.00,60.69
+B. Godot Convencional (LOD Equivalente),52,16.9050,0.00,59.15
+B. Godot Convencional (LOD Equivalente),53,17.2360,0.00,58.02
+B. Godot Convencional (LOD Equivalente),54,16.5160,0.00,60.55
+B. Godot Convencional (LOD Equivalente),55,16.6700,0.00,59.99
+B. Godot Convencional (LOD Equivalente),56,16.4560,0.00,60.77
+B. Godot Convencional (LOD Equivalente),57,16.6720,0.00,59.98
+B. Godot Convencional (LOD Equivalente),58,16.5810,0.00,60.31
+B. Godot Convencional (LOD Equivalente),59,16.6110,0.00,60.20
+B. Godot Convencional (LOD Equivalente),60,16.9470,0.00,59.01
+B. Godot Convencional (LOD Equivalente),61,16.5980,0.00,60.25
+B. Godot Convencional (LOD Equivalente),62,17.1120,0.00,58.44
+B. Godot Convencional (LOD Equivalente),63,16.1460,0.00,61.93
+B. Godot Convencional (LOD Equivalente),64,17.8710,0.00,55.96
+B. Godot Convencional (LOD Equivalente),65,16.2340,0.00,61.60
+B. Godot Convencional (LOD Equivalente),66,16.2770,0.00,61.44
+B. Godot Convencional (LOD Equivalente),67,16.6090,0.00,60.21
+B. Godot Convencional (LOD Equivalente),68,16.7670,0.00,59.64
+B. Godot Convencional (LOD Equivalente),69,16.5320,0.00,60.49
+B. Godot Convencional (LOD Equivalente),70,16.7420,0.00,59.73
+B. Godot Convencional (LOD Equivalente),71,16.4930,0.00,60.63
+B. Godot Convencional (LOD Equivalente),72,17.3080,0.00,57.78
+B. Godot Convencional (LOD Equivalente),73,16.8340,0.00,59.40
+B. Godot Convencional (LOD Equivalente),74,16.0930,0.00,62.14
+B. Godot Convencional (LOD Equivalente),75,16.5970,0.00,60.25
+B. Godot Convencional (LOD Equivalente),76,17.0040,0.00,58.81
+B. Godot Convencional (LOD Equivalente),77,16.5400,0.00,60.46
+B. Godot Convencional (LOD Equivalente),78,17.2950,0.00,57.82
+B. Godot Convencional (LOD Equivalente),79,16.0600,0.00,62.27
+B. Godot Convencional (LOD Equivalente),80,16.9110,0.00,59.13
+B. Godot Convencional (LOD Equivalente),81,16.5530,0.00,60.41
+B. Godot Convencional (LOD Equivalente),82,17.1440,0.00,58.33
+B. Godot Convencional (LOD Equivalente),83,16.0950,0.00,62.13
+B. Godot Convencional (LOD Equivalente),84,17.1830,0.00,58.20
+B. Godot Convencional (LOD Equivalente),85,16.3210,0.00,61.27
+B. Godot Convencional (LOD Equivalente),86,16.7810,0.00,59.59
+B. Godot Convencional (LOD Equivalente),87,16.4880,0.00,60.65
+B. Godot Convencional (LOD Equivalente),88,17.0270,0.00,58.73
+B. Godot Convencional (LOD Equivalente),89,17.0410,0.00,58.68
+B. Godot Convencional (LOD Equivalente),90,16.2400,0.00,61.58
+B. Godot Convencional (LOD Equivalente),91,16.8780,0.00,59.25
+B. Godot Convencional (LOD Equivalente),92,15.3440,0.00,65.17
+B. Godot Convencional (LOD Equivalente),93,17.8880,0.00,55.90
+B. Godot Convencional (LOD Equivalente),94,16.6310,0.00,60.13
+B. Godot Convencional (LOD Equivalente),95,16.7330,0.00,59.76
+B. Godot Convencional (LOD Equivalente),96,16.9560,0.00,58.98
+B. Godot Convencional (LOD Equivalente),97,16.5380,0.00,60.47
+B. Godot Convencional (LOD Equivalente),98,16.8830,0.00,59.23
+B. Godot Convencional (LOD Equivalente),99,16.4510,0.00,60.79
+B. Godot Convencional (LOD Equivalente),100,19.0940,0.00,52.37
+B. Godot Convencional (LOD Equivalente),101,14.9000,0.00,67.11
+B. Godot Convencional (LOD Equivalente),102,16.3380,0.00,61.21
+B. Godot Convencional (LOD Equivalente),103,16.3460,0.00,61.18
+B. Godot Convencional (LOD Equivalente),104,17.0450,0.00,58.67
+B. Godot Convencional (LOD Equivalente),105,16.5530,0.00,60.41
+B. Godot Convencional (LOD Equivalente),106,16.7130,0.00,59.83
+B. Godot Convencional (LOD Equivalente),107,16.4420,0.00,60.82
+B. Godot Convencional (LOD Equivalente),108,17.1670,0.00,58.25
+B. Godot Convencional (LOD Equivalente),109,16.7880,0.00,59.57
+B. Godot Convencional (LOD Equivalente),110,16.9390,0.00,59.04
+B. Godot Convencional (LOD Equivalente),111,15.9780,0.00,62.59
+B. Godot Convencional (LOD Equivalente),112,18.5480,0.00,53.91
+B. Godot Convencional (LOD Equivalente),113,15.0070,0.00,66.64
+B. Godot Convencional (LOD Equivalente),114,16.5660,0.00,60.36
+B. Godot Convencional (LOD Equivalente),115,16.7430,0.00,59.73
+B. Godot Convencional (LOD Equivalente),116,16.9930,0.00,58.85
+B. Godot Convencional (LOD Equivalente),117,16.5890,0.00,60.28
+B. Godot Convencional (LOD Equivalente),118,17.0570,0.00,58.63
+B. Godot Convencional (LOD Equivalente),119,16.0730,0.00,62.22
+B. Godot Convencional (LOD Equivalente),120,16.9460,0.00,59.01
+B. Godot Convencional (LOD Equivalente),121,16.7440,0.00,59.72
+B. Godot Convencional (LOD Equivalente),122,16.6190,0.00,60.17
+B. Godot Convencional (LOD Equivalente),123,16.4750,0.00,60.70
+B. Godot Convencional (LOD Equivalente),124,16.9970,0.00,58.83
+B. Godot Convencional (LOD Equivalente),125,16.4820,0.00,60.67
+B. Godot Convencional (LOD Equivalente),126,16.9580,0.00,58.97
+B. Godot Convencional (LOD Equivalente),127,16.8170,0.00,59.46
+B. Godot Convencional (LOD Equivalente),128,16.7060,0.00,59.86
+B. Godot Convencional (LOD Equivalente),129,16.8240,0.00,59.44
+B. Godot Convencional (LOD Equivalente),130,16.5710,0.00,60.35
+B. Godot Convencional (LOD Equivalente),131,16.4150,0.00,60.92
+B. Godot Convencional (LOD Equivalente),132,16.9110,0.00,59.13
+B. Godot Convencional (LOD Equivalente),133,16.5820,0.00,60.31
+B. Godot Convencional (LOD Equivalente),134,16.9910,0.00,58.85
+B. Godot Convencional (LOD Equivalente),135,16.2940,0.00,61.37
+B. Godot Convencional (LOD Equivalente),136,17.4510,0.00,57.30
+B. Godot Convencional (LOD Equivalente),137,16.4120,0.00,60.93
+B. Godot Convencional (LOD Equivalente),138,16.6600,0.00,60.02
+B. Godot Convencional (LOD Equivalente),139,16.1850,0.00,61.79
+B. Godot Convencional (LOD Equivalente),140,16.9400,0.00,59.03
+B. Godot Convencional (LOD Equivalente),141,17.1560,0.00,58.29
+B. Godot Convencional (LOD Equivalente),142,16.1860,0.00,61.78
+B. Godot Convencional (LOD Equivalente),143,16.5530,0.00,60.41
+B. Godot Convencional (LOD Equivalente),144,16.9260,0.00,59.08
+B. Godot Convencional (LOD Equivalente),145,16.9360,0.00,59.05
+B. Godot Convencional (LOD Equivalente),146,17.0330,0.00,58.71
+B. Godot Convencional (LOD Equivalente),147,15.9750,0.00,62.60
+B. Godot Convencional (LOD Equivalente),148,17.1080,0.00,58.45
+B. Godot Convencional (LOD Equivalente),149,16.4170,0.00,60.91
+B. Godot Convencional (LOD Equivalente),150,16.9550,0.00,58.98
+B. Godot Convencional (LOD Equivalente),151,16.8070,0.00,59.50
+B. Godot Convencional (LOD Equivalente),152,15.9980,0.00,62.51
+B. Godot Convencional (LOD Equivalente),153,16.5810,0.00,60.31
+B. Godot Convencional (LOD Equivalente),154,16.9740,0.00,58.91
+B. Godot Convencional (LOD Equivalente),155,16.1210,0.00,62.03
+B. Godot Convencional (LOD Equivalente),156,17.3060,0.00,57.78
+B. Godot Convencional (LOD Equivalente),157,16.8770,0.00,59.25
+B. Godot Convencional (LOD Equivalente),158,16.1400,0.00,61.96
+B. Godot Convencional (LOD Equivalente),159,17.5330,0.00,57.04
+B. Godot Convencional (LOD Equivalente),160,15.8870,0.00,62.94
+B. Godot Convencional (LOD Equivalente),161,17.2720,0.00,57.90
+B. Godot Convencional (LOD Equivalente),162,16.0350,0.00,62.36
+B. Godot Convencional (LOD Equivalente),163,17.0330,0.00,58.71
+B. Godot Convencional (LOD Equivalente),164,16.9010,0.00,59.17
+B. Godot Convencional (LOD Equivalente),165,16.2840,0.00,61.41
+B. Godot Convencional (LOD Equivalente),166,17.1390,0.00,58.35
+B. Godot Convencional (LOD Equivalente),167,17.1550,0.00,58.29
+B. Godot Convencional (LOD Equivalente),168,15.9230,0.00,62.80
+B. Godot Convencional (LOD Equivalente),169,16.5720,0.00,60.34
+B. Godot Convencional (LOD Equivalente),170,17.5130,0.00,57.10
+B. Godot Convencional (LOD Equivalente),171,16.7510,0.00,59.70
+B. Godot Convencional (LOD Equivalente),172,16.6720,0.00,59.98
+B. Godot Convencional (LOD Equivalente),173,17.0380,0.00,58.69
+B. Godot Convencional (LOD Equivalente),174,15.6680,0.00,63.82
+B. Godot Convencional (LOD Equivalente),175,17.5260,0.00,57.06
+B. Godot Convencional (LOD Equivalente),176,15.8150,0.00,63.23
+B. Godot Convencional (LOD Equivalente),177,17.8420,0.00,56.05
+B. Godot Convencional (LOD Equivalente),178,15.5030,0.00,64.50
+B. Godot Convencional (LOD Equivalente),179,20.7920,0.00,48.10
+B. Godot Convencional (LOD Equivalente),180,13.2270,0.00,75.60
+B. Godot Convencional (LOD Equivalente),181,16.3320,0.00,61.23
+B. Godot Convencional (LOD Equivalente),182,17.0950,0.00,58.50
+B. Godot Convencional (LOD Equivalente),183,16.9380,0.00,59.04
+B. Godot Convencional (LOD Equivalente),184,16.3830,0.00,61.04
+B. Godot Convencional (LOD Equivalente),185,16.0950,0.00,62.13
+B. Godot Convencional (LOD Equivalente),186,17.2640,0.00,57.92
+B. Godot Convencional (LOD Equivalente),187,17.0560,0.00,58.63
+B. Godot Convencional (LOD Equivalente),188,15.6900,0.00,63.73
+B. Godot Convencional (LOD Equivalente),189,17.9110,0.00,55.83
+B. Godot Convencional (LOD Equivalente),190,16.6280,0.00,60.14
+B. Godot Convencional (LOD Equivalente),191,18.4690,0.00,54.14
+B. Godot Convencional (LOD Equivalente),192,13.9250,0.00,71.81
+B. Godot Convencional (LOD Equivalente),193,17.4240,0.00,57.39
+B. Godot Convencional (LOD Equivalente),194,15.8990,0.00,62.90
+B. Godot Convencional (LOD Equivalente),195,16.5930,0.00,60.27
+B. Godot Convencional (LOD Equivalente),196,16.9270,0.00,59.08
+B. Godot Convencional (LOD Equivalente),197,17.3490,0.00,57.64
+B. Godot Convencional (LOD Equivalente),198,15.9370,0.00,62.75
+B. Godot Convencional (LOD Equivalente),199,23.8980,0.00,41.84
+B. Godot Convencional (LOD Equivalente),200,17.0780,0.00,58.55
+B. Godot Convencional (LOD Equivalente),201,14.2350,0.00,70.25
+B. Godot Convencional (LOD Equivalente),202,17.3000,0.00,57.80
+B. Godot Convencional (LOD Equivalente),203,17.8510,0.00,56.02
+B. Godot Convencional (LOD Equivalente),204,16.2270,0.00,61.63
+B. Godot Convencional (LOD Equivalente),205,16.0090,0.00,62.46
+B. Godot Convencional (LOD Equivalente),206,17.3890,0.00,57.51
+B. Godot Convencional (LOD Equivalente),207,16.2850,0.00,61.41
+B. Godot Convencional (LOD Equivalente),208,18.2230,0.00,54.88
+B. Godot Convencional (LOD Equivalente),209,16.0150,0.00,62.44
+B. Godot Convencional (LOD Equivalente),210,16.5240,0.00,60.52
+B. Godot Convencional (LOD Equivalente),211,12.5750,0.00,79.52
+B. Godot Convencional (LOD Equivalente),212,12.5230,0.00,79.85
+B. Godot Convencional (LOD Equivalente),213,18.9180,0.00,52.86
+B. Godot Convencional (LOD Equivalente),214,16.1240,0.00,62.02
+B. Godot Convencional (LOD Equivalente),215,17.4430,0.00,57.33
+B. Godot Convencional (LOD Equivalente),216,16.0570,0.00,62.28
+B. Godot Convencional (LOD Equivalente),217,16.9210,0.00,59.10
+B. Godot Convencional (LOD Equivalente),218,16.9330,0.00,59.06
+B. Godot Convencional (LOD Equivalente),219,16.8890,0.00,59.21
+B. Godot Convencional (LOD Equivalente),220,16.4760,0.00,60.69
+B. Godot Convencional (LOD Equivalente),221,16.3120,0.00,61.30
+B. Godot Convencional (LOD Equivalente),222,17.7990,0.00,56.18
+B. Godot Convencional (LOD Equivalente),223,16.4510,0.00,60.79
+B. Godot Convencional (LOD Equivalente),224,16.9860,0.00,58.87
+B. Godot Convencional (LOD Equivalente),225,15.4000,0.00,64.94
+B. Godot Convencional (LOD Equivalente),226,16.9810,0.00,58.89
+B. Godot Convencional (LOD Equivalente),227,17.4120,0.00,57.43
+B. Godot Convencional (LOD Equivalente),228,15.9140,0.00,62.84
+B. Godot Convencional (LOD Equivalente),229,17.7070,0.00,56.47
+B. Godot Convencional (LOD Equivalente),230,15.4660,0.00,64.66
+B. Godot Convencional (LOD Equivalente),231,17.3750,0.00,57.55
+B. Godot Convencional (LOD Equivalente),232,16.1010,0.00,62.11
+B. Godot Convencional (LOD Equivalente),233,17.4310,0.00,57.37
+B. Godot Convencional (LOD Equivalente),234,15.9260,0.00,62.79
+B. Godot Convencional (LOD Equivalente),235,18.2980,0.00,54.65
+B. Godot Convencional (LOD Equivalente),236,15.7030,0.00,63.68
+B. Godot Convencional (LOD Equivalente),237,16.0480,0.00,62.31
+B. Godot Convencional (LOD Equivalente),238,17.3090,0.00,57.77
+B. Godot Convencional (LOD Equivalente),239,16.9490,0.00,59.00
+B. Godot Convencional (LOD Equivalente),240,16.4410,0.00,60.82
+B. Godot Convencional (LOD Equivalente),241,17.9060,0.00,55.85
+B. Godot Convencional (LOD Equivalente),242,14.8490,0.00,67.34
+B. Godot Convencional (LOD Equivalente),243,16.9680,0.00,58.93
+B. Godot Convencional (LOD Equivalente),244,18.5370,0.00,53.95
+B. Godot Convencional (LOD Equivalente),245,15.2110,0.00,65.74
+B. Godot Convencional (LOD Equivalente),246,16.2930,0.00,61.38
+B. Godot Convencional (LOD Equivalente),247,17.2990,0.00,57.81
+B. Godot Convencional (LOD Equivalente),248,15.7710,0.00,63.41
+B. Godot Convencional (LOD Equivalente),249,17.4730,0.00,57.23
+B. Godot Convencional (LOD Equivalente),250,16.1880,0.00,61.77
+B. Godot Convencional (LOD Equivalente),251,18.1110,0.00,55.22
+B. Godot Convencional (LOD Equivalente),252,15.2730,0.00,65.48
+B. Godot Convencional (LOD Equivalente),253,16.8900,0.00,59.21
+B. Godot Convencional (LOD Equivalente),254,16.9560,0.00,58.98
+B. Godot Convencional (LOD Equivalente),255,17.1910,0.00,58.17
+B. Godot Convencional (LOD Equivalente),256,16.5390,0.00,60.46
+B. Godot Convencional (LOD Equivalente),257,15.9250,0.00,62.79
+B. Godot Convencional (LOD Equivalente),258,16.5340,0.00,60.48
+B. Godot Convencional (LOD Equivalente),259,16.9610,0.00,58.96
+B. Godot Convencional (LOD Equivalente),260,17.4420,0.00,57.33
+B. Godot Convencional (LOD Equivalente),261,15.7450,0.00,63.51
+B. Godot Convencional (LOD Equivalente),262,18.1340,0.00,55.15
+B. Godot Convencional (LOD Equivalente),263,16.2490,0.00,61.54
+B. Godot Convencional (LOD Equivalente),264,15.8670,0.00,63.02
+B. Godot Convencional (LOD Equivalente),265,17.6570,0.00,56.63
+B. Godot Convencional (LOD Equivalente),266,15.5770,0.00,64.20
+B. Godot Convencional (LOD Equivalente),267,17.6940,0.00,56.52
+B. Godot Convencional (LOD Equivalente),268,15.8010,0.00,63.29
+B. Godot Convencional (LOD Equivalente),269,17.3810,0.00,57.53
+B. Godot Convencional (LOD Equivalente),270,15.9430,0.00,62.72
+B. Godot Convencional (LOD Equivalente),271,18.0880,0.00,55.29
+B. Godot Convencional (LOD Equivalente),272,16.9070,0.00,59.15
+B. Godot Convencional (LOD Equivalente),273,15.3780,0.00,65.03
+B. Godot Convencional (LOD Equivalente),274,16.5920,0.00,60.27
+B. Godot Convencional (LOD Equivalente),275,17.0360,0.00,58.70
+B. Godot Convencional (LOD Equivalente),276,12.9740,0.00,77.08
+B. Godot Convencional (LOD Equivalente),277,16.7560,0.00,59.68
+B. Godot Convencional (LOD Equivalente),278,16.9330,0.00,59.06
+B. Godot Convencional (LOD Equivalente),279,16.3930,0.00,61.00
+B. Godot Convencional (LOD Equivalente),280,16.6720,0.00,59.98
+B. Godot Convencional (LOD Equivalente),281,16.7880,0.00,59.57
+B. Godot Convencional (LOD Equivalente),282,16.8160,0.00,59.47
+B. Godot Convencional (LOD Equivalente),283,16.7560,0.00,59.68
+B. Godot Convencional (LOD Equivalente),284,16.5580,0.00,60.39
+B. Godot Convencional (LOD Equivalente),285,16.9360,0.00,59.05
+B. Godot Convencional (LOD Equivalente),286,16.6830,0.00,59.94
+B. Godot Convencional (LOD Equivalente),287,16.6690,0.00,59.99
+B. Godot Convencional (LOD Equivalente),288,16.3640,0.00,61.11
+B. Godot Convencional (LOD Equivalente),289,17.0610,0.00,58.61
+B. Godot Convencional (LOD Equivalente),290,16.6890,0.00,59.92
+B. Godot Convencional (LOD Equivalente),291,16.4410,0.00,60.82
+B. Godot Convencional (LOD Equivalente),292,16.9590,0.00,58.97
+B. Godot Convencional (LOD Equivalente),293,16.7270,0.00,59.78
+B. Godot Convencional (LOD Equivalente),294,16.6080,0.00,60.21
+B. Godot Convencional (LOD Equivalente),295,16.4870,0.00,60.65
+B. Godot Convencional (LOD Equivalente),296,17.4230,0.00,57.40
+B. Godot Convencional (LOD Equivalente),297,16.1950,0.00,61.75
+B. Godot Convencional (LOD Equivalente),298,16.6670,0.00,60.00
+B. Godot Convencional (LOD Equivalente),299,16.4780,0.00,60.69
+B. Godot Convencional (LOD Equivalente),300,16.7310,0.00,59.77
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),1,16.4690,76.00,60.72
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),2,16.7500,65.00,59.70
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),3,16.8880,53.00,59.21
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),4,16.7290,56.00,59.78
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),5,16.6720,53.00,59.98
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),6,16.4280,62.00,60.87
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),7,16.7530,59.00,59.69
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),8,17.0140,54.00,58.78
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),9,16.6220,57.00,60.16
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),10,16.5090,71.00,60.57
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),11,16.8330,53.00,59.41
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),12,16.7480,51.00,59.71
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),13,16.5820,92.00,60.31
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),14,16.7270,85.00,59.78
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),15,16.5590,73.00,60.39
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),16,16.7330,101.00,59.76
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),17,16.6310,73.00,60.13
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),18,16.7180,61.00,59.82
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),19,16.7430,86.00,59.73
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),20,16.7400,81.00,59.74
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),21,16.6510,69.00,60.06
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),22,16.6670,76.00,60.00
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),23,16.7720,98.00,59.62
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),24,16.6530,91.00,60.05
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),25,16.6810,92.00,59.95
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),26,16.6480,75.00,60.07
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),27,16.6840,89.00,59.94
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),28,16.6530,71.00,60.05
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),29,16.7310,74.00,59.77
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),30,16.7690,88.00,59.63
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),31,16.8640,84.00,59.30
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),32,16.7600,60.00,59.67
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),33,16.4550,72.00,60.77
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),34,16.7380,67.00,59.74
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),35,16.6380,69.00,60.10
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),36,17.0200,69.00,58.75
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),37,16.3660,66.00,61.10
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),38,17.0180,77.00,58.76
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),39,16.7800,61.00,59.59
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),40,16.6430,83.00,60.09
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),41,16.4090,91.00,60.94
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),42,16.8260,99.00,59.43
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),43,16.8400,93.00,59.38
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),44,16.4720,89.00,60.71
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),45,16.6210,65.00,60.16
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),46,16.8370,103.00,59.39
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),47,16.7810,59.00,59.59
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),48,16.5170,89.00,60.54
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),49,16.6980,74.00,59.89
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),50,16.7720,82.00,59.62
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),51,19.5840,75.00,51.06
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),52,17.4220,68.00,57.40
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),53,16.7290,63.00,59.78
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),54,16.4040,67.00,60.96
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),55,16.1960,77.00,61.74
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),56,17.4570,71.00,57.28
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),57,16.6510,90.00,60.06
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),58,16.9570,71.00,58.97
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),59,16.7290,69.00,59.78
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),60,15.8250,55.00,63.19
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),61,16.4970,96.00,60.62
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),62,17.4220,70.00,57.40
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),63,16.4240,82.00,60.89
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),64,16.3700,72.00,61.09
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),65,17.3300,79.00,57.70
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),66,16.2460,79.00,61.55
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),67,14.5560,68.00,68.70
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),68,16.7200,70.00,59.81
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),69,16.7940,85.00,59.55
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),70,16.2460,96.00,61.55
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),71,17.1520,58.00,58.30
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),72,16.6960,88.00,59.89
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),73,16.7070,73.00,59.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),74,16.2830,93.00,61.41
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),75,17.0390,140.00,58.69
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),76,16.7980,81.00,59.53
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),77,16.0950,91.00,62.13
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),78,16.8950,96.00,59.19
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),79,17.0510,73.00,58.65
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),80,16.7580,84.00,59.67
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),81,16.5990,77.00,60.24
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),82,16.3100,87.00,61.31
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),83,17.1350,71.00,58.36
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),84,16.6940,85.00,59.90
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),85,16.7490,84.00,59.71
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),86,16.6370,60.00,60.11
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),87,16.7930,71.00,59.55
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),88,16.6580,75.00,60.03
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),89,16.8990,58.00,59.18
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),90,16.5940,90.00,60.26
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),91,16.9640,64.00,58.95
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),92,16.4070,64.00,60.95
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),93,16.7550,82.00,59.68
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),94,16.1660,114.00,61.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),95,17.4560,95.00,57.29
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),96,16.7060,97.00,59.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),97,16.6010,120.00,60.24
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),98,16.0470,88.00,62.32
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),99,17.5410,86.00,57.01
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),100,16.4310,81.00,60.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),101,16.6830,93.00,59.94
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),102,16.1190,80.00,62.04
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),103,17.4130,93.00,57.43
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),104,16.7060,61.00,59.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),105,16.7300,67.00,59.77
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),106,16.4740,76.00,60.70
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),107,16.7770,78.00,59.61
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),108,16.7550,95.00,59.68
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),109,16.1290,92.00,62.00
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),110,17.2040,68.00,58.13
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),111,16.6860,73.00,59.93
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),112,16.8290,63.00,59.42
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),113,16.6580,56.00,60.03
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),114,16.8250,75.00,59.44
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),115,16.5510,81.00,60.42
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),116,16.6990,77.00,59.88
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),117,16.7130,70.00,59.83
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),118,16.7450,73.00,59.72
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),119,16.7890,60.00,59.56
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),120,16.6470,76.00,60.07
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),121,16.7560,51.00,59.68
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),122,16.7070,59.00,59.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),123,16.7340,63.00,59.76
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),124,16.8220,73.00,59.45
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),125,16.4920,119.00,60.64
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),126,16.5860,95.00,60.29
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),127,16.8670,101.00,59.29
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),128,16.7830,64.00,59.58
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),129,16.6110,65.00,60.20
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),130,16.6580,72.00,60.03
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),131,16.7110,96.00,59.84
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),132,16.7950,89.00,59.54
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),133,16.7080,84.00,59.85
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),134,16.8580,50.00,59.32
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),135,16.5360,56.00,60.47
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),136,16.5840,68.00,60.30
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),137,16.6760,71.00,59.97
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),138,19.2210,116.00,52.03
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),139,16.9620,70.00,58.96
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),140,15.6220,89.00,64.01
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),141,17.0090,72.00,58.79
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),142,17.8130,99.00,56.14
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),143,15.4240,56.00,64.83
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),144,17.4480,96.00,57.31
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),145,16.0010,71.00,62.50
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),146,17.3690,65.00,57.57
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),147,17.5610,48.00,56.94
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),148,16.1660,48.00,61.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),149,16.2580,48.00,61.51
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),150,16.2130,116.00,61.68
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),151,17.1180,55.00,58.42
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),152,17.0580,55.00,58.62
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),153,16.4740,50.00,60.70
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),154,15.9850,49.00,62.56
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),155,17.2510,47.00,57.97
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),156,15.9880,65.00,62.55
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),157,17.4770,63.00,57.22
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),158,16.6800,53.00,59.95
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),159,16.9300,63.00,59.07
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),160,16.6180,73.00,60.18
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),161,16.1010,90.00,62.11
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),162,17.1020,67.00,58.47
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),163,17.8680,84.00,55.97
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),164,15.7150,61.00,63.63
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),165,16.0550,59.00,62.29
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),166,17.0600,58.00,58.62
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),167,16.7750,71.00,59.61
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),168,17.2730,116.00,57.89
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),169,16.9540,68.00,58.98
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),170,16.3430,74.00,61.19
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),171,17.1260,58.00,58.39
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),172,15.2060,52.00,65.76
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),173,18.0580,63.00,55.38
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),174,15.4620,57.00,64.67
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),175,16.8840,52.00,59.23
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),176,17.2960,48.00,57.82
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),177,16.2580,49.00,61.51
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),178,17.7390,112.00,56.37
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),179,15.2290,67.00,65.66
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),180,17.5300,68.00,57.05
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),181,16.0910,114.00,62.15
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),182,17.1020,53.00,58.47
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),183,16.4330,57.00,60.85
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),184,17.6400,142.00,56.69
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),185,16.7500,47.00,59.70
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),186,15.4080,119.00,64.90
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),187,17.7180,111.00,56.44
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),188,15.6820,102.00,63.77
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),189,16.8190,79.00,59.46
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),190,16.6020,51.00,60.23
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),191,17.5860,71.00,56.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),192,16.6490,60.00,60.06
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),193,18.5920,100.00,53.79
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),194,14.7790,52.00,67.66
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),195,16.0730,67.00,62.22
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),196,17.3140,50.00,57.76
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),197,15.8960,50.00,62.91
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),198,13.3680,81.00,74.81
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),199,17.2040,89.00,58.13
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),200,16.0880,62.00,62.16
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),201,16.8250,61.00,59.44
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),202,16.8680,52.00,59.28
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),203,16.9200,73.00,59.10
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),204,16.2280,80.00,61.62
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),205,16.6390,71.00,60.10
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),206,16.9630,72.00,58.95
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),207,16.7040,59.00,59.87
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),208,16.6470,74.00,60.07
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),209,16.4440,58.00,60.81
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),210,16.7430,67.00,59.73
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),211,16.8130,87.00,59.48
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),212,16.5740,69.00,60.34
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),213,16.6600,65.00,60.02
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),214,17.0030,63.00,58.81
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),215,16.6820,56.00,59.94
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),216,16.3670,62.00,61.10
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),217,16.7940,81.00,59.55
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),218,16.6130,56.00,60.19
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),219,16.6850,57.00,59.93
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),220,16.9210,91.00,59.10
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),221,16.5370,70.00,60.47
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),222,16.8340,103.00,59.40
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),223,16.5890,71.00,60.28
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),224,16.6430,81.00,60.09
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),225,16.6900,67.00,59.92
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),226,17.0230,52.00,58.74
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),227,16.6540,54.00,60.05
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),228,16.5650,90.00,60.37
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),229,16.6350,62.00,60.11
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),230,17.0950,68.00,58.50
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),231,16.2040,59.00,61.71
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),232,16.9640,60.00,58.95
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),233,16.4520,55.00,60.78
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),234,16.7750,64.00,59.61
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),235,16.6910,61.00,59.91
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),236,16.7040,59.00,59.87
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),237,16.6400,68.00,60.10
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),238,16.9820,52.00,58.89
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),239,16.6650,52.00,60.01
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),240,16.4310,61.00,60.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),241,16.7100,61.00,59.84
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),242,16.9820,54.00,58.89
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),243,16.7040,66.00,59.87
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),244,16.4200,59.00,60.90
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),245,16.6890,57.00,59.92
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),246,16.6930,65.00,59.91
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),247,17.0530,50.00,58.64
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),248,16.3910,55.00,61.01
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),249,16.9550,69.00,58.98
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),250,16.5890,54.00,60.28
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),251,16.5080,61.00,60.58
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),252,16.8350,84.00,59.40
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),253,16.6580,91.00,60.03
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),254,16.6280,70.00,60.14
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),255,16.6580,59.00,60.03
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),256,16.9810,59.00,58.89
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),257,16.3810,62.00,61.05
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),258,16.8130,72.00,59.48
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),259,16.8740,52.00,59.26
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),260,16.7790,64.00,59.60
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),261,16.5140,70.00,60.55
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),262,16.5990,66.00,60.24
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),263,16.7060,85.00,59.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),264,16.7250,83.00,59.79
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),265,16.6710,59.00,59.98
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),266,16.6460,54.00,60.07
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),267,16.9900,58.00,58.86
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),268,16.4050,69.00,60.96
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),269,16.7510,66.00,59.70
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),270,16.7660,88.00,59.64
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),271,16.5220,72.00,60.53
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),272,16.9700,53.00,58.93
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),273,16.4930,57.00,60.63
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),274,16.7500,55.00,59.70
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),275,16.8980,57.00,59.18
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),276,16.4050,61.00,60.96
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),277,16.7540,56.00,59.69
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),278,17.0070,57.00,58.80
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),279,16.6330,54.00,60.12
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),280,16.4830,75.00,60.67
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),281,16.8360,106.00,59.40
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),282,16.5410,71.00,60.46
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),283,16.7110,73.00,59.84
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),284,16.6960,62.00,59.89
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),285,16.7370,68.00,59.75
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),286,16.9610,63.00,58.96
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),287,16.6810,55.00,59.95
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),288,16.5470,105.00,60.43
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),289,16.6580,91.00,60.03
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),290,16.6790,86.00,59.96
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),291,16.6500,89.00,60.06
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),292,16.7740,71.00,59.62
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),293,16.6060,66.00,60.22
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),294,16.7430,72.00,59.73
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),295,16.6560,67.00,60.04
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),296,16.6910,73.00,59.91
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),297,16.6350,56.00,60.11
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),298,16.6620,54.00,60.02
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),299,16.7680,62.00,59.64
+C. ARBORIA GPU (Sem Culling / Raw LOD 0),300,17.1100,64.00,58.45
+D. ARBORIA GPU (Com Culling & DAG LOD),1,17.0270,75.00,58.73
+D. ARBORIA GPU (Com Culling & DAG LOD),2,16.1770,67.00,61.82
+D. ARBORIA GPU (Com Culling & DAG LOD),3,16.6390,93.00,60.10
+D. ARBORIA GPU (Com Culling & DAG LOD),4,16.3790,79.00,61.05
+D. ARBORIA GPU (Com Culling & DAG LOD),5,17.6680,85.00,56.60
+D. ARBORIA GPU (Com Culling & DAG LOD),6,13.5020,62.00,74.06
+D. ARBORIA GPU (Com Culling & DAG LOD),7,16.2070,86.00,61.70
+D. ARBORIA GPU (Com Culling & DAG LOD),8,17.2640,93.00,57.92
+D. ARBORIA GPU (Com Culling & DAG LOD),9,16.7010,78.00,59.88
+D. ARBORIA GPU (Com Culling & DAG LOD),10,17.8990,81.00,55.87
+D. ARBORIA GPU (Com Culling & DAG LOD),11,15.4630,83.00,64.67
+D. ARBORIA GPU (Com Culling & DAG LOD),12,16.6760,70.00,59.97
+D. ARBORIA GPU (Com Culling & DAG LOD),13,16.7480,97.00,59.71
+D. ARBORIA GPU (Com Culling & DAG LOD),14,16.7330,74.00,59.76
+D. ARBORIA GPU (Com Culling & DAG LOD),15,16.6850,73.00,59.93
+D. ARBORIA GPU (Com Culling & DAG LOD),16,16.4320,57.00,60.86
+D. ARBORIA GPU (Com Culling & DAG LOD),17,16.5350,107.00,60.48
+D. ARBORIA GPU (Com Culling & DAG LOD),18,16.7790,95.00,59.60
+D. ARBORIA GPU (Com Culling & DAG LOD),19,16.7330,112.00,59.76
+D. ARBORIA GPU (Com Culling & DAG LOD),20,16.5660,122.00,60.36
+D. ARBORIA GPU (Com Culling & DAG LOD),21,16.7750,112.00,59.61
+D. ARBORIA GPU (Com Culling & DAG LOD),22,17.3990,101.00,57.47
+D. ARBORIA GPU (Com Culling & DAG LOD),23,16.1460,106.00,61.93
+D. ARBORIA GPU (Com Culling & DAG LOD),24,16.5410,101.00,60.46
+D. ARBORIA GPU (Com Culling & DAG LOD),25,16.8550,91.00,59.33
+D. ARBORIA GPU (Com Culling & DAG LOD),26,16.7180,80.00,59.82
+D. ARBORIA GPU (Com Culling & DAG LOD),27,16.4430,86.00,60.82
+D. ARBORIA GPU (Com Culling & DAG LOD),28,17.5120,97.00,57.10
+D. ARBORIA GPU (Com Culling & DAG LOD),29,16.3560,101.00,61.14
+D. ARBORIA GPU (Com Culling & DAG LOD),30,16.3590,103.00,61.13
+D. ARBORIA GPU (Com Culling & DAG LOD),31,16.6800,99.00,59.95
+D. ARBORIA GPU (Com Culling & DAG LOD),32,17.2370,78.00,58.01
+D. ARBORIA GPU (Com Culling & DAG LOD),33,16.2880,68.00,61.39
+D. ARBORIA GPU (Com Culling & DAG LOD),34,16.7330,180.00,59.76
+D. ARBORIA GPU (Com Culling & DAG LOD),35,17.3370,138.00,57.68
+D. ARBORIA GPU (Com Culling & DAG LOD),36,16.1090,93.00,62.08
+D. ARBORIA GPU (Com Culling & DAG LOD),37,17.1200,87.00,58.41
+D. ARBORIA GPU (Com Culling & DAG LOD),38,15.9600,75.00,62.66
+D. ARBORIA GPU (Com Culling & DAG LOD),39,16.8930,84.00,59.20
+D. ARBORIA GPU (Com Culling & DAG LOD),40,16.5800,78.00,60.31
+D. ARBORIA GPU (Com Culling & DAG LOD),41,17.3160,97.00,57.75
+D. ARBORIA GPU (Com Culling & DAG LOD),42,16.8800,93.00,59.24
+D. ARBORIA GPU (Com Culling & DAG LOD),43,15.9540,68.00,62.68
+D. ARBORIA GPU (Com Culling & DAG LOD),44,16.5850,70.00,60.30
+D. ARBORIA GPU (Com Culling & DAG LOD),45,17.2970,65.00,57.81
+D. ARBORIA GPU (Com Culling & DAG LOD),46,16.6790,155.00,59.96
+D. ARBORIA GPU (Com Culling & DAG LOD),47,16.3360,97.00,61.21
+D. ARBORIA GPU (Com Culling & DAG LOD),48,17.1050,78.00,58.46
+D. ARBORIA GPU (Com Culling & DAG LOD),49,16.7210,68.00,59.81
+D. ARBORIA GPU (Com Culling & DAG LOD),50,16.7120,79.00,59.84
+D. ARBORIA GPU (Com Culling & DAG LOD),51,16.6770,81.00,59.96
+D. ARBORIA GPU (Com Culling & DAG LOD),52,16.1560,92.00,61.90
+D. ARBORIA GPU (Com Culling & DAG LOD),53,17.3030,65.00,57.79
+D. ARBORIA GPU (Com Culling & DAG LOD),54,16.7400,82.00,59.74
+D. ARBORIA GPU (Com Culling & DAG LOD),55,16.7280,90.00,59.78
+D. ARBORIA GPU (Com Culling & DAG LOD),56,16.1950,86.00,61.75
+D. ARBORIA GPU (Com Culling & DAG LOD),57,17.0880,63.00,58.52
+D. ARBORIA GPU (Com Culling & DAG LOD),58,16.7030,69.00,59.87
+D. ARBORIA GPU (Com Culling & DAG LOD),59,16.7420,81.00,59.73
+D. ARBORIA GPU (Com Culling & DAG LOD),60,16.1490,87.00,61.92
+D. ARBORIA GPU (Com Culling & DAG LOD),61,17.1490,63.00,58.31
+D. ARBORIA GPU (Com Culling & DAG LOD),62,16.6820,69.00,59.94
+D. ARBORIA GPU (Com Culling & DAG LOD),63,16.8440,75.00,59.37
+D. ARBORIA GPU (Com Culling & DAG LOD),64,16.6360,82.00,60.11
+D. ARBORIA GPU (Com Culling & DAG LOD),65,16.8720,85.00,59.27
+D. ARBORIA GPU (Com Culling & DAG LOD),66,16.6640,87.00,60.01
+D. ARBORIA GPU (Com Culling & DAG LOD),67,16.6510,80.00,60.06
+D. ARBORIA GPU (Com Culling & DAG LOD),68,16.7750,84.00,59.61
+D. ARBORIA GPU (Com Culling & DAG LOD),69,16.6890,81.00,59.92
+D. ARBORIA GPU (Com Culling & DAG LOD),70,16.0410,75.00,62.34
+D. ARBORIA GPU (Com Culling & DAG LOD),71,17.4790,106.00,57.21
+D. ARBORIA GPU (Com Culling & DAG LOD),72,16.5790,69.00,60.32
+D. ARBORIA GPU (Com Culling & DAG LOD),73,16.6070,100.00,60.22
+D. ARBORIA GPU (Com Culling & DAG LOD),74,16.8140,89.00,59.47
+D. ARBORIA GPU (Com Culling & DAG LOD),75,16.5910,90.00,60.27
+D. ARBORIA GPU (Com Culling & DAG LOD),76,16.8960,91.00,59.19
+D. ARBORIA GPU (Com Culling & DAG LOD),77,18.1010,101.00,55.25
+D. ARBORIA GPU (Com Culling & DAG LOD),78,17.3930,63.00,57.49
+D. ARBORIA GPU (Com Culling & DAG LOD),79,16.6000,68.00,60.24
+D. ARBORIA GPU (Com Culling & DAG LOD),80,17.0130,76.00,58.78
+D. ARBORIA GPU (Com Culling & DAG LOD),81,16.5210,54.00,60.53
+D. ARBORIA GPU (Com Culling & DAG LOD),82,16.5460,61.00,60.44
+D. ARBORIA GPU (Com Culling & DAG LOD),83,16.6840,86.00,59.94
+D. ARBORIA GPU (Com Culling & DAG LOD),84,16.5660,54.00,60.36
+D. ARBORIA GPU (Com Culling & DAG LOD),85,16.7990,59.00,59.53
+D. ARBORIA GPU (Com Culling & DAG LOD),86,16.6810,75.00,59.95
+D. ARBORIA GPU (Com Culling & DAG LOD),87,16.8870,83.00,59.22
+D. ARBORIA GPU (Com Culling & DAG LOD),88,18.2540,73.00,54.78
+D. ARBORIA GPU (Com Culling & DAG LOD),89,15.6010,62.00,64.10
+D. ARBORIA GPU (Com Culling & DAG LOD),90,16.6090,68.00,60.21
+D. ARBORIA GPU (Com Culling & DAG LOD),91,16.9690,79.00,58.93
+D. ARBORIA GPU (Com Culling & DAG LOD),92,15.7180,74.00,63.62
+D. ARBORIA GPU (Com Culling & DAG LOD),93,16.9630,58.00,58.95
+D. ARBORIA GPU (Com Culling & DAG LOD),94,16.7980,67.00,59.53
+D. ARBORIA GPU (Com Culling & DAG LOD),95,16.7540,71.00,59.69
+D. ARBORIA GPU (Com Culling & DAG LOD),96,16.6350,70.00,60.11
+D. ARBORIA GPU (Com Culling & DAG LOD),97,16.9540,61.00,58.98
+D. ARBORIA GPU (Com Culling & DAG LOD),98,16.6290,94.00,60.14
+D. ARBORIA GPU (Com Culling & DAG LOD),99,16.4020,99.00,60.97
+D. ARBORIA GPU (Com Culling & DAG LOD),100,17.1390,97.00,58.35
+D. ARBORIA GPU (Com Culling & DAG LOD),101,16.3910,96.00,61.01
+D. ARBORIA GPU (Com Culling & DAG LOD),102,16.0480,92.00,62.31
+D. ARBORIA GPU (Com Culling & DAG LOD),103,16.7490,130.00,59.71
+D. ARBORIA GPU (Com Culling & DAG LOD),104,17.2490,89.00,57.97
+D. ARBORIA GPU (Com Culling & DAG LOD),105,16.7190,81.00,59.81
+D. ARBORIA GPU (Com Culling & DAG LOD),106,17.6040,80.00,56.81
+D. ARBORIA GPU (Com Culling & DAG LOD),107,15.9630,77.00,62.64
+D. ARBORIA GPU (Com Culling & DAG LOD),108,16.3610,96.00,61.12
+D. ARBORIA GPU (Com Culling & DAG LOD),109,18.4090,98.00,54.32
+D. ARBORIA GPU (Com Culling & DAG LOD),110,14.5730,65.00,68.62
+D. ARBORIA GPU (Com Culling & DAG LOD),111,17.0190,114.00,58.76
+D. ARBORIA GPU (Com Culling & DAG LOD),112,16.3260,96.00,61.25
+D. ARBORIA GPU (Com Culling & DAG LOD),113,17.3760,102.00,57.55
+D. ARBORIA GPU (Com Culling & DAG LOD),114,16.5280,77.00,60.50
+D. ARBORIA GPU (Com Culling & DAG LOD),115,19.1360,91.00,52.26
+D. ARBORIA GPU (Com Culling & DAG LOD),116,15.0590,88.00,66.41
+D. ARBORIA GPU (Com Culling & DAG LOD),117,17.4930,88.00,57.17
+D. ARBORIA GPU (Com Culling & DAG LOD),118,14.7960,99.00,67.59
+D. ARBORIA GPU (Com Culling & DAG LOD),119,18.2550,98.00,54.78
+D. ARBORIA GPU (Com Culling & DAG LOD),120,14.8850,126.00,67.18
+D. ARBORIA GPU (Com Culling & DAG LOD),121,16.2770,104.00,61.44
+D. ARBORIA GPU (Com Culling & DAG LOD),122,18.0570,102.00,55.38
+D. ARBORIA GPU (Com Culling & DAG LOD),123,16.0800,103.00,62.19
+D. ARBORIA GPU (Com Culling & DAG LOD),124,17.8020,100.00,56.17
+D. ARBORIA GPU (Com Culling & DAG LOD),125,15.9430,101.00,62.72
+D. ARBORIA GPU (Com Culling & DAG LOD),126,19.0050,103.00,52.62
+D. ARBORIA GPU (Com Culling & DAG LOD),127,13.8530,100.00,72.19
+D. ARBORIA GPU (Com Culling & DAG LOD),128,18.6230,153.00,53.70
+D. ARBORIA GPU (Com Culling & DAG LOD),129,17.6880,103.00,56.54
+D. ARBORIA GPU (Com Culling & DAG LOD),130,13.6220,111.00,73.41
+D. ARBORIA GPU (Com Culling & DAG LOD),131,18.6930,100.00,53.50
+D. ARBORIA GPU (Com Culling & DAG LOD),132,17.2480,92.00,57.98
+D. ARBORIA GPU (Com Culling & DAG LOD),133,15.0280,131.00,66.54
+D. ARBORIA GPU (Com Culling & DAG LOD),134,16.2740,116.00,61.45
+D. ARBORIA GPU (Com Culling & DAG LOD),135,16.6180,112.00,60.18
+D. ARBORIA GPU (Com Culling & DAG LOD),136,17.1490,89.00,58.31
+D. ARBORIA GPU (Com Culling & DAG LOD),137,16.4260,94.00,60.88
+D. ARBORIA GPU (Com Culling & DAG LOD),138,16.5530,83.00,60.41
+D. ARBORIA GPU (Com Culling & DAG LOD),139,18.6470,58.00,53.63
+D. ARBORIA GPU (Com Culling & DAG LOD),140,14.9910,78.00,66.71
+D. ARBORIA GPU (Com Culling & DAG LOD),141,17.1430,62.00,58.33
+D. ARBORIA GPU (Com Culling & DAG LOD),142,16.7040,89.00,59.87
+D. ARBORIA GPU (Com Culling & DAG LOD),143,15.6000,96.00,64.10
+D. ARBORIA GPU (Com Culling & DAG LOD),144,17.1250,94.00,58.39
+D. ARBORIA GPU (Com Culling & DAG LOD),145,17.0730,57.00,58.57
+D. ARBORIA GPU (Com Culling & DAG LOD),146,16.6400,82.00,60.10
+D. ARBORIA GPU (Com Culling & DAG LOD),147,16.1780,82.00,61.81
+D. ARBORIA GPU (Com Culling & DAG LOD),148,16.6760,65.00,59.97
+D. ARBORIA GPU (Com Culling & DAG LOD),149,17.3500,103.00,57.64
+D. ARBORIA GPU (Com Culling & DAG LOD),150,15.8910,68.00,62.93
+D. ARBORIA GPU (Com Culling & DAG LOD),151,17.4100,74.00,57.44
+D. ARBORIA GPU (Com Culling & DAG LOD),152,16.5170,78.00,60.54
+D. ARBORIA GPU (Com Culling & DAG LOD),153,16.1210,74.00,62.03
+D. ARBORIA GPU (Com Culling & DAG LOD),154,17.3920,67.00,57.50
+D. ARBORIA GPU (Com Culling & DAG LOD),155,16.1430,60.00,61.95
+D. ARBORIA GPU (Com Culling & DAG LOD),156,17.1270,67.00,58.39
+D. ARBORIA GPU (Com Culling & DAG LOD),157,16.8000,81.00,59.52
+D. ARBORIA GPU (Com Culling & DAG LOD),158,16.7020,62.00,59.87
+D. ARBORIA GPU (Com Culling & DAG LOD),159,16.7370,68.00,59.75
+D. ARBORIA GPU (Com Culling & DAG LOD),160,16.7710,96.00,59.63
+D. ARBORIA GPU (Com Culling & DAG LOD),161,16.3110,99.00,61.31
+D. ARBORIA GPU (Com Culling & DAG LOD),162,17.3110,85.00,57.77
+D. ARBORIA GPU (Com Culling & DAG LOD),163,15.8970,82.00,62.90
+D. ARBORIA GPU (Com Culling & DAG LOD),164,16.7120,73.00,59.84
+D. ARBORIA GPU (Com Culling & DAG LOD),165,16.5410,81.00,60.46
+D. ARBORIA GPU (Com Culling & DAG LOD),166,16.7580,71.00,59.67
+D. ARBORIA GPU (Com Culling & DAG LOD),167,16.8970,108.00,59.18
+D. ARBORIA GPU (Com Culling & DAG LOD),168,16.4860,68.00,60.66
+D. ARBORIA GPU (Com Culling & DAG LOD),169,17.0090,54.00,58.79
+D. ARBORIA GPU (Com Culling & DAG LOD),170,19.4640,72.00,51.38
+D. ARBORIA GPU (Com Culling & DAG LOD),171,13.9160,56.00,71.86
+D. ARBORIA GPU (Com Culling & DAG LOD),172,17.2000,71.00,58.14
+D. ARBORIA GPU (Com Culling & DAG LOD),173,15.9510,78.00,62.69
+D. ARBORIA GPU (Com Culling & DAG LOD),174,17.2650,56.00,57.92
+D. ARBORIA GPU (Com Culling & DAG LOD),175,16.1550,74.00,61.90
+D. ARBORIA GPU (Com Culling & DAG LOD),176,17.1610,73.00,58.27
+D. ARBORIA GPU (Com Culling & DAG LOD),177,16.2190,81.00,61.66
+D. ARBORIA GPU (Com Culling & DAG LOD),178,17.7100,117.00,56.47
+D. ARBORIA GPU (Com Culling & DAG LOD),179,15.8860,110.00,62.95
+D. ARBORIA GPU (Com Culling & DAG LOD),180,16.8110,53.00,59.48
+D. ARBORIA GPU (Com Culling & DAG LOD),181,16.2750,63.00,61.44
+D. ARBORIA GPU (Com Culling & DAG LOD),182,19.6890,79.00,50.79
+D. ARBORIA GPU (Com Culling & DAG LOD),183,14.6850,79.00,68.10
+D. ARBORIA GPU (Com Culling & DAG LOD),184,15.8990,50.00,62.90
+D. ARBORIA GPU (Com Culling & DAG LOD),185,17.2890,77.00,57.84
+D. ARBORIA GPU (Com Culling & DAG LOD),186,16.6750,62.00,59.97
+D. ARBORIA GPU (Com Culling & DAG LOD),187,16.5730,52.00,60.34
+D. ARBORIA GPU (Com Culling & DAG LOD),188,16.8530,65.00,59.34
+D. ARBORIA GPU (Com Culling & DAG LOD),189,16.1980,60.00,61.74
+D. ARBORIA GPU (Com Culling & DAG LOD),190,17.0290,93.00,58.72
+D. ARBORIA GPU (Com Culling & DAG LOD),191,16.2070,91.00,61.70
+D. ARBORIA GPU (Com Culling & DAG LOD),192,17.1380,50.00,58.35
+D. ARBORIA GPU (Com Culling & DAG LOD),193,16.3480,111.00,61.17
+D. ARBORIA GPU (Com Culling & DAG LOD),194,18.4050,102.00,54.33
+D. ARBORIA GPU (Com Culling & DAG LOD),195,14.7610,82.00,67.75
+D. ARBORIA GPU (Com Culling & DAG LOD),196,17.1680,67.00,58.25
+D. ARBORIA GPU (Com Culling & DAG LOD),197,16.8160,93.00,59.47
+D. ARBORIA GPU (Com Culling & DAG LOD),198,16.2470,66.00,61.55
+D. ARBORIA GPU (Com Culling & DAG LOD),199,16.8060,84.00,59.50
+D. ARBORIA GPU (Com Culling & DAG LOD),200,16.6090,56.00,60.21
+D. ARBORIA GPU (Com Culling & DAG LOD),201,17.1840,54.00,58.19
+D. ARBORIA GPU (Com Culling & DAG LOD),202,16.7970,60.00,59.53
+D. ARBORIA GPU (Com Culling & DAG LOD),203,16.0000,111.00,62.50
+D. ARBORIA GPU (Com Culling & DAG LOD),204,16.7650,50.00,59.65
+D. ARBORIA GPU (Com Culling & DAG LOD),205,16.9080,100.00,59.14
+D. ARBORIA GPU (Com Culling & DAG LOD),206,16.9630,78.00,58.95
+D. ARBORIA GPU (Com Culling & DAG LOD),207,16.4750,115.00,60.70
+D. ARBORIA GPU (Com Culling & DAG LOD),208,16.8190,85.00,59.46
+D. ARBORIA GPU (Com Culling & DAG LOD),209,16.3660,87.00,61.10
+D. ARBORIA GPU (Com Culling & DAG LOD),210,17.4390,77.00,57.34
+D. ARBORIA GPU (Com Culling & DAG LOD),211,16.1450,67.00,61.94
+D. ARBORIA GPU (Com Culling & DAG LOD),212,16.8070,48.00,59.50
+D. ARBORIA GPU (Com Culling & DAG LOD),213,16.3940,61.00,61.00
+D. ARBORIA GPU (Com Culling & DAG LOD),214,17.4440,113.00,57.33
+D. ARBORIA GPU (Com Culling & DAG LOD),215,17.2700,79.00,57.90
+D. ARBORIA GPU (Com Culling & DAG LOD),216,15.6070,47.00,64.07
+D. ARBORIA GPU (Com Culling & DAG LOD),217,17.3640,115.00,57.59
+D. ARBORIA GPU (Com Culling & DAG LOD),218,16.0250,50.00,62.40
+D. ARBORIA GPU (Com Culling & DAG LOD),219,17.2190,54.00,58.08
+D. ARBORIA GPU (Com Culling & DAG LOD),220,17.5490,82.00,56.98
+D. ARBORIA GPU (Com Culling & DAG LOD),221,15.8080,87.00,63.26
+D. ARBORIA GPU (Com Culling & DAG LOD),222,16.0500,49.00,62.31
+D. ARBORIA GPU (Com Culling & DAG LOD),223,17.1910,141.00,58.17
+D. ARBORIA GPU (Com Culling & DAG LOD),224,15.9930,56.00,62.53
+D. ARBORIA GPU (Com Culling & DAG LOD),225,17.5150,97.00,57.09
+D. ARBORIA GPU (Com Culling & DAG LOD),226,16.1800,101.00,61.80
+D. ARBORIA GPU (Com Culling & DAG LOD),227,16.7320,109.00,59.77
+D. ARBORIA GPU (Com Culling & DAG LOD),228,17.3280,61.00,57.71
+D. ARBORIA GPU (Com Culling & DAG LOD),229,15.6710,55.00,63.81
+D. ARBORIA GPU (Com Culling & DAG LOD),230,17.7860,66.00,56.22
+D. ARBORIA GPU (Com Culling & DAG LOD),231,15.8540,52.00,63.08
+D. ARBORIA GPU (Com Culling & DAG LOD),232,17.1920,50.00,58.17
+D. ARBORIA GPU (Com Culling & DAG LOD),233,16.8730,72.00,59.27
+D. ARBORIA GPU (Com Culling & DAG LOD),234,16.2280,50.00,61.62
+D. ARBORIA GPU (Com Culling & DAG LOD),235,16.9640,67.00,58.95
+D. ARBORIA GPU (Com Culling & DAG LOD),236,16.4370,53.00,60.84
+D. ARBORIA GPU (Com Culling & DAG LOD),237,17.1540,87.00,58.30
+D. ARBORIA GPU (Com Culling & DAG LOD),238,16.1190,92.00,62.04
+D. ARBORIA GPU (Com Culling & DAG LOD),239,17.1490,90.00,58.31
+D. ARBORIA GPU (Com Culling & DAG LOD),240,16.1790,94.00,61.81
+D. ARBORIA GPU (Com Culling & DAG LOD),241,17.6350,110.00,56.71
+D. ARBORIA GPU (Com Culling & DAG LOD),242,15.6410,69.00,63.93
+D. ARBORIA GPU (Com Culling & DAG LOD),243,16.8570,80.00,59.32
+D. ARBORIA GPU (Com Culling & DAG LOD),244,16.5610,92.00,60.38
+D. ARBORIA GPU (Com Culling & DAG LOD),245,16.7790,100.00,59.60
+D. ARBORIA GPU (Com Culling & DAG LOD),246,17.1400,95.00,58.34
+D. ARBORIA GPU (Com Culling & DAG LOD),247,16.4820,72.00,60.67
+D. ARBORIA GPU (Com Culling & DAG LOD),248,17.4750,62.00,57.22
+D. ARBORIA GPU (Com Culling & DAG LOD),249,16.6330,73.00,60.12
+D. ARBORIA GPU (Com Culling & DAG LOD),250,17.1320,97.00,58.37
+D. ARBORIA GPU (Com Culling & DAG LOD),251,17.4410,98.00,57.34
+D. ARBORIA GPU (Com Culling & DAG LOD),252,14.9100,89.00,67.07
+D. ARBORIA GPU (Com Culling & DAG LOD),253,17.3380,102.00,57.68
+D. ARBORIA GPU (Com Culling & DAG LOD),254,15.7700,88.00,63.41
+D. ARBORIA GPU (Com Culling & DAG LOD),255,16.8950,110.00,59.19
+D. ARBORIA GPU (Com Culling & DAG LOD),256,16.4060,92.00,60.95
+D. ARBORIA GPU (Com Culling & DAG LOD),257,17.6680,99.00,56.60
+D. ARBORIA GPU (Com Culling & DAG LOD),258,15.8010,77.00,63.29
+D. ARBORIA GPU (Com Culling & DAG LOD),259,17.2530,97.00,57.96
+D. ARBORIA GPU (Com Culling & DAG LOD),260,16.9450,92.00,59.01
+D. ARBORIA GPU (Com Culling & DAG LOD),261,18.0720,92.00,55.33
+D. ARBORIA GPU (Com Culling & DAG LOD),262,15.4110,81.00,64.89
+D. ARBORIA GPU (Com Culling & DAG LOD),263,15.9980,96.00,62.51
+D. ARBORIA GPU (Com Culling & DAG LOD),264,16.7380,97.00,59.74
+D. ARBORIA GPU (Com Culling & DAG LOD),265,17.4330,89.00,57.36
+D. ARBORIA GPU (Com Culling & DAG LOD),266,16.6930,83.00,59.91
+D. ARBORIA GPU (Com Culling & DAG LOD),267,16.0750,87.00,62.21
+D. ARBORIA GPU (Com Culling & DAG LOD),268,17.1480,288.00,58.32
+D. ARBORIA GPU (Com Culling & DAG LOD),269,17.1630,495.00,58.26
+D. ARBORIA GPU (Com Culling & DAG LOD),270,15.8410,81.00,63.13
+D. ARBORIA GPU (Com Culling & DAG LOD),271,17.1170,144.00,58.42
+D. ARBORIA GPU (Com Culling & DAG LOD),272,16.2600,49.00,61.50
+D. ARBORIA GPU (Com Culling & DAG LOD),273,18.9350,67.00,52.81
+D. ARBORIA GPU (Com Culling & DAG LOD),274,14.1380,69.00,70.73
+D. ARBORIA GPU (Com Culling & DAG LOD),275,17.4880,92.00,57.18
+D. ARBORIA GPU (Com Culling & DAG LOD),276,16.1380,92.00,61.97
+D. ARBORIA GPU (Com Culling & DAG LOD),277,16.6840,76.00,59.94
+D. ARBORIA GPU (Com Culling & DAG LOD),278,17.3820,91.00,57.53
+D. ARBORIA GPU (Com Culling & DAG LOD),279,17.1780,79.00,58.21
+D. ARBORIA GPU (Com Culling & DAG LOD),280,16.0930,79.00,62.14
+D. ARBORIA GPU (Com Culling & DAG LOD),281,16.1340,101.00,61.98
+D. ARBORIA GPU (Com Culling & DAG LOD),282,16.5300,76.00,60.50
+D. ARBORIA GPU (Com Culling & DAG LOD),283,16.7950,58.00,59.54
+D. ARBORIA GPU (Com Culling & DAG LOD),284,17.6520,82.00,56.65
+D. ARBORIA GPU (Com Culling & DAG LOD),285,17.6950,77.00,56.51
+D. ARBORIA GPU (Com Culling & DAG LOD),286,15.4850,78.00,64.58
+D. ARBORIA GPU (Com Culling & DAG LOD),287,16.8310,83.00,59.41
+D. ARBORIA GPU (Com Culling & DAG LOD),288,15.8620,68.00,63.04
+D. ARBORIA GPU (Com Culling & DAG LOD),289,17.4400,56.00,57.34
+D. ARBORIA GPU (Com Culling & DAG LOD),290,15.9890,77.00,62.54
+D. ARBORIA GPU (Com Culling & DAG LOD),291,17.2310,79.00,58.03
+D. ARBORIA GPU (Com Culling & DAG LOD),292,16.1080,63.00,62.08
+D. ARBORIA GPU (Com Culling & DAG LOD),293,22.3010,98.00,44.84
+D. ARBORIA GPU (Com Culling & DAG LOD),294,16.4950,90.00,60.62
+D. ARBORIA GPU (Com Culling & DAG LOD),295,17.8990,70.00,55.87
+D. ARBORIA GPU (Com Culling & DAG LOD),296,17.1330,61.00,58.37
+D. ARBORIA GPU (Com Culling & DAG LOD),297,16.5960,67.00,60.26
+D. ARBORIA GPU (Com Culling & DAG LOD),298,17.3080,88.00,57.78
+D. ARBORIA GPU (Com Culling & DAG LOD),299,15.0410,60.00,66.48
+D. ARBORIA GPU (Com Culling & DAG LOD),300,17.2470,60.00,57.98

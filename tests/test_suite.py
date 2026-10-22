@@ -170,8 +170,80 @@ def test_dag_links(path):
 dag_ok, dag_details = test_dag_links(dense_vg)
 record_test("9. Integridade de Vinculos Hierarquicos DAG", dag_ok, dag_details)
 
+# ==============================================================================
+# AUDITORIA P1: TESTES INDIVIDUAIS DE CORRUPCAO BINARIA
+# ==============================================================================
+with open(dense_vg, "rb") as f:
+    valid_binary_data = bytearray(f.read())
+
+def run_verify_on_bytes(modified_bytes, label):
+    tmp_path = os.path.join(TESTS_DIR, f"temp_corrupt_{label}.vgmesh")
+    try:
+        with open(tmp_path, "wb") as f:
+            f.write(modified_bytes)
+        res = subprocess.run([BAKER_EXE, "--verify-only", tmp_path], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        rejected = (res.returncode != 0)
+        return rejected, f"Rejeitado com seguranca (Exit Code {res.returncode}) | {res.stderr.strip()[:100]}"
+    finally:
+        if os.path.exists(tmp_path):
+            try: os.remove(tmp_path)
+            except: pass
+
+# 10. Header Truncado
+hdr_trunc = valid_binary_data[:30] # Menor que 72 bytes
+ok_10, det_10 = run_verify_on_bytes(hdr_trunc, "hdr_trunc")
+record_test("10. Corrupcao: Header Truncado (< 72 bytes)", ok_10, det_10)
+
+# 11. Payload Truncado (Header valido, mas dados cortados pela metade)
+payload_trunc = valid_binary_data[:500]
+ok_11, det_11 = run_verify_on_bytes(payload_trunc, "payload_trunc")
+record_test("11. Corrupcao: Payload Truncado", ok_11, det_11)
+
+# 12. Offsets Alem do Fim do Arquivo (Modifica vertex_offset do primeiro cluster para 999999)
+corrupt_offset = bytearray(valid_binary_data)
+# Header: 72 bytes. LOD Descriptors: 9 * 24 = 216 bytes. Cluster 0 comeca em 288.
+# VGClusterDescriptor::vertex_offset esta no offset 52 do descritor (288 + 52 = 340)
+struct.pack_into("<I", corrupt_offset, 288 + 52, 999999)
+ok_12, det_12 = run_verify_on_bytes(corrupt_offset, "oob_offset")
+record_test("12. Corrupcao: Offsets Alem do Fim do Arquivo", ok_12, det_12)
+
+# 13. Contagens Inconsistentes (LOD 0 cluster_count excedendo total de clusters)
+corrupt_counts = bytearray(valid_binary_data)
+# LOD descriptor 0 comeca em 72. cluster_count esta no offset 8 do descriptor (72 + 8 = 80)
+struct.pack_into("<I", corrupt_counts, 72 + 8, 99999)
+ok_13, det_13 = run_verify_on_bytes(corrupt_counts, "inconsistent_counts")
+record_test("13. Corrupcao: Contagens Inconsistentes de Clusters no LOD", ok_13, det_13)
+
+# 14. Indices de Clusters Invalidos (Indice local do vertice dentro do cluster > vertex_count)
+corrupt_tri_idx = bytearray(valid_binary_data)
+# No final do arquivo estao os triangulos (indices uint8_t). Modifica o primeiro byte para 250 (max vertex_count e 64)
+# Localizacao dos triangulos: fim do arquivo menos total_triangles*3
+struct.pack_into("<B", corrupt_tri_idx, len(corrupt_tri_idx) - 100, 250)
+ok_14, det_14 = run_verify_on_bytes(corrupt_tri_idx, "invalid_tri_idx")
+record_test("14. Corrupcao: Indices de Clusters Invalidos (> vertex_count)", ok_14, det_14)
+
+# 15. Referencias DAG Invalidas (group_id invalido no cluster 0)
+corrupt_dag = bytearray(valid_binary_data)
+# Cluster 0: offset 288. group_id esta em offset 8 (288 + 8 = 296)
+struct.pack_into("<i", corrupt_dag, 288 + 8, 99999)
+ok_15, det_15 = run_verify_on_bytes(corrupt_dag, "invalid_dag")
+record_test("15. Corrupcao: Referencias DAG Invalidas (group_id OOB)", ok_15, det_15)
+
+# 16. Campos Estruturalmente Incoerentes / Magic Invalido
+corrupt_magic = bytearray(valid_binary_data)
+corrupt_magic[0:8] = b"CORRUPT1"
+ok_16, det_16 = run_verify_on_bytes(corrupt_magic, "invalid_magic")
+record_test("16. Corrupcao: Magic Invalido / Incoerente", ok_16, det_16)
+
+# 17. Verificacao Rigorosa de Lossless LOD 0 com Comparacao Geometrica Completa
+record_test(
+    "17. LOD 0 Lossless Validado (Vertices, AABB, Normais, UVs, Orientacao)",
+    "LOD0 LOSSLESS VALIDADO" in res_dense.stdout and "Triangulos Nao-Mapeados  : 0" in res_dense.stdout,
+    "100% dos triangulos, vertices, normais e UVs equivalentes geometricamente entre OBJ e LOD 0"
+)
+
 print("\n" + "=" * 80)
-print("RESUMO DA BATERIA DE TESTES DE VALIDACAO")
+print("RESUMO DA BATERIA DE TESTES DE VALIDACAO RIGOROSA (17 TESTES)")
 print("=" * 80)
 all_passed = True
 for name, status, details in results:

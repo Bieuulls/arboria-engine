@@ -49,8 +49,13 @@ func _setup_compositor() -> void:
 
 	compositor_effect = ArboriaCompositorEffect.new()
 	compositor_effect.active = true
-	env.compositor.compositor_effects.append(compositor_effect)
-	print("[ArboriaNativeDemo] ArboriaCompositorEffect registrado no WorldEnvironment.")
+	var effects = env.compositor.compositor_effects.duplicate()
+	effects.append(compositor_effect)
+	env.compositor.compositor_effects = effects
+
+	if camera:
+		camera.compositor = env.compositor
+	print("[ArboriaNativeDemo] ArboriaCompositorEffect registrado no WorldEnvironment e Camera3D (Total: ", env.compositor.compositor_effects.size(), ").")
 
 func _setup_ui() -> void:
 	if ui_shading_btn:

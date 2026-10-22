@@ -230,4 +230,87 @@ ComputeDispatchResult VGComputeDispatch::simulate_cull_offline(
     return res;
 }
 
+bool VGComputeDispatch::dispatch_cull_clusters_native(
+    const GPUDriverContext& ctx,
+    const void* compute_pipeline,
+    const void* uniform_set,
+    int64_t groups_x
+) {
+    if (!ctx.call_method || !ctx.rd || !compute_pipeline || !uniform_set || groups_x <= 0) return false;
+
+    uint8_t cl_var[32] = {0};
+    if (!ctx.call_method(ctx.rd, "compute_list_begin", nullptr, 0, cl_var)) {
+        return false;
+    }
+
+    const void* bind_pipe_args[] = { cl_var, compute_pipeline };
+    ctx.call_method(ctx.rd, "compute_list_bind_compute_pipeline", bind_pipe_args, 2, nullptr);
+
+    uint8_t set_idx_var[32] = {0};
+    int64_t set_0 = 0;
+    if (ctx.from_int) ctx.from_int(set_idx_var, &set_0);
+
+    const void* bind_set_args[] = { cl_var, uniform_set, set_idx_var };
+    ctx.call_method(ctx.rd, "compute_list_bind_uniform_set", bind_set_args, 3, nullptr);
+
+    uint8_t gx_var[32] = {0};
+    if (ctx.from_int) ctx.from_int(gx_var, &groups_x);
+
+    uint8_t one_var[32] = {0};
+    int64_t one = 1;
+    if (ctx.from_int) ctx.from_int(one_var, &one);
+
+    const void* dispatch_args[] = { cl_var, gx_var, one_var, one_var };
+    ctx.call_method(ctx.rd, "compute_list_dispatch", dispatch_args, 4, nullptr);
+
+    ctx.call_method(ctx.rd, "compute_list_end", nullptr, 0, nullptr);
+    return true;
+}
+
+bool VGComputeDispatch::dispatch_cull_clusters_batch(
+    const GPUDriverContext& ctx,
+    const void* compute_pipeline,
+    const void* compute_sets_array,
+    const void* groups_x_array,
+    int64_t count
+) {
+    if (!ctx.call_method || !ctx.rd || !compute_pipeline || count <= 0) return false;
+
+    uint8_t cl_var[32] = {0};
+    if (!ctx.call_method(ctx.rd, "compute_list_begin", nullptr, 0, cl_var)) {
+        return false;
+    }
+
+    const void* bind_pipe_args[] = { cl_var, compute_pipeline };
+    ctx.call_method(ctx.rd, "compute_list_bind_compute_pipeline", bind_pipe_args, 2, nullptr);
+
+    uint8_t set_idx_var[32] = {0};
+    int64_t set_0 = 0;
+    if (ctx.from_int) ctx.from_int(set_idx_var, &set_0);
+
+    uint8_t one_var[32] = {0};
+    int64_t one = 1;
+    if (ctx.from_int) ctx.from_int(one_var, &one);
+
+    for (int64_t i = 0; i < count; ++i) {
+        uint8_t cset_var[32] = {0};
+        uint8_t gx_var[32] = {0};
+        uint8_t valid = 0, oob = 0;
+
+        if (ctx.get_indexed) {
+            ctx.get_indexed(compute_sets_array, i, cset_var, &valid, &oob);
+            ctx.get_indexed(groups_x_array, i, gx_var, &valid, &oob);
+        }
+
+        const void* bind_set_args[] = { cl_var, cset_var, set_idx_var };
+        ctx.call_method(ctx.rd, "compute_list_bind_uniform_set", bind_set_args, 3, nullptr);
+
+        const void* dispatch_args[] = { cl_var, gx_var, one_var, one_var };
+        ctx.call_method(ctx.rd, "compute_list_dispatch", dispatch_args, 4, nullptr);
+    }
+
+    ctx.call_method(ctx.rd, "compute_list_end", nullptr, 0, nullptr);
+    return true;
+}
+
 } // namespace Arboria

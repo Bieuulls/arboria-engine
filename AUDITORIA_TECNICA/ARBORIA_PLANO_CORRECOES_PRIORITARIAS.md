@@ -1,0 +1,10 @@
+# Plano técnico de correções — apenas proposta
+
+1. **P0 — validar GPU→draw:** revisar `project/scripts/vg_gpu_pipeline.gd` e `project/shaders/cull_clusters.glsl`, contador e argumentos indirect; usar RenderDoc/Vulkan para provar despacho, barreiras e draw. Critério: número de draws/triângulos e pixels mudam corretamente com culling; sem readback bloqueante por frame. Risco: sincronização/compatibilidade RenderingDevice.
+2. **P0 — validar continuidade DAG/LOD:** revisar `tools/baker/src/vg_baker_main.cpp`, `project/scripts/vgmesh_loader.gd`, shader de renderização; testar erro projetado, fronteiras pai/filho e movimento de câmera. Critério: nenhuma fissura e geometria conservada no LOD0. Risco: vínculos válidos estruturalmente, mas seleção visual incorreta.
+3. **P1 — integração Godot real:** inspecionar/compilar `ARBORIA_MANAGER/03_GODOT_CORE_MODULE`, `register_types.cpp`, `virtual_mesh_instance_3d.h` e `project/project.godot`; confirmar registro e instância nativa, PBR, iluminação e sombras. Critério: cena reproduzível com geometria ARBORIA integrada ao Forward+. Risco: limitações de extensão do renderizador. GDScript permanece para UI/orquestração; RenderingDevice para compute; C++ do motor para integração de draw no renderizador quando necessária.
+4. **P2 — streaming e VRAM:** projetar arquivos de paginação/gerenciador de residência novos somente após perfis; implementar páginas, fila de IO, cache e eviction; validar picos de VRAM e geometria sob movimento. Risco: thrashing e stutter.
+5. **P3 — oclusão/visibilidade:** criar Hi-Z e occlusion culling, depois Visibility Buffer, material resolve e rasterização híbrida, conforme resultados de profiling. Critério: ganho mensurável em cenários comparáveis e materiais corretos. Risco: sincronização e custo de bandwidth.
+6. **Medição obrigatória:** executar A (Godot malha original), B (Godot LOD), C (ARBORIA culling on), D (ARBORIA off), com GPU, resolução, câmera, iluminação e geometria fixos. Medir GPU timestamps reais, CPU frame, VRAM, draw calls e triângulos. Sem estimativas apresentadas como resultados.
+
+Nenhuma correção foi aplicada ao motor nesta auditoria.

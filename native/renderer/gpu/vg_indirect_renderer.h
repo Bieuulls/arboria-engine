@@ -2,6 +2,7 @@
 #define VG_INDIRECT_RENDERER_H
 
 #include "../core/vg_types.h"
+#include "vg_gpu_driver.h"
 #include <cstdint>
 
 namespace Arboria {
@@ -33,6 +34,26 @@ public:
 
     // Sincronização e barreiras exigidas
     static bool requires_compute_to_raster_barrier() { return true; }
+
+    // Execução real de draw_list_draw_indirect na GPU via RenderingDevice
+    static bool draw_indirect_native(
+        const struct GPUDriverContext& ctx,
+        const void* framebuffer,
+        const void* raster_pipeline,
+        const void* uniform_set,
+        const void* counter_buffer
+    );
+
+    // Execução em lote de draw_list_draw_indirect no framebuffer Forward+
+    static bool draw_indirect_batch(
+        const struct GPUDriverContext& ctx,
+        const void* framebuffer,
+        const void* raster_pipeline,
+        const void* raster_sets_array,
+        const void* counter_bufs_array,
+        int64_t count,
+        const void* initial_colors = nullptr
+    );
 };
 
 } // namespace Arboria

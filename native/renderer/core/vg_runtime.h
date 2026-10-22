@@ -35,6 +35,20 @@ public:
         return "ARBORIA ENGINE NATIVE FORWARD+ V7.0 (VULKAN 1.4)";
     }
 
+    // Execução real do pipeline gráfico nativo (Compute Culling + Indirect Draw)
+    bool render_scene_native(
+        const GPUDriverContext& ctx,
+        const void* framebuffer,
+        const void* compute_pipeline,
+        const void* raster_pipeline,
+        const void* compute_sets_array,
+        const void* groups_x_array,
+        const void* raster_sets_array,
+        const void* counter_bufs_array,
+        int64_t count,
+        const void* initial_colors = nullptr
+    );
+
 private:
     VGRuntime();
     ~VGRuntime();

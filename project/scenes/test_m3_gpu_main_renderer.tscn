@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://test_m3_suite"]
+
+[ext_resource type="Script" path="res://scripts/test_m3_gpu_main_renderer.gd" id="1_test"]
+
+[node name="TestM3Suite" type="Node3D"]
+script = ExtResource("1_test")

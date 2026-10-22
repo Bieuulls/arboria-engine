@@ -74,6 +74,43 @@ std::shared_ptr<VGMeshResource> VGRuntime::get_mesh(int32_t mesh_id) {
     return nullptr;
 }
 
+bool VGRuntime::render_scene_native(
+    const GPUDriverContext& ctx,
+    const void* framebuffer,
+    const void* compute_pipeline,
+    const void* raster_pipeline,
+    const void* compute_sets_array,
+    const void* groups_x_array,
+    const void* raster_sets_array,
+    const void* counter_bufs_array,
+    int64_t count,
+    const void* initial_colors
+) {
+    if (!m_initialized || count <= 0) return false;
+
+    // FASE 1: Compute Culling & DAG selection (100% GPU via VGComputeDispatch)
+    bool compute_ok = VGComputeDispatch::dispatch_cull_clusters_batch(
+        ctx,
+        compute_pipeline,
+        compute_sets_array,
+        groups_x_array,
+        count
+    );
+    if (!compute_ok) return false;
+
+    // FASE 2: Indirect Rasterization Pass no Framebuffer Forward+ (via VGIndirectRenderer)
+    bool raster_ok = VGIndirectRenderer::draw_indirect_batch(
+        ctx,
+        framebuffer,
+        raster_pipeline,
+        raster_sets_array,
+        counter_bufs_array,
+        count,
+        initial_colors
+    );
+    return raster_ok;
+}
+
 } // namespace Arboria
 
 // ----------------------------------------------------------------------------

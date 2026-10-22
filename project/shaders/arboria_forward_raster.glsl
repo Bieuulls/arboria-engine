@@ -43,9 +43,10 @@ layout(set = 0, binding = 6, std430) readonly buffer InTriangles {
 layout(set = 0, binding = 7, std140) uniform InstanceUniforms {
     mat4 model_matrix;
     vec4 material_albedo_rough; // xyz = albedo, w = roughness
-    vec4 material_metal_spec;   // x = metallic, y = specular, z = material_id, w = unused
+    vec4 material_metal_spec;   // x = metallic, y = specular, z = material_id, w = use_textures
     vec4 light_direction_energy;// xyz = light_dir, w = light_energy
     vec4 light_color;           // rgb = light_color, w = ambient_intensity
+    vec4 texture_params;        // xy = uv_scale, z = normal_scale, w = unused
 } instance_ubo;
 
 void main() {
@@ -120,64 +121,197 @@ layout(set = 0, binding = 3, std140) uniform CameraUniforms {
 
 layout(set = 0, binding = 7, std140) uniform InstanceUniforms {
     mat4 model_matrix;
-    vec4 material_albedo_rough;
-    vec4 material_metal_spec;
-    vec4 light_direction_energy;
-    vec4 light_color;
+    vec4 material_albedo_rough; // xyz = albedo, w = roughness
+    vec4 material_metal_spec;   // x = metallic, y = specular, z = material_id, w = use_textures (1.0 = on, 0.0 = procedural)
+    vec4 light_direction_energy;// xyz = light_dir, w = light_energy
+    vec4 light_color;           // rgb = light_color, w = ambient_intensity
+    vec4 texture_params;        // xy = uv_scale, z = normal_scale, w = unused
 } instance_ubo;
+
+layout(set = 0, binding = 8) uniform sampler2D albedo_map;
+layout(set = 0, binding = 9) uniform sampler2D normal_map;
+layout(set = 0, binding = 10) uniform sampler2D orm_map; // r = ao, g = roughness, b = metallic
+
+const float PI = 3.141592653589793;
+
+// Funcao analitica de ruido pseudo-aleatorio para micro-relevo mineral
+float ARB_Hash31(vec3 p) {
+    p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float ARB_SmoothNoise(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    vec3 u = f * f * (3.0 - 2.0 * f);
+
+    float n000 = ARB_Hash31(i + vec3(0.0, 0.0, 0.0));
+    float n100 = ARB_Hash31(i + vec3(1.0, 0.0, 0.0));
+    float n010 = ARB_Hash31(i + vec3(0.0, 1.0, 0.0));
+    float n110 = ARB_Hash31(i + vec3(1.0, 1.0, 0.0));
+    float n001 = ARB_Hash31(i + vec3(0.0, 0.0, 1.0));
+    float n101 = ARB_Hash31(i + vec3(1.0, 0.0, 1.0));
+    float n011 = ARB_Hash31(i + vec3(0.0, 1.0, 1.0));
+    float n111 = ARB_Hash31(i + vec3(1.0, 1.0, 1.0));
+
+    float nx00 = mix(n000, n100, u.x);
+    float nx10 = mix(n010, n110, u.x);
+    float nx01 = mix(n001, n101, u.x);
+    float nx11 = mix(n011, n111, u.x);
+
+    float nxy0 = mix(nx00, nx10, u.y);
+    float nxy1 = mix(nx01, nx11, u.y);
+
+    return mix(nxy0, nxy1, u.z);
+}
+
+// Micro-relevo geologico fbm (veios de rocha, poros e lascas minerais)
+float ARB_RockDetailHeight(vec3 p) {
+    float h = 0.0;
+    h += ARB_SmoothNoise(p * 8.0) * 0.50;
+    h += ARB_SmoothNoise(p * 24.0) * 0.30;
+    h += ARB_SmoothNoise(p * 72.0) * 0.20;
+    return h;
+}
+
+// Cook-Torrance GGX microfacet functions
+float D_GGX(float NoH, float roughness) {
+    float a = max(0.04, roughness * roughness);
+    float a2 = a * a;
+    float d = (NoH * a2 - NoH) * NoH + 1.0;
+    return a2 / (PI * d * d + 1e-5);
+}
+
+float G_SmithGGXCorrelated(float NoV, float NoL, float roughness) {
+    float a = max(0.04, roughness * roughness);
+    float a2 = a * a;
+    float lambdaV = NoL * sqrt((NoV - a2 * NoV) * NoV + a2);
+    float lambdaL = NoV * sqrt((NoL - a2 * NoL) * NoL + a2);
+    return 0.5 / (lambdaV + lambdaL + 1e-5);
+}
+
+vec3 F_Schlick(float VoH, vec3 f0) {
+    float f = pow(clamp(1.0 - VoH, 0.0, 1.0), 5.0);
+    return f0 + (vec3(1.0) - f0) * f;
+}
 
 void main() {
     uint mode = ubo.render_params.x;
-    vec3 n = normalize(v_world_normal);
+    vec3 geom_n = normalize(v_world_normal);
 
     if (mode == 0u) {
-        // Modo PBR Forward+ Real
-        vec3 albedo = instance_ubo.material_albedo_rough.rgb;
-        float roughness = instance_ubo.material_albedo_rough.w;
-        float metallic = instance_ubo.material_metal_spec.x;
-        float specular = instance_ubo.material_metal_spec.y;
+        // =====================================================================
+        // MODO PBR CINEMATOGRAFICO FORWARD+ (COOK-TORRANCE GGX + ROCK DETAIL)
+        // =====================================================================
+        
+        bool use_tex = (instance_ubo.material_metal_spec.w > 0.5);
+        vec2 uv = v_uv * instance_ubo.texture_params.xy;
 
+        // Calculo de base normal e tangentes de tela
+        vec3 dPdx = dFdx(v_world_pos);
+        vec3 dPdy = dFdy(v_world_pos);
+        vec3 surf_tangent = normalize(dPdx);
+        vec3 surf_bitangent = normalize(cross(geom_n, surf_tangent));
+        surf_tangent = cross(surf_bitangent, geom_n);
+        mat3 tbn = mat3(surf_tangent, surf_bitangent, geom_n);
+
+        vec3 n = geom_n;
+        vec3 albedo = instance_ubo.material_albedo_rough.rgb;
+        float roughness = clamp(instance_ubo.material_albedo_rough.w, 0.04, 0.98);
+        float metallic = clamp(instance_ubo.material_metal_spec.x, 0.0, 1.0);
+        float specular_intensity = instance_ubo.material_metal_spec.y;
+        float cavity_ao = 1.0;
+
+        if (use_tex) {
+            // Amostragem de texturas PBR externas
+            vec4 tex_albedo = texture(albedo_map, uv);
+            albedo = tex_albedo.rgb * instance_ubo.material_albedo_rough.rgb;
+
+            vec3 tex_n = texture(normal_map, uv).rgb * 2.0 - 1.0;
+            tex_n.xy *= instance_ubo.texture_params.z; // Normal Scale
+            n = normalize(tbn * tex_n);
+
+            vec4 tex_orm = texture(orm_map, uv);
+            cavity_ao = tex_orm.r;
+            roughness = clamp(tex_orm.g * instance_ubo.material_albedo_rough.w, 0.04, 0.98);
+            metallic = clamp(tex_orm.b * instance_ubo.material_metal_spec.x, 0.0, 1.0);
+
+        } else {
+            // Micro-relevo Geologico Procedural (Modo Mineral sem textura)
+            vec3 p_surf = v_world_pos * 1.8;
+            float h_center = ARB_RockDetailHeight(p_surf);
+            float eps = 0.02;
+            float h_x = ARB_RockDetailHeight(p_surf + surf_tangent * eps);
+            float h_y = ARB_RockDetailHeight(p_surf + surf_bitangent * eps);
+            vec2 bump_grad = vec2(h_x - h_center, h_y - h_center) / eps;
+
+            float bump_strength = 0.045;
+            n = normalize(geom_n - (surf_tangent * bump_grad.x + surf_bitangent * bump_grad.y) * bump_strength);
+
+            float vein_tint = smoothstep(0.2, 0.8, h_center);
+            albedo = mix(instance_ubo.material_albedo_rough.rgb * 0.72, instance_ubo.material_albedo_rough.rgb * 1.08, vein_tint);
+            cavity_ao = clamp(0.55 + 0.45 * h_center, 0.0, 1.0);
+        }
+
+        // Vetores de iluminacao e camera
         vec3 l_dir = normalize(instance_ubo.light_direction_energy.xyz);
         vec3 l_col = instance_ubo.light_color.rgb * instance_ubo.light_direction_energy.w;
         vec3 v_dir = normalize(ubo.camera_pos_fov.xyz - v_world_pos);
-
-        // Termo difuso Lambertiano
-        float n_dot_l = max(dot(n, l_dir), 0.0);
-        vec3 diffuse = albedo * (1.0 - metallic) * n_dot_l;
-
-        // Termo especular Blinn-Phong/GGX
         vec3 h = normalize(l_dir + v_dir);
-        float n_dot_h = max(dot(n, h), 0.0);
-        float spec_power = max(2.0, (1.0 - roughness) * 128.0);
-        float spec_factor = pow(n_dot_h, spec_power) * specular;
-        vec3 spec_color = mix(vec3(0.04), albedo, metallic);
-        vec3 specular_term = spec_color * spec_factor * n_dot_l;
 
-        // Luz ambiente hemisferica suave
+        float NoL = clamp(dot(n, l_dir), 0.0, 1.0);
+        float NoV = clamp(abs(dot(n, v_dir)), 1e-4, 1.0);
+        float NoH = clamp(dot(n, h), 0.0, 1.0);
+        float VoH = clamp(dot(v_dir, h), 0.0, 1.0);
+
+        // F0 (Reflectancia na incidencia normal)
+        vec3 f0 = mix(vec3(0.04 * specular_intensity), albedo, metallic);
+
+        // Cook-Torrance Specular BRDF
+        float D = D_GGX(NoH, roughness);
+        float G = G_SmithGGXCorrelated(NoV, NoL, roughness);
+        vec3 F = F_Schlick(VoH, f0);
+
+        vec3 specular_brdf = (D * G) * F;
+
+        // Diffuse BRDF (Energy conserving Lambertian)
+        vec3 kd = (vec3(1.0) - F) * (1.0 - metallic);
+        vec3 diffuse_brdf = kd * (albedo / PI);
+
+        // Luz direta
+        vec3 direct_light = (diffuse_brdf + specular_brdf) * l_col * (NoL * PI);
+
+        // Luz ambiente hemisferica IBL aproximada com gradiente celeste
         float sky_factor = n.y * 0.5 + 0.5;
-        vec3 ambient_sky = vec3(0.12, 0.14, 0.18);
-        vec3 ambient_ground = vec3(0.04, 0.04, 0.03);
-        vec3 ambient = mix(ambient_ground, ambient_sky, sky_factor) * albedo * (1.0 - metallic);
+        vec3 ambient_sky = vec3(0.18, 0.22, 0.28) * 1.1;
+        vec3 ambient_ground = vec3(0.05, 0.04, 0.03) * 0.9;
+        vec3 ambient_env = mix(ambient_ground, ambient_sky, sky_factor);
 
-        vec3 final_color = ambient + (diffuse + specular_term) * l_col;
+        // Fresnel de borda ambiente (Rim light)
+        vec3 ambient_fresnel = F_Schlick(NoV, f0) * 0.25;
+        vec3 ambient_light = (albedo * ambient_env * (1.0 - metallic) + ambient_fresnel) * cavity_ao;
+
+        // Cor final PBR
+        vec3 final_color = direct_light + ambient_light;
         out_color = vec4(final_color, 1.0);
 
     } else if (mode == 1u) {
         // Diagnostico: Normais de Superficie
-        out_color = vec4(n * 0.5 + 0.5, 1.0);
+        out_color = vec4(geom_n * 0.5 + 0.5, 1.0);
 
     } else if (mode == 2u) {
         // Diagnostico: Unshaded / Albedo Puro
         out_color = vec4(instance_ubo.material_albedo_rough.rgb, 1.0);
 
     } else {
-        // Diagnostico: Cluster Colors com tonalidade dourada/gradiente
+        // Diagnostico: Cluster Colors com tonalidade distinta por Cluster ID
         float hue = fract(float(v_cluster_id) * 0.618033988749895);
         vec3 rgb = clamp(abs(fract(hue + vec3(0.0, 2.0/3.0, 1.0/3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
-        vec3 cluster_col = mix(rgb, vec3(1.0), 0.15);
+        vec3 cluster_col = mix(rgb, vec3(1.0), 0.12);
 
         vec3 l_dir = normalize(instance_ubo.light_direction_energy.xyz);
-        float diff = max(dot(n, l_dir), 0.25);
+        float diff = max(dot(geom_n, l_dir), 0.25);
         out_color = vec4(cluster_col * diff, 1.0);
     }
 }

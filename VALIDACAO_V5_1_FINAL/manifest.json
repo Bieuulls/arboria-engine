@@ -1,0 +1,94 @@
+{
+  "manifest_version": "6.1",
+  "project_name": "ARBORIA_ENGINE_OFFICIAL",
+  "project_path": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL",
+  "timestamp": "2026-10-21T18:22:00-03:00",
+  "environment": {
+    "os": "Windows 10 Pro 64-bit (10.0.19045 AMD64)",
+    "engine": "Godot Engine v4.7.2.stable.official.ed1daf0bf",
+    "rendering_driver": "Vulkan 1.4.351 (Forward+ Clustered)",
+    "gpu_hardware": "NVIDIA GeForce RTX 3050 Laptop GPU"
+  },
+  "source_assets": {
+    "dense_rock_test.vgmesh": {
+      "path": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/project/assets/dense_rock_test.vgmesh",
+      "sha256": "9D634FC3ABE8044DED8F6A49D3DFD6657F58764F942C3857A49AE4EB09650F85",
+      "size_bytes": 840674,
+      "total_clusters": 367,
+      "total_lods": 9,
+      "lod0_clusters": 172,
+      "lod0_triangles": 15800,
+      "total_groups": 27
+    },
+    "boulder_granite.vgmesh": {
+      "path": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/project/assets/boulder_granite.vgmesh",
+      "sha256": "235E21F4B670046DB064BE09C85EAA735098904559AD26BDD53F03725AC7F4E0",
+      "size_bytes": 54848
+    }
+  },
+  "source_files": {
+    "project/shaders/cull_clusters.glsl": {
+      "path": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/project/shaders/cull_clusters.glsl",
+      "sha256": "4C1FA93A5973DDE177C68CCC2293811B4315125559A8DA79F835A22A622561A8",
+      "description": "Compute shader Vulkan com correção do cálculo de distância de grupo na seleção DAG (distância homogênea ao centro do grupo)"
+    },
+    "project/scripts/vg_gpu_pipeline.gd": {
+      "path": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/project/scripts/vg_gpu_pipeline.gd",
+      "sha256": "E959E7675F494985FBE29DD29C41E3CF6910244DAFFF7E1FDE13758DA2F2381B",
+      "description": "Pipeline GPU com suporte a p_clear_color para isolamento estrito de framebuffer sem vazamento de pixels residuais"
+    },
+    "project/scripts/vg_visual_metrics.gd": {
+      "path": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/project/scripts/vg_visual_metrics.gd",
+      "sha256": "7FD864A5F68FEABBB7071CA9F896CE634DAA9B30B16DABC13B11CF97BD63D4D5",
+      "description": "Módulo matemático de IoU verdadeiro (interseção / união) e detecção de rachaduras internas por busca cartesiana em 4 direções"
+    },
+    "project/scripts/test_v5_1_final_validation.gd": {
+      "path": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/project/scripts/test_v5_1_final_validation.gd",
+      "sha256": "036B0C41966AE37D54E73E47A9DAF8D51D9A57DCCDD09F43E765258F3FB3F630",
+      "description": "Suíte definitiva com metodologia controlada de medição de oclusão de profundidade (Imagem A vs Imagem B)"
+    }
+  },
+  "execution_suite": {
+    "script": "res://scripts/test_v5_1_final_validation.gd",
+    "scene": "res://scenes/test_v5_1_final_validation.tscn",
+    "log_file": "VALIDACAO_V5_1_FINAL/logs/execution.log",
+    "exit_code": 0,
+    "status": "APROVADO"
+  },
+  "evidences": {
+    "negativos": {
+      "teste_a_arboria_disabled.png": "0B37FE2B760522C6101C70C0322547AE6C9DCCA72424FD596870988E00B13196",
+      "teste_a_ref.png": "50BBC503C9CA195FF4384EE92712C68CB8C080B657A2FFBF6E88C6CD17DC233A",
+      "teste_b_arboria_active.png": "50BBC503C9CA195FF4384EE92712C68CB8C080B657A2FFBF6E88C6CD17DC233A",
+      "teste_b_ref_disabled.png": "0B37FE2B760522C6101C70C0322547AE6C9DCCA72424FD596870988E00B13196",
+      "teste_c_arboria_dense_rock.png": "50BBC503C9CA195FF4384EE92712C68CB8C080B657A2FFBF6E88C6CD17DC233A",
+      "teste_c_diff.png": "7B8994AE8E6594DD63908A01EFF6CFC633F9D7DE9C5DDDA080EEEC6C32C69A2B",
+      "teste_c_ref_granite.png": "C902BBE560010AE6FFC882FBD8BB74E63AAE425888A2F17A22956062E8562725",
+      "teste_d_arboria_neutral.png": "50BBC503C9CA195FF4384EE92712C68CB8C080B657A2FFBF6E88C6CD17DC233A",
+      "teste_d_diff.png": "3917BC519361BE907933F861CBE06170E86090BC08ACBE45669D751C07DD6B42",
+      "teste_d_ref_red.png": "B58CAF51A5419454389073D938A1BD8427E942C90AA30734C8B58EACC8059C23"
+    },
+    "lod_misto": {
+      "01_lod_misto_arboria.png": "95ED603A46DBE700EA88A5D3777E5F5DBD91A61C1E93D859DBAE589218963027",
+      "01_lod_misto_diff.png": "DEA701B5BF7133BEFFB2E6B1B687612E8622712D48F96161AC20A6C514C1B335",
+      "01_lod_misto_ref.png": "85E133745CF9A5E0DBAD31F97A4CD6870124C5E94BBF464716C7DE33E6E71424",
+      "02_lod_misto_rot_arboria.png": "ED4D051BDBBF63C05BEE0A8BB56A3617618E6B2A0C05DBCB32BC9B19A2350550",
+      "02_lod_misto_rot_diff.png": "8B7D643E0A708ADC4BCF1D44B5FF7091CEFF93459C093C8043148F599EB1EE61",
+      "02_lod_misto_rot_ref.png": "696C77C442D79D80C0D361DD60C7C375F8FE3A7663FE8D94D14F080C6F116867"
+    },
+    "visuais": {
+      "01_closeup_arboria.png": "6F90E4696BF2C2E39C296C7F46343908C9EB0E24A78D2364FBEEA9B5158B57B5",
+      "01_closeup_diff.png": "D586C8679E030EECC9E9195AA7B0383F2C1AE1211B7192607E1C6FB0E78A97B9",
+      "01_closeup_ref.png": "6F90E4696BF2C2E39C296C7F46343908C9EB0E24A78D2364FBEEA9B5158B57B5",
+      "02_pbr_lit_arboria.png": "D899C6801AF220426EA94706812EEE2E4EDD644657113DC80C045AC8AD865494",
+      "02_pbr_lit_diff.png": "CA6D391294E5A4DD897D50F304E1278BF835B9808FB40E6D1BAA22D1D1D1E8CE",
+      "02_pbr_lit_ref.png": "540A36F58FAF8F6F93A3B5E3F2F63D7EE5CB6215797C8A8AFE360C96262C4324"
+    },
+    "profundidade": {
+      "00_godot_box_isolado.png": "30A6DDCC8A5411E3720BCF1659DECDBF35AEB96E01F6B0CCC50896B5A01DC51E",
+      "01_caso_a_godot_na_frente.png": "818E81F90018BC0D50BD1E9CB433B8E72BA2001F1C89D76EBD046D96A3D5A7D2",
+      "01_caso_a_mascara_sobrescrita.png": "F447FF68886EBC840FD10B7E7F84CFFC2A0A2D5254C7CD6A536772A67DB2737D",
+      "02_caso_b_arboria_na_frente.png": "4FE7E31164D6163038D650A97E7773185CFED4E84D12712869606D389F2E59D2"
+    }
+  }
+}

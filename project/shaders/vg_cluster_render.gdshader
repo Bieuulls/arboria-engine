@@ -11,6 +11,7 @@ uniform sampler2D cluster_meta_texture : filter_nearest;
 
 uniform int total_active_instances = 0;
 uniform bool debug_cluster_colors = true;
+uniform bool unshaded_mode = false;
 uniform vec3 base_albedo : source_color = vec3(0.8, 0.82, 0.85);
 
 varying vec3 v_cluster_color;
@@ -64,7 +65,11 @@ void vertex() {
 
 void fragment() {
 	ALBEDO = v_cluster_color;
-	ROUGHNESS = 0.5;
-	METALLIC = 0.05;
-	SPECULAR = 0.5;
+	if (unshaded_mode) {
+		EMISSION = v_cluster_color;
+	} else {
+		ROUGHNESS = 0.5;
+		METALLIC = 0.05;
+		SPECULAR = 0.5;
+	}
 }

@@ -7,17 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(ARBORIA_SOURCES
     core/vg_mesh_resource.cpp
     core/vg_runtime.cpp
+    core/vg_security.cpp
     gpu/vg_buffer_manager.cpp
     gpu/vg_compute_dispatch.cpp
     gpu/vg_indirect_renderer.cpp
     integration/vg_scene_bridge.cpp
     integration/vg_render_pass.cpp
+    integration/vg_gdextension.cpp
 )
 
 set(ARBORIA_HEADERS
     core/vg_types.h
     core/vg_mesh_resource.h
     core/vg_runtime.h
+    core/vg_security.h
     gpu/vg_buffer_manager.h
     gpu/vg_compute_dispatch.h
     gpu/vg_indirect_renderer.h
@@ -55,4 +58,9 @@ add_custom_command(TARGET arboria_native POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     $<TARGET_FILE:arboria_native>
     ${CMAKE_CURRENT_SOURCE_DIR}/build/arboria_native.dll
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../project/bin
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:arboria_native>
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../project/bin/libarboria_native.dll
 )

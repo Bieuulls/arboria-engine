@@ -3,6 +3,7 @@
 
 #include "../core/vg_types.h"
 #include "../core/vg_mesh_resource.h"
+#include "vg_gpu_driver.h"
 #include <vector>
 #include <array>
 
@@ -51,6 +52,26 @@ public:
     static ComputeDispatchResult simulate_cull_offline(
         const VGMeshResource& mesh,
         const CameraUniforms& ubo
+    );
+
+    // Identificador de tipo para chamadas nativas de compute
+    static bool is_compute_supported() { return true; }
+
+    // Despacho real de Compute Culling na GPU via RenderingDevice
+    static bool dispatch_cull_clusters_native(
+        const struct GPUDriverContext& ctx,
+        const void* compute_pipeline,
+        const void* uniform_set,
+        int64_t groups_x
+    );
+
+    // Despacho em lote de tarefas Compute Culling na GPU
+    static bool dispatch_cull_clusters_batch(
+        const struct GPUDriverContext& ctx,
+        const void* compute_pipeline,
+        const void* compute_sets_array,
+        const void* groups_x_array,
+        int64_t count
     );
 
 private:

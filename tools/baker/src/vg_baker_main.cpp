@@ -360,7 +360,63 @@ bool write_vgmesh_v2(
     return true;
 }
 
-// 3. VERIFICACAO INDEPENDENTE E PROFUNDA DE INTEGRIDADE (Missao 1 & 2)
+struct CanonicalVertex {
+    float px, py, pz;
+    float nx, ny, nz;
+    float u, v;
+
+    bool operator<(const CanonicalVertex& o) const {
+        const float eps = 1e-4f;
+        if (std::abs(px - o.px) > eps) return px < o.px;
+        if (std::abs(py - o.py) > eps) return py < o.py;
+        if (std::abs(pz - o.pz) > eps) return pz < o.pz;
+        if (std::abs(nx - o.nx) > 1e-2f) return nx < o.nx;
+        if (std::abs(ny - o.ny) > 1e-2f) return ny < o.ny;
+        if (std::abs(nz - o.nz) > 1e-2f) return nz < o.nz;
+        if (std::abs(u - o.u) > 1e-3f) return u < o.u;
+        return v < o.v;
+    }
+};
+
+struct CanonicalTriangle {
+    CanonicalVertex v[3];
+    float area;
+
+    bool operator<(const CanonicalTriangle& o) const {
+        for (int i = 0; i < 3; ++i) {
+            if (v[i] < o.v[i]) return true;
+            if (o.v[i] < v[i]) return false;
+        }
+        return false;
+    }
+};
+
+inline CanonicalTriangle make_canonical_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2) {
+    CanonicalVertex cv0 = { v0.px, v0.py, v0.pz, v0.nx, v0.ny, v0.nz, v0.u, v0.v };
+    CanonicalVertex cv1 = { v1.px, v1.py, v1.pz, v1.nx, v1.ny, v1.nz, v1.u, v1.v };
+    CanonicalVertex cv2 = { v2.px, v2.py, v2.pz, v2.nx, v2.ny, v2.nz, v2.u, v2.v };
+
+    float e1x = v1.px - v0.px, e1y = v1.py - v0.py, e1z = v1.pz - v0.pz;
+    float e2x = v2.px - v0.px, e2y = v2.py - v0.py, e2z = v2.pz - v0.pz;
+    float cx = e1y * e2z - e1z * e2y;
+    float cy = e1z * e2x - e1x * e2z;
+    float cz = e1x * e2y - e1y * e2x;
+    float area = 0.5f * std::sqrt(cx * cx + cy * cy + cz * cz);
+
+    CanonicalTriangle ct;
+    ct.area = area;
+    // Permutacao ciclica preservando estritamente a orientacao da face (winding order)
+    if (cv1 < cv0 && cv1 < cv2) {
+        ct.v[0] = cv1; ct.v[1] = cv2; ct.v[2] = cv0;
+    } else if (cv2 < cv0 && cv2 < cv1) {
+        ct.v[0] = cv2; ct.v[1] = cv0; ct.v[2] = cv1;
+    } else {
+        ct.v[0] = cv0; ct.v[1] = cv1; ct.v[2] = cv2;
+    }
+    return ct;
+}
+
+// 3. VERIFICACAO INDEPENDENTE E PROFUNDA DE INTEGRIDADE (Missao 1 & 2 & Auditoria P1)
 struct VerificationReport {
     bool passed = false;
     uint32_t total_triangles_checked = 0;
@@ -374,6 +430,17 @@ struct VerificationReport {
     float max_metric_error = 0.0f;
     size_t peak_memory_mb = 0;
     double elapsed_ms = 0.0;
+
+    // Metricas rigorosas de Lossless LOD 0
+    bool lod0_lossless_validated = false;
+    uint32_t orig_triangle_count = 0;
+    uint32_t lod0_triangle_count = 0;
+    float orig_surface_area = 0.0f;
+    float lod0_surface_area = 0.0f;
+    float max_vertex_pos_diff = 0.0f;
+    float max_normal_diff = 0.0f;
+    float max_uv_diff = 0.0f;
+    uint32_t unmatched_triangles = 0;
 };
 
 VerificationReport verify_deep_vgmesh(
@@ -391,31 +458,59 @@ VerificationReport verify_deep_vgmesh(
         return rep;
     }
 
+    in.seekg(0, std::ios::end);
+    size_t file_size = in.tellg();
+    in.seekg(0, std::ios::beg);
+
+    if (file_size < sizeof(VGMeshHeader)) {
+        std::cerr << "ERRO: Tamanho de arquivo (" << file_size << " bytes) menor que cabecalho VGMeshHeader (" << sizeof(VGMeshHeader) << " bytes)!\n";
+        rep.invalid_indices++;
+        return rep;
+    }
+
     VGMeshHeader header;
     if (!in.read(reinterpret_cast<char*>(&header), sizeof(VGMeshHeader))) {
         std::cerr << "ERRO: Falha ao ler cabecalho .vgmesh (arquivo truncado ou corrompido)!\n";
+        rep.invalid_indices++;
         return rep;
     }
 
     if (std::memcmp(header.magic, "ARBORIA2", 8) != 0) {
         std::cerr << "ERRO: Magic invalido no .vgmesh (esperado ARBORIA2)!\n";
+        rep.invalid_indices++;
         return rep;
     }
 
     if (header.version != 2) {
         std::cerr << "ERRO: Versao do .vgmesh (" << header.version << ") incompativel!\n";
+        rep.invalid_indices++;
+        return rep;
+    }
+
+    uint64_t expected_size = sizeof(VGMeshHeader)
+        + uint64_t(header.lod_count) * sizeof(VGLODLevelDescriptor)
+        + uint64_t(header.cluster_count) * sizeof(VGClusterDescriptor)
+        + uint64_t(header.group_count) * sizeof(VGGroupDescriptor)
+        + uint64_t(header.total_vertices) * sizeof(Vertex)
+        + uint64_t(header.total_triangles) * 3 * sizeof(uint8_t);
+
+    if (file_size < expected_size) {
+        std::cerr << "ERRO: Arquivo truncado! Tamanho no disco: " << file_size << " bytes, esperado no minimo: " << expected_size << " bytes!\n";
+        rep.invalid_indices++;
         return rep;
     }
 
     std::vector<VGLODLevelDescriptor> lods(header.lod_count);
     if (header.lod_count > 0 && !in.read(reinterpret_cast<char*>(lods.data()), header.lod_count * sizeof(VGLODLevelDescriptor))) {
         std::cerr << "ERRO: Arquivo truncado ao ler LOD descriptors!\n";
+        rep.invalid_indices++;
         return rep;
     }
 
     std::vector<VGClusterDescriptor> descs(header.cluster_count);
     if (header.cluster_count > 0 && !in.read(reinterpret_cast<char*>(descs.data()), header.cluster_count * sizeof(VGClusterDescriptor))) {
         std::cerr << "ERRO: Arquivo truncado ao ler Cluster descriptors!\n";
+        rep.invalid_indices++;
         return rep;
     }
 
@@ -423,6 +518,7 @@ VerificationReport verify_deep_vgmesh(
     if (header.group_count > 0) {
         if (!in.read(reinterpret_cast<char*>(groups.data()), header.group_count * sizeof(VGGroupDescriptor))) {
             std::cerr << "ERRO: Arquivo truncado ao ler Group descriptors!\n";
+            rep.invalid_indices++;
             return rep;
         }
     }
@@ -430,27 +526,49 @@ VerificationReport verify_deep_vgmesh(
     std::vector<Vertex> packed_verts(header.total_vertices);
     if (header.total_vertices > 0 && !in.read(reinterpret_cast<char*>(packed_verts.data()), header.total_vertices * sizeof(Vertex))) {
         std::cerr << "ERRO: Arquivo truncado ao ler Vertex buffer!\n";
+        rep.invalid_indices++;
         return rep;
     }
 
     std::vector<uint8_t> packed_tris(header.total_triangles * 3);
     if (header.total_triangles > 0 && !in.read(reinterpret_cast<char*>(packed_tris.data()), header.total_triangles * 3 * sizeof(uint8_t))) {
         std::cerr << "ERRO: Arquivo truncado ao ler Triangle index buffer!\n";
+        rep.invalid_indices++;
         return rep;
     }
 
     // A. Verificacao de Limites AABB
-    for (int i = 0; i < 3; ++i) {
-        float d_min = std::abs(header.bbox_min[i] - original_bbox.min[i]);
-        float d_max = std::abs(header.bbox_max[i] - original_bbox.max[i]);
-        if (d_min > 0.001f || d_max > 0.001f) {
-            std::cerr << "Aviso: Discrepancia na AABB eixo " << i << " (" << d_min << ", " << d_max << ")\n";
+    if (!original_indices.empty()) {
+        for (int i = 0; i < 3; ++i) {
+            float d_min = std::abs(header.bbox_min[i] - original_bbox.min[i]);
+            float d_max = std::abs(header.bbox_max[i] - original_bbox.max[i]);
+            if (d_min > 0.001f || d_max > 0.001f) {
+                std::cerr << "Aviso: Discrepancia na AABB eixo " << i << " (" << d_min << ", " << d_max << ")\n";
+            }
         }
     }
 
-    // B. Verificacao por Cluster
-    for (const auto& c : descs) {
-        // Validacao estrita de limites de offset nos buffers binarios
+    // B. Verificacao de Limites por LOD Descriptor
+    for (size_t li = 0; li < lods.size(); ++li) {
+        const auto& l = lods[li];
+        if (l.lod_level != li) {
+            std::cerr << "ERRO: lod_level inconsistente no LOD descriptor " << li << "!\n";
+            rep.invalid_indices++;
+        }
+        if (uint64_t(l.cluster_offset) + uint64_t(l.cluster_count) > header.cluster_count) {
+            std::cerr << "ERRO: LOD " << li << " cluster_offset + count excede cluster_count!\n";
+            rep.invalid_indices++;
+            return rep;
+        }
+    }
+
+    // C. Verificacao por Cluster
+    for (size_t ci = 0; ci < descs.size(); ++ci) {
+        const auto& c = descs[ci];
+        if (c.cluster_id != ci) {
+            std::cerr << "ERRO: Indice de cluster inconsistente (" << c.cluster_id << " != " << ci << ")!\n";
+            rep.invalid_indices++;
+        }
         if (uint64_t(c.vertex_offset) + uint64_t(c.vertex_count) > packed_verts.size()) {
             std::cerr << "ERRO: Cluster " << c.cluster_id << " vertex_offset + count (" 
                       << c.vertex_offset << " + " << c.vertex_count << ") excede buffer de vertices (" 
@@ -464,6 +582,16 @@ VerificationReport verify_deep_vgmesh(
                       << packed_tris.size() << ")!\n";
             rep.invalid_indices++;
             return rep;
+        }
+        if (c.group_id < 0 || static_cast<uint32_t>(c.group_id) >= header.group_count) {
+            std::cerr << "ERRO: Cluster " << c.cluster_id << " referencia group_id (" << c.group_id << ") invalido!\n";
+            rep.invalid_dag_links++;
+            rep.invalid_indices++;
+        }
+        if (c.refined_group >= 0 && static_cast<uint32_t>(c.refined_group) >= header.group_count) {
+            std::cerr << "ERRO: Cluster " << c.cluster_id << " referencia refined_group (" << c.refined_group << ") invalido!\n";
+            rep.invalid_dag_links++;
+            rep.invalid_indices++;
         }
 
         if (c.lod_error > rep.max_metric_error) {
@@ -538,25 +666,101 @@ VerificationReport verify_deep_vgmesh(
         }
     }
 
-    // C. Verificacao de Vinculos Hierarquicos DAG (Missao 2)
-    for (const auto& c : descs) {
-        if (c.group_id < 0 || static_cast<uint32_t>(c.group_id) >= header.group_count) {
-            rep.invalid_dag_links++;
-            rep.invalid_indices++;
-        }
-        if (c.refined_group >= 0) {
-            if (static_cast<uint32_t>(c.refined_group) >= header.group_count) {
-                rep.invalid_dag_links++;
+    // D. Verificacao Rigorosa de Equivalencia Geometrica Lossless LOD 0 (Auditoria P1)
+    if (!lods.empty() && !original_indices.empty()) {
+        rep.orig_triangle_count = static_cast<uint32_t>(original_indices.size() / 3);
+        rep.lod0_triangle_count = lods[0].triangle_count;
+
+        // Reconstroi triangulos canonicos da malha original
+        std::vector<CanonicalTriangle> orig_canon;
+        orig_canon.reserve(rep.orig_triangle_count);
+        for (uint32_t i = 0; i < rep.orig_triangle_count; ++i) {
+            uint32_t idx0 = original_indices[i * 3 + 0];
+            uint32_t idx1 = original_indices[i * 3 + 1];
+            uint32_t idx2 = original_indices[i * 3 + 2];
+            if (idx0 >= original_vertices.size() || idx1 >= original_vertices.size() || idx2 >= original_vertices.size()) {
                 rep.invalid_indices++;
+                continue;
+            }
+            const Vertex& v0 = original_vertices[idx0];
+            const Vertex& v1 = original_vertices[idx1];
+            const Vertex& v2 = original_vertices[idx2];
+            CanonicalTriangle ct = make_canonical_triangle(v0, v1, v2);
+            rep.orig_surface_area += ct.area;
+            orig_canon.push_back(ct);
+        }
+
+        // Reconstroi triangulos canonicos do LOD 0 a partir dos clusters
+        std::vector<CanonicalTriangle> lod0_canon;
+        lod0_canon.reserve(rep.lod0_triangle_count);
+        uint32_t c_start = lods[0].cluster_offset;
+        uint32_t c_end = c_start + lods[0].cluster_count;
+        for (uint32_t ci = c_start; ci < c_end && ci < descs.size(); ++ci) {
+            const auto& c = descs[ci];
+            for (uint32_t t = 0; t < c.triangle_count; ++t) {
+                uint32_t tri_base = c.triangle_offset + t * 3;
+                uint8_t i0 = packed_tris[tri_base + 0];
+                uint8_t i1 = packed_tris[tri_base + 1];
+                uint8_t i2 = packed_tris[tri_base + 2];
+                const Vertex& v0 = packed_verts[c.vertex_offset + i0];
+                const Vertex& v1 = packed_verts[c.vertex_offset + i1];
+                const Vertex& v2 = packed_verts[c.vertex_offset + i2];
+                CanonicalTriangle ct = make_canonical_triangle(v0, v1, v2);
+                rep.lod0_surface_area += ct.area;
+                lod0_canon.push_back(ct);
             }
         }
-    }
 
-    bool lod0_lossless = true;
-    if (!lods.empty() && !original_indices.empty()) {
-        lod0_lossless = (lods[0].triangle_count == (original_indices.size() / 3));
-        if (!lod0_lossless) {
-            std::cerr << "ERRO: LOD 0 (" << lods[0].triangle_count << " tris) difere do modelo original (" << (original_indices.size() / 3) << " tris)!\n";
+        // Ordena ambas as colecoes canonicas para comparacao 1:1
+        std::sort(orig_canon.begin(), orig_canon.end());
+        std::sort(lod0_canon.begin(), lod0_canon.end());
+
+        if (orig_canon.size() != lod0_canon.size()) {
+            std::cerr << "ERRO: Contagem de triangulos canonicos difere: Original=" << orig_canon.size() << " vs LOD0=" << lod0_canon.size() << "!\n";
+            rep.unmatched_triangles += static_cast<uint32_t>(std::abs((int)orig_canon.size() - (int)lod0_canon.size()));
+        }
+
+        size_t compare_count = std::min(orig_canon.size(), lod0_canon.size());
+        for (size_t i = 0; i < compare_count; ++i) {
+            const auto& ot = orig_canon[i];
+            const auto& lt = lod0_canon[i];
+
+            bool match = true;
+            for (int k = 0; k < 3; ++k) {
+                float dpx = std::abs(ot.v[k].px - lt.v[k].px);
+                float dpy = std::abs(ot.v[k].py - lt.v[k].py);
+                float dpz = std::abs(ot.v[k].pz - lt.v[k].pz);
+                float pos_diff = std::max({dpx, dpy, dpz});
+                rep.max_vertex_pos_diff = std::max(rep.max_vertex_pos_diff, pos_diff);
+
+                float dnx = std::abs(ot.v[k].nx - lt.v[k].nx);
+                float dny = std::abs(ot.v[k].ny - lt.v[k].ny);
+                float dnz = std::abs(ot.v[k].nz - lt.v[k].nz);
+                float norm_diff = std::max({dnx, dny, dnz});
+                rep.max_normal_diff = std::max(rep.max_normal_diff, norm_diff);
+
+                float du = std::abs(ot.v[k].u - lt.v[k].u);
+                float dv = std::abs(ot.v[k].v - lt.v[k].v);
+                float uv_diff = std::max(du, dv);
+                rep.max_uv_diff = std::max(rep.max_uv_diff, uv_diff);
+
+                if (pos_diff > 1e-4f || norm_diff > 0.05f || uv_diff > 1e-3f) {
+                    match = false;
+                }
+            }
+            if (!match) {
+                rep.unmatched_triangles++;
+            }
+        }
+
+        float rel_area_diff = std::abs(rep.orig_surface_area - rep.lod0_surface_area) / std::max(1e-6f, rep.orig_surface_area);
+        rep.lod0_lossless_validated = (rep.unmatched_triangles == 0 && 
+                                       orig_canon.size() == lod0_canon.size() && 
+                                       rel_area_diff < 1e-4f);
+
+        if (!rep.lod0_lossless_validated) {
+            std::cerr << "ERRO: Validacao geometrica de LOD 0 falhou! "
+                      << rep.unmatched_triangles << " triangulos divergentes, diferenca de area: " << (rel_area_diff * 100.0f) << "%\n";
         }
     }
 
@@ -567,7 +771,7 @@ VerificationReport verify_deep_vgmesh(
                   rep.invalid_uvs == 0 && 
                   rep.invalid_dag_links == 0 && 
                   rep.degenerate_triangles == 0 && 
-                  lod0_lossless && 
+                  (original_indices.empty() || rep.lod0_lossless_validated) && 
                   rep.total_triangles_checked > 0);
 
     return rep;
@@ -842,9 +1046,17 @@ int main(int argc, char** argv) {
         std::cout << "  Erro metrico maximo      : " << rep.max_metric_error << "\n";
         std::cout << "  Tempo de verificacao     : " << rep.elapsed_ms << " ms\n";
         std::cout << "  Consumo de memoria pico  : " << rep.peak_memory_mb << " MB\n";
+        std::cout << "  ------------------------------------------------------------\n";
+        std::cout << "  LOD 0 Lossless Validado  : " << (rep.lod0_lossless_validated ? "SIM (LOD0 LOSSLESS VALIDADO)" : "NAO (FALHA)") << "\n";
+        std::cout << "  Triangulos Orig / LOD 0  : " << rep.orig_triangle_count << " / " << rep.lod0_triangle_count << "\n";
+        std::cout << "  Area Superficie Orig/LOD0: " << rep.orig_surface_area << " / " << rep.lod0_surface_area << "\n";
+        std::cout << "  Max Dif Posicao Vertices : " << rep.max_vertex_pos_diff << "\n";
+        std::cout << "  Max Dif Normais de Vert  : " << rep.max_normal_diff << "\n";
+        std::cout << "  Max Dif Coordenadas UV   : " << rep.max_uv_diff << "\n";
+        std::cout << "  Triangulos Nao-Mapeados  : " << rep.unmatched_triangles << "\n";
 
         if (rep.passed) {
-            std::cout << "\n✅ VERIFICACAO COMPLETA APROVADA: Geometria integra, clusters consistentes e sem fendas!\n";
+            std::cout << "\n✅ VERIFICACAO COMPLETA APROVADA: Geometria integra, LOD 0 Lossless e sem fendas!\n";
         } else {
             std::cerr << "\n❌ FALHA NA VERIFICACAO DE INTEGRIDADE!\n";
             return 4;

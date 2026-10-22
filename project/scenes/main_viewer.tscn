@@ -119,7 +119,12 @@ text = "LOD Dinamico por Distancia"
 [node name="GPUPipelineCheck" type="CheckBox" parent="UI/Panel/VBox"]
 layout_mode = 2
 button_pressed = true
-text = "Pipeline GPU Real (Vulkan)"
+text = "GPU Indireto (Principal Vulkan)"
+
+[node name="MultiMeshCheck" type="CheckBox" parent="UI/Panel/VBox"]
+layout_mode = 2
+button_pressed = false
+text = "MultiMesh Fallback (Diagnóstico)"
 
 [node name="AutoOrbitCheck" type="CheckBox" parent="UI/Panel/VBox"]
 layout_mode = 2

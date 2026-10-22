@@ -86,7 +86,11 @@ func setup_native_pipeline() -> void:
 			world_env.compositor = Compositor.new()
 		compositor_effect = ArboriaCompositorEffect.new()
 		compositor_effect.active = true
-		world_env.compositor.compositor_effects.append(compositor_effect)
+		var effs = world_env.compositor.compositor_effects.duplicate()
+		effs.append(compositor_effect)
+		world_env.compositor.compositor_effects = effs
+		if orbit_cam and orbit_cam.has_node("Camera3D"):
+			orbit_cam.get_node("Camera3D").compositor = world_env.compositor
 
 	# Pipeline legado disponível sob demanda como fallback
 	gpu_pipeline = VGGPUPipeline.new()

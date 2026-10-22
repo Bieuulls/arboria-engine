@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://inv_dag_live"]
+
+[ext_resource type="Script" path="res://scripts/investigate_dag_live.gd" id="1_inv"]
+
+[node name="InvestigateDAGLive" type="Node3D"]
+script = ExtResource("1_inv")

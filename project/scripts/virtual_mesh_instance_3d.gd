@@ -54,6 +54,32 @@ signal transform_updated()
 		specular = value
 		notify_pipeline_update()
 
+@export_group("Texturas PBR Externas")
+@export var albedo_texture: Texture2D:
+	set(value):
+		albedo_texture = value
+		notify_pipeline_update()
+
+@export var normal_texture: Texture2D:
+	set(value):
+		normal_texture = value
+		notify_pipeline_update()
+
+@export var orm_texture: Texture2D:
+	set(value):
+		orm_texture = value
+		notify_pipeline_update()
+
+@export var uv_scale: Vector2 = Vector2.ONE:
+	set(value):
+		uv_scale = value
+		notify_pipeline_update()
+
+@export var normal_scale: float = 1.0:
+	set(value):
+		normal_scale = value
+		notify_pipeline_update()
+
 var _pipeline: RefCounted = null
 var _aabb: AABB = AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2))
 var _mesh_data: Dictionary = {}
