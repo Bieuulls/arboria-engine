@@ -1,5 +1,5 @@
 extends RefCounted
-class_name VGMeshLoader
+class_name ArboriaMeshLoader
 
 # Carrega e decodifica arquivo binario .vgmesh gerado pelo Baker C++
 static func load_from_file(file_path: String) -> Dictionary:

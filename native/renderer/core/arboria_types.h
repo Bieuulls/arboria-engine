@@ -1,5 +1,5 @@
-#ifndef VG_TYPES_H
-#define VG_TYPES_H
+#ifndef ARBORIA_TYPES_H
+#define ARBORIA_TYPES_H
 
 #include <cstdint>
 #include <cstddef>

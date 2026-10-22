@@ -1,5 +1,5 @@
 @tool
-class_name VirtualMeshInstance3D
+class_name ArboriaInstance3D
 extends VisualInstance3D
 
 ## Instância de Geometria Virtualizada ARBORIA ENGINE

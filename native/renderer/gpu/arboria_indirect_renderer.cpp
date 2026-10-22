@@ -1,4 +1,4 @@
-#include "vg_indirect_renderer.h"
+#include "arboria_indirect_renderer.h"
 
 namespace Arboria {
 

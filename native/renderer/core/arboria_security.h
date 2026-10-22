@@ -1,7 +1,7 @@
 #ifndef VG_SECURITY_H
 #define VG_SECURITY_H
 
-#include "vg_types.h"
+#include "arboria_types.h"
 #include <cstdint>
 #include <string>
 

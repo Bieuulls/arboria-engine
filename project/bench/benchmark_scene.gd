@@ -3,9 +3,9 @@ extends Node3D
 ## ARBORIA ENGINE — OFFICIAL BENCHMARK RUNNER
 ## Medição padronizada, determinística e rigorosa de desempenho de geometria.
 
-const VirtualMeshInstance3D = preload("res://scripts/virtual_mesh_instance_3d.gd")
+const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
-const VGMeshLoader = preload("res://scripts/vgmesh_loader.gd")
+const ArboriaMeshLoader = preload("res://scripts/arboria_mesh_loader.gd")
 
 @onready var world_env: WorldEnvironment = $WorldEnvironment
 @onready var sun_light: DirectionalLight3D = $DirectionalLight3D
@@ -56,7 +56,7 @@ func _ready() -> void:
 	print("================================================================")
 
 	# 2. Carrega dados da malha
-	vg_data = VGMeshLoader.load_from_file(mesh_path_vg)
+	vg_data = ArboriaMeshLoader.load_from_file(mesh_path_vg)
 	if vg_data.is_empty():
 		push_error("[FALHA] Nao foi possivel carregar: " + mesh_path_vg)
 		get_tree().quit(2)
@@ -147,7 +147,7 @@ func _generate_deterministic_transforms(count: int) -> Array[Transform3D]:
 
 func _setup_variant_mesh_instance(transforms: Array[Transform3D]) -> void:
 	print("[Variante A: MeshInstance3D] Construindo malha ArrayMesh LOD 0...")
-	base_array_mesh = VGMeshLoader.build_mesh_surface(vg_data, 0, false, -1)
+	base_array_mesh = ArboriaMeshLoader.build_mesh_surface(vg_data, 0, false, -1)
 	if not base_array_mesh:
 		push_error("[FALHA] Falha ao construir ArrayMesh a partir do .vgmesh!")
 		get_tree().quit(4)
@@ -162,7 +162,7 @@ func _setup_variant_mesh_instance(transforms: Array[Transform3D]) -> void:
 
 func _setup_variant_multimesh(transforms: Array[Transform3D]) -> void:
 	print("[Variante B: MultiMeshInstance3D] Construindo buffer de instâncias MultiMesh...")
-	base_array_mesh = VGMeshLoader.build_mesh_surface(vg_data, 0, false, -1)
+	base_array_mesh = ArboriaMeshLoader.build_mesh_surface(vg_data, 0, false, -1)
 	if not base_array_mesh:
 		push_error("[FALHA] Falha ao construir ArrayMesh a partir do .vgmesh!")
 		get_tree().quit(4)
@@ -195,7 +195,7 @@ func _setup_variant_arboria(transforms: Array[Transform3D]) -> void:
 	camera.compositor = comp
 
 	for i in range(transforms.size()):
-		var vmi = VirtualMeshInstance3D.new()
+		var vmi = ArboriaInstance3D.new()
 		vmi.mesh_path = mesh_path_vg
 		vmi.lod_mode = 0 # DAG dinâmico
 		vmi.max_screen_error = 1.5

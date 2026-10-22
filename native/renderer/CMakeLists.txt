@@ -5,27 +5,27 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(ARBORIA_SOURCES
-    core/vg_mesh_resource.cpp
-    core/vg_runtime.cpp
-    core/vg_security.cpp
-    gpu/vg_buffer_manager.cpp
-    gpu/vg_compute_dispatch.cpp
-    gpu/vg_indirect_renderer.cpp
-    integration/vg_scene_bridge.cpp
-    integration/vg_render_pass.cpp
-    integration/vg_gdextension.cpp
+    core/arboria_mesh_resource.cpp
+    core/arboria_runtime.cpp
+    core/arboria_security.cpp
+    gpu/arboria_buffer_manager.cpp
+    gpu/arboria_compute_dispatch.cpp
+    gpu/arboria_indirect_renderer.cpp
+    integration/arboria_scene_bridge.cpp
+    integration/arboria_render_pass.cpp
+    integration/arboria_gdextension.cpp
 )
 
 set(ARBORIA_HEADERS
-    core/vg_types.h
-    core/vg_mesh_resource.h
-    core/vg_runtime.h
-    core/vg_security.h
-    gpu/vg_buffer_manager.h
-    gpu/vg_compute_dispatch.h
-    gpu/vg_indirect_renderer.h
-    integration/vg_scene_bridge.h
-    integration/vg_render_pass.h
+    core/arboria_types.h
+    core/arboria_mesh_resource.h
+    core/arboria_runtime.h
+    core/arboria_security.h
+    gpu/arboria_buffer_manager.h
+    gpu/arboria_compute_dispatch.h
+    gpu/arboria_indirect_renderer.h
+    integration/arboria_scene_bridge.h
+    integration/arboria_render_pass.h
 )
 
 # Compilar Shared Library (DLL)

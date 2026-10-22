@@ -1,4 +1,4 @@
-#include "vg_scene_bridge.h"
+#include "arboria_scene_bridge.h"
 #include <cstring>
 
 namespace Arboria {

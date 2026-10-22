@@ -1,8 +1,8 @@
 #ifndef VG_BUFFER_MANAGER_H
 #define VG_BUFFER_MANAGER_H
 
-#include "../core/vg_types.h"
-#include "../core/vg_mesh_resource.h"
+#include "../core/arboria_types.h"
+#include "../core/arboria_mesh_resource.h"
 #include <cstdint>
 #include <vector>
 #include <memory>

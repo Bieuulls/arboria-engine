@@ -2,7 +2,7 @@ extends Node3D
 
 const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
 const ArboriaCompositorEffect = preload("res://scripts/arboria_compositor_effect.gd")
-const VirtualMeshInstance3D = preload("res://scripts/virtual_mesh_instance_3d.gd")
+const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 
 var frame_count: int = 0
 var demo_scene: Node = null

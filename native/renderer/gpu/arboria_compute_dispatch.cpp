@@ -1,4 +1,4 @@
-#include "vg_compute_dispatch.h"
+#include "arboria_compute_dispatch.h"
 #include <cmath>
 #include <cstring>
 #include <algorithm>

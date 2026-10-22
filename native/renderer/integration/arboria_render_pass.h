@@ -1,7 +1,7 @@
 #ifndef VG_RENDER_PASS_H
 #define VG_RENDER_PASS_H
 
-#include "../core/vg_types.h"
+#include "../core/arboria_types.h"
 #include <cstdint>
 
 namespace Arboria {

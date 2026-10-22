@@ -46,8 +46,8 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo [4/4] Verificando Artefatos Gerados...
-if not exist "bin\vg_baker_cli.exe" (
-    echo [ERRO] bin\vg_baker_cli.exe nao foi gerado!
+if not exist "bin\arboria_baker_cli.exe" if not exist "bin\vg_baker_cli.exe" (
+    echo [ERRO] bin\arboria_baker_cli.exe nao foi gerado!
     exit /b 1
 )
 if not exist "project\bin\libarboria_native.dll" (

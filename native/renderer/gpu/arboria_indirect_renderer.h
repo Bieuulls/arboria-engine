@@ -1,8 +1,8 @@
 #ifndef VG_INDIRECT_RENDERER_H
 #define VG_INDIRECT_RENDERER_H
 
-#include "../core/vg_types.h"
-#include "vg_gpu_driver.h"
+#include "../core/arboria_types.h"
+#include "arboria_gpu_driver.h"
 #include <cstdint>
 
 namespace Arboria {

@@ -22,7 +22,7 @@ echo "[3/4] Executando Testes Unitarios C++ (CTest)..."
 ctest --test-dir native/renderer/build --output-on-failure
 
 echo "[4/4] Verificando Artefatos Gerados..."
-if [ ! -f "bin/vg_baker_cli" ] && [ ! -f "bin/vg_baker_cli.exe" ]; then
+if [ ! -f "bin/arboria_baker_cli" ] && [ ! -f "bin/arboria_baker_cli.exe" ] && [ ! -f "bin/vg_baker_cli" ] && [ ! -f "bin/vg_baker_cli.exe" ]; then
     echo "[ERRO] Executavel do Baker nao foi gerado!"
     exit 1
 fi

@@ -1,7 +1,7 @@
-#include "../core/vg_types.h"
-#include "../core/vg_runtime.h"
-#include "../core/vg_security.h"
-#include "vg_scene_bridge.h"
+#include "../core/arboria_types.h"
+#include "../core/arboria_runtime.h"
+#include "../core/arboria_security.h"
+#include "arboria_scene_bridge.h"
 #include "../core/gdextension_interface.h"
 #include <iostream>
 #include <vector>

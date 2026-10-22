@@ -11,15 +11,22 @@ include_directories(
 
 file(GLOB MESHMESH_SRC "thirdparty/meshoptimizer/*.cpp")
 
-add_executable(vg_baker_cli
-    src/vg_baker_main.cpp
+add_executable(arboria_baker_cli
+    src/arboria_baker_main.cpp
     ${MESHMESH_SRC}
 )
 
 if (WIN32)
-    target_link_libraries(vg_baker_cli PRIVATE psapi)
+    target_link_libraries(arboria_baker_cli PRIVATE psapi)
 endif()
 
-set_target_properties(vg_baker_cli PROPERTIES
+set_target_properties(arboria_baker_cli PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../bin"
+)
+
+# Compatibilidade: gera cópia vg_baker_cli no diretório bin para scripts existentes
+add_custom_command(TARGET arboria_baker_cli POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:arboria_baker_cli>
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../bin/vg_baker_cli$<TARGET_FILE_SUFFIX:arboria_baker_cli>"
 )

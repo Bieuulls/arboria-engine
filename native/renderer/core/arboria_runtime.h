@@ -1,11 +1,11 @@
 #ifndef VG_RUNTIME_H
 #define VG_RUNTIME_H
 
-#include "vg_types.h"
-#include "vg_mesh_resource.h"
-#include "../gpu/vg_buffer_manager.h"
-#include "../gpu/vg_compute_dispatch.h"
-#include "../gpu/vg_indirect_renderer.h"
+#include "arboria_types.h"
+#include "arboria_mesh_resource.h"
+#include "../gpu/arboria_buffer_manager.h"
+#include "../gpu/arboria_compute_dispatch.h"
+#include "../gpu/arboria_indirect_renderer.h"
 
 #include <unordered_map>
 #include <memory>

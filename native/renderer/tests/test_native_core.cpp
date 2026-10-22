@@ -1,11 +1,11 @@
-#include "../core/vg_types.h"
-#include "../core/vg_mesh_resource.h"
-#include "../core/vg_runtime.h"
-#include "../gpu/vg_buffer_manager.h"
-#include "../gpu/vg_compute_dispatch.h"
-#include "../gpu/vg_indirect_renderer.h"
-#include "../integration/vg_scene_bridge.h"
-#include "../integration/vg_render_pass.h"
+#include "../core/arboria_types.h"
+#include "../core/arboria_mesh_resource.h"
+#include "../core/arboria_runtime.h"
+#include "../gpu/arboria_buffer_manager.h"
+#include "../gpu/arboria_compute_dispatch.h"
+#include "../gpu/arboria_indirect_renderer.h"
+#include "../integration/arboria_scene_bridge.h"
+#include "../integration/arboria_render_pass.h"
 
 #include <iostream>
 #include <cassert>

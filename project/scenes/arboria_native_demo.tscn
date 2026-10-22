@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3 uid="uid://c8b7y4f3q7w01"]
 
 [ext_resource type="Script" path="res://scripts/arboria_native_demo.gd" id="1_demo"]
-[ext_resource type="Script" path="res://scripts/virtual_mesh_instance_3d.gd" id="2_vmesh"]
+[ext_resource type="Script" path="res://scripts/arboria_instance_3d.gd" id="2_vmesh"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1

@@ -1,7 +1,7 @@
 #ifndef VG_GPU_DRIVER_H
 #define VG_GPU_DRIVER_H
 
-#include "../core/vg_types.h"
+#include "../core/arboria_types.h"
 #include "../core/gdextension_interface.h"
 
 namespace Arboria {

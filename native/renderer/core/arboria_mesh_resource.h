@@ -1,7 +1,7 @@
 #ifndef VG_MESH_RESOURCE_H
 #define VG_MESH_RESOURCE_H
 
-#include "vg_types.h"
+#include "arboria_types.h"
 #include <string>
 #include <vector>
 #include <memory>

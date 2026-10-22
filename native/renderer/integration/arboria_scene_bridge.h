@@ -1,7 +1,7 @@
 #ifndef VG_SCENE_BRIDGE_H
 #define VG_SCENE_BRIDGE_H
 
-#include "../core/vg_types.h"
+#include "../core/arboria_types.h"
 #include <cstdint>
 #include <string>
 #include <vector>

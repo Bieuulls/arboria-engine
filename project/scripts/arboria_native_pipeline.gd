@@ -5,7 +5,7 @@ extends RefCounted
 ## Pipeline Vulkan com separação estrita de Compute/Raster, sincronização de buffers indiretos,
 ## suporte multi-instâncias isoladas em VRAM, eliminação de transformação duplicada e Reversed-Z Depth.
 
-const VGMeshLoader = preload("res://scripts/vgmesh_loader.gd")
+const ArboriaMeshLoader = preload("res://scripts/arboria_mesh_loader.gd")
 
 static var _shared_instance = null
 
@@ -299,7 +299,7 @@ func get_or_load_mesh(path: String) -> Dictionary:
 			"triangles": cached.total_triangles
 		}
 
-	var data = VGMeshLoader.load_from_file(path)
+	var data = ArboriaMeshLoader.load_from_file(path)
 	if data.is_empty():
 		push_error("[ArboriaNativePipeline] Falha ao carregar malha: " + path)
 		return {}

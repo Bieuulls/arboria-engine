@@ -6,10 +6,10 @@ extends Node3D
 
 const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
 const ArboriaCompositorEffect = preload("res://scripts/arboria_compositor_effect.gd")
-const VirtualMeshInstance3D = preload("res://scripts/virtual_mesh_instance_3d.gd")
+const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 
-@onready var rock_instance_1: VirtualMeshInstance3D = $VirtualMesh_Rock1
-@onready var rock_instance_2: VirtualMeshInstance3D = $VirtualMesh_Rock2
+@onready var rock_instance_1: ArboriaInstance3D = $VirtualMesh_Rock1
+@onready var rock_instance_2: ArboriaInstance3D = $VirtualMesh_Rock2
 @onready var standard_cube: MeshInstance3D = $GodotStandardCube
 @onready var camera: Camera3D = $OrbitCamera
 @onready var dir_light: DirectionalLight3D = $DirectionalLight3D

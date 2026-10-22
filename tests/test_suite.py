@@ -8,6 +8,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(CURRENT_DIR)
 baker_candidates = [
+    os.path.join(REPO_ROOT, "bin", "arboria_baker_cli.exe"),
+    os.path.join(REPO_ROOT, "bin", "arboria_baker_cli"),
     os.path.join(REPO_ROOT, "bin", "vg_baker_cli.exe"),
     os.path.join(REPO_ROOT, "bin", "vg_baker_cli"),
 ]

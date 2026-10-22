@@ -5,7 +5,7 @@ extends Node3D
 ## Demonstração de estresse com dezenas de instâncias de malhas virtuais Nanite DAG,
 ## materiais PBR Cook-Torrance GGX com micro-relevo mineral e culling GPU em tempo real.
 
-const VirtualMeshInstance3D = preload("res://scripts/virtual_mesh_instance_3d.gd")
+const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
 
 @onready var world_env: WorldEnvironment = $WorldEnvironment
@@ -27,7 +27,7 @@ const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd"
 var pipeline: RefCounted = null
 var total_instances_count: int = 80
 var raw_mesh_triangles: int = 15800
-var active_rocks: Array[VirtualMeshInstance3D] = []
+var active_rocks: Array[ArboriaInstance3D] = []
 
 # Cores minerais realistas
 var rock_palettes = [
@@ -93,7 +93,7 @@ func _spawn_rock_valley() -> void:
 
 	# Gera formação mista de floresta e cânion com 80 instâncias
 	for i in range(total_instances_count):
-		var rock = VirtualMeshInstance3D.new()
+		var rock = ArboriaInstance3D.new()
 		var mesh_choice = available_meshes[i % available_meshes.size()]
 		rock.name = "Entity_%03d" % i
 		rock.mesh_path = mesh_choice

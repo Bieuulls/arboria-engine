@@ -1,4 +1,4 @@
-#include "vg_mesh_resource.h"
+#include "arboria_mesh_resource.h"
 #include <fstream>
 #include <cstring>
 #include <cmath>

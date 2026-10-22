@@ -1,11 +1,11 @@
 extends Node3D
 
-const VGMeshLoader = preload("res://scripts/vgmesh_loader.gd")
+const ArboriaMeshLoader = preload("res://scripts/arboria_mesh_loader.gd")
 const OrbitCamera = preload("res://scripts/orbit_camera.gd")
 const VGGPUPipeline = preload("res://scripts/vg_gpu_pipeline.gd")
 const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
 const ArboriaCompositorEffect = preload("res://scripts/arboria_compositor_effect.gd")
-const VirtualMeshInstance3D = preload("res://scripts/virtual_mesh_instance_3d.gd")
+const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 
 # Referencias aos nos
 @onready var orbit_cam: Node3D = $CameraPivot
@@ -42,7 +42,7 @@ const VirtualMeshInstance3D = preload("res://scripts/virtual_mesh_instance_3d.gd
 
 # Novo Pipeline Nativo V7 Forward+ e Instancia de Geometria Virtual
 var native_pipeline: ArboriaNativePipeline
-var native_instance: VirtualMeshInstance3D
+var native_instance: ArboriaInstance3D
 var compositor_effect: ArboriaCompositorEffect
 
 # Pipeline Legado (Fallback de Diagnóstico)
@@ -76,7 +76,7 @@ func setup_native_pipeline() -> void:
 	native_pipeline = ArboriaNativePipeline.get_or_create_shared()
 
 	# Cria a instancia de geometria virtualizada na cena
-	native_instance = VirtualMeshInstance3D.new()
+	native_instance = ArboriaInstance3D.new()
 	native_instance.name = "NativeVirtualMeshInstance"
 	add_child(native_instance)
 
@@ -173,7 +173,7 @@ func load_selected_model(index: int) -> void:
 
 	current_vg_path = vg_file
 	print("Carregando .vgmesh no Renderizador Nativo Forward+: ", vg_file)
-	current_vg_data = VGMeshLoader.load_from_file(vg_file)
+	current_vg_data = ArboriaMeshLoader.load_from_file(vg_file)
 	if current_vg_data.is_empty():
 		push_error("Erro ao carregar dados do .vgmesh!")
 		return
@@ -205,7 +205,7 @@ func load_selected_model(index: int) -> void:
 	orbit_cam.update_camera_transform()
 
 	# Carrega modelo original OBJ para comparacao side-by-side se disponivel
-	var orig_mesh = VGMeshLoader.load_original_obj(obj_file)
+	var orig_mesh = ArboriaMeshLoader.load_original_obj(obj_file)
 	if orig_mesh:
 		original_instance.mesh = orig_mesh
 		original_instance.material_override = material_orig
@@ -265,13 +265,13 @@ func refresh_mesh() -> void:
 		if gpu_pipeline:
 			gpu_pipeline.disable_multimesh_fallback()
 		model_instance.visible = true
-		var mesh = VGMeshLoader.build_mesh_surface(current_vg_data, current_lod, color_clusters, isolate)
+		var mesh = ArboriaMeshLoader.build_mesh_surface(current_vg_data, current_lod, color_clusters, isolate)
 		if mesh:
 			model_instance.mesh = mesh
 			model_instance.material_override = material_cluster if color_clusters else material_lit
 
 	if wireframe_check.button_pressed:
-		var wire_mesh = VGMeshLoader.build_wireframe_mesh(current_vg_data, current_lod, isolate)
+		var wire_mesh = ArboriaMeshLoader.build_wireframe_mesh(current_vg_data, current_lod, isolate)
 		wireframe_instance.mesh = wire_mesh
 		wireframe_instance.material_override = material_wire
 		wireframe_instance.visible = true

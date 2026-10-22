@@ -1,4 +1,4 @@
-#include "vg_runtime.h"
+#include "arboria_runtime.h"
 #include <iostream>
 #include <cstring>
 

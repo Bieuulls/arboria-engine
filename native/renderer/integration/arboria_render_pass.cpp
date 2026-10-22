@@ -1,4 +1,4 @@
-#include "vg_render_pass.h"
+#include "arboria_render_pass.h"
 #include <cmath>
 
 namespace Arboria {
