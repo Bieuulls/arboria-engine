@@ -1,0 +1,65 @@
+{
+  "benchmark_name": "ARBORIA ENGINE - Professional Benchmark Suite",
+  "version": "1.0.0",
+  "environment": {
+    "target_resolution": [1920, 1080],
+    "renderer": "Forward+",
+    "api": "Vulkan",
+    "vsync": false,
+    "uncapped_fps": true
+  },
+  "execution": {
+    "warmup_frames": 300,
+    "measured_frames": 1000,
+    "capture_frame": 290,
+    "seed": 42
+  },
+  "camera": {
+    "orbit_radius_small": 25.0,
+    "orbit_radius_large": 65.0,
+    "orbit_height": 14.0,
+    "orbit_speed": 0.004,
+    "fov": 65.0
+  },
+  "scenarios": [
+    {
+      "id": "dense_rock",
+      "name": "Malha A: Dense Rock (~15.8k tris)",
+      "mesh_path_vg": "res://assets/dense_rock_test.vgmesh",
+      "mesh_path_obj": "res://assets/dense_rock_test.obj",
+      "triangles_lod0": 15800,
+      "instances": [1, 80, 500, 2000]
+    },
+    {
+      "id": "procedural_1m",
+      "name": "Malha B: Procedural 1M (~1.0M tris)",
+      "mesh_path_vg": "res://assets/procedural_1m.vgmesh",
+      "mesh_path_obj": "res://assets/procedural_1m.obj",
+      "triangles_lod0": 1002528,
+      "instances": [1, 80, 500, 2000]
+    }
+  ],
+  "variants": [
+    {
+      "id": "mesh_instance",
+      "name": "Godot MeshInstance3D (LOD0)",
+      "description": "Instancias individuais nativas de MeshInstance3D do Godot"
+    },
+    {
+      "id": "multimesh",
+      "name": "Godot MultiMeshInstance3D (LOD0)",
+      "description": "MultiMeshInstance3D em lote nativo de GPU usando LOD0"
+    },
+    {
+      "id": "arboria",
+      "name": "ARBORIA Native Virtual Geometry",
+      "description": "Pipeline nativo C++ de geometria virtualizada com Nanite DAG e culling GPU"
+    }
+  ],
+  "go_decision_criteria": {
+    "frame_time_p95_ratio_threshold": 0.67,
+    "vram_ratio_threshold": 0.67,
+    "min_large_combinations": 2,
+    "large_instance_threshold": 80
+  }
+}
