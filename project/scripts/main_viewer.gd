@@ -2,7 +2,6 @@ extends Node3D
 
 const ArboriaMeshLoader = preload("res://scripts/arboria_mesh_loader.gd")
 const OrbitCamera = preload("res://scripts/orbit_camera.gd")
-const VGGPUPipeline = preload("res://scripts/vg_gpu_pipeline.gd")
 const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
 const ArboriaCompositorEffect = preload("res://scripts/arboria_compositor_effect.gd")
 const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
@@ -46,7 +45,7 @@ var native_instance: ArboriaInstance3D
 var compositor_effect: ArboriaCompositorEffect
 
 # Pipeline Legado (Fallback de Diagnóstico)
-var gpu_pipeline: VGGPUPipeline
+var gpu_pipeline: RefCounted = null
 var current_vg_data: Dictionary = {}
 var current_lod: int = 0
 var current_model_name: String = ""
@@ -92,15 +91,15 @@ func setup_native_pipeline() -> void:
 		if orbit_cam and orbit_cam.has_node("Camera3D"):
 			orbit_cam.get_node("Camera3D").compositor = world_env.compositor
 
-	# Pipeline legado disponível sob demanda como fallback
-	gpu_pipeline = VGGPUPipeline.new()
-
 func _exit_tree() -> void:
 	if native_instance and native_instance.is_inside_tree():
 		native_instance.queue_free()
+	if world_env and world_env.compositor:
+		world_env.compositor.compositor_effects.clear()
+	compositor_effect = null
 	if native_pipeline:
 		native_pipeline.cleanup()
-	if gpu_pipeline:
+	if gpu_pipeline and gpu_pipeline.has_method("destroy"):
 		gpu_pipeline.destroy()
 
 func setup_materials() -> void:

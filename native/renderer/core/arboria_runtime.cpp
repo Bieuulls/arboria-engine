@@ -26,9 +26,31 @@ bool VGRuntime::initialize() {
 
 void VGRuntime::shutdown() {
     if (!m_initialized) return;
+    m_mesh_pool.clear();
     m_meshes.clear();
     m_initialized = false;
     std::cout << "[VGRuntime] Arboria Engine Native Runtime finalizado." << std::endl;
+}
+
+Handle VGRuntime::register_mesh_handle(const std::string& filepath) {
+    if (!m_initialized) initialize();
+
+    auto mesh = std::make_shared<VGMeshResource>();
+    if (!mesh->load_from_file(filepath)) {
+        return Handle{};
+    }
+
+    return m_mesh_pool.allocate(mesh);
+}
+
+bool VGRuntime::unregister_mesh_handle(Handle handle) {
+    return m_mesh_pool.release(handle);
+}
+
+std::shared_ptr<VGMeshResource> VGRuntime::get_mesh_by_handle(Handle handle) {
+    auto ptr = m_mesh_pool.get(handle);
+    if (ptr) return *ptr;
+    return nullptr;
 }
 
 int32_t VGRuntime::register_mesh(const std::string& filepath) {

@@ -348,6 +348,10 @@ func _upload_mesh_to_gpu(path: String, data: Dictionary) -> MeshGPUResource:
 	res.bbox_max = data.get("bbox_max", Vector3(1, 1, 1))
 	res.groups_x = int(ceil(float(res.total_clusters) / 64.0))
 
+	if not rd:
+		res.is_valid = true
+		return res
+
 	# 1. InClusters (96 bytes por cluster)
 	var c_bytes = PackedByteArray()
 	c_bytes.resize(res.total_clusters * 96)
@@ -441,12 +445,15 @@ func _upload_mesh_to_gpu(path: String, data: Dictionary) -> MeshGPUResource:
 		t_bytes[ti] = triangles[ti]
 	res.in_triangles_buf = rd.storage_buffer_create(t_bytes.size(), t_bytes)
 
-	# Registro e validacao ativa no VGRuntime C++
-	if native_core and native_core.has_method("load_mesh"):
+	# Registro e validacao ativa no VGRuntime C++ (API Tipada Etapa 1)
+	if native_core:
 		var global_path = ProjectSettings.globalize_path(path)
-		res.c_mesh_id = native_core.load_mesh(global_path)
+		if native_core.has_method("register_mesh"):
+			res.c_mesh_id = native_core.register_mesh(global_path)
+		elif native_core.has_method("load_mesh"):
+			res.c_mesh_id = native_core.load_mesh(global_path)
 		var c_clusters = native_core.get_mesh_clusters_count(res.c_mesh_id)
-		print("[ArboriaNativePipeline C++] Malha registrada no VGRuntime: ID %d, Clusters: %d" % [res.c_mesh_id, c_clusters])
+		print("[ArboriaNativePipeline C++] Malha registrada no VGRuntime: Handle/ID %d, Clusters: %d" % [res.c_mesh_id, c_clusters])
 
 	res.is_valid = true
 	print("[ArboriaNativePipeline] Upload GPU concluido: ", path, " (", res.total_clusters, " clusters, ", (c_bytes.size() + raw_v_bytes.size() + t_bytes.size()) / 1024, " KB)")
@@ -465,10 +472,17 @@ func _get_or_create_instance_gpu_data(inst: Node3D, mesh_res: MeshGPUResource) -
 	data.instance_ref = weakref(inst)
 	data.mesh_path = mesh_res.mesh_path
 
-	# Registro ativo no VGSceneBridge C++
-	if native_core and native_core.has_method("scene_create_instance"):
-		data.c_instance_id = native_core.scene_create_instance(mesh_res.c_mesh_id)
-		print("[ArboriaNativePipeline C++] Instancia registrada no VGSceneBridge: ID %d (Malha: %d)" % [data.c_instance_id, mesh_res.c_mesh_id])
+	if not rd:
+		_instance_gpu_map[inst_id] = data
+		return data
+
+	# Registro ativo no VGSceneBridge C++ (Handle Geracional de 64 bits)
+	if native_core:
+		if native_core.has_method("register_instance"):
+			data.c_instance_id = native_core.register_instance(mesh_res.c_mesh_id)
+		elif native_core.has_method("scene_create_instance"):
+			data.c_instance_id = native_core.scene_create_instance(mesh_res.c_mesh_id)
+		print("[ArboriaNativePipeline C++] Instancia registrada no VGSceneBridge: Handle %d (Malha: %d)" % [data.c_instance_id, mesh_res.c_mesh_id])
 
 	# Buffer de saida com clusters visiveis desta instancia
 	data.out_visible_buf = rd.storage_buffer_create(max(4, mesh_res.total_clusters * 4))
@@ -603,9 +617,12 @@ func _get_or_create_instance_gpu_data(inst: Node3D, mesh_res: MeshGPUResource) -
 
 func _free_instance_gpu_data(data: InstanceGPUData) -> void:
 	if not rd: return
-	if native_core and data.c_instance_id > 0 and native_core.has_method("scene_destroy_instance"):
-		native_core.scene_destroy_instance(data.c_instance_id)
-		data.c_instance_id = -1
+	if native_core and data.c_instance_id != 0:
+		if native_core.has_method("release_instance"):
+			native_core.release_instance(data.c_instance_id)
+		elif native_core.has_method("scene_destroy_instance"):
+			native_core.scene_destroy_instance(data.c_instance_id)
+		data.c_instance_id = 0
 	if data.out_visible_buf.is_valid(): rd.free_rid(data.out_visible_buf)
 	if data.counter_buf.is_valid(): rd.free_rid(data.counter_buf)
 	if data.camera_ubo_buf.is_valid(): rd.free_rid(data.camera_ubo_buf)
@@ -932,11 +949,18 @@ func cleanup() -> void:
 
 	for path in _mesh_cache:
 		var res: MeshGPUResource = _mesh_cache[path]
+		if native_core and res.c_mesh_id != 0:
+			if native_core.has_method("unregister_mesh"):
+				native_core.unregister_mesh(res.c_mesh_id)
+			res.c_mesh_id = 0
 		if res.in_clusters_buf.is_valid(): rd.free_rid(res.in_clusters_buf)
 		if res.in_vertices_buf.is_valid(): rd.free_rid(res.in_vertices_buf)
 		if res.in_triangles_buf.is_valid(): rd.free_rid(res.in_triangles_buf)
 		if res.selection_texture_rid.is_valid(): rd.free_rid(res.selection_texture_rid)
 	_mesh_cache.clear()
+
+	if native_core and native_core.has_method("shutdown"):
+		native_core.shutdown()
 
 	if default_white_tex.is_valid():
 		rd.free_rid(default_white_tex)
@@ -973,5 +997,6 @@ func cleanup() -> void:
 		rd.free_rid(raster_shader_rid)
 		raster_shader_rid = RID()
 
+	native_core = null
 	_shared_instance = null
 	is_initialized = false

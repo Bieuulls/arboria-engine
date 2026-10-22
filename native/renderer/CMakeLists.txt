@@ -13,17 +13,20 @@ set(ARBORIA_SOURCES
     gpu/arboria_indirect_renderer.cpp
     integration/arboria_scene_bridge.cpp
     integration/arboria_render_pass.cpp
+    integration/arboria_abi.cpp
     integration/arboria_gdextension.cpp
 )
 
 set(ARBORIA_HEADERS
     core/arboria_types.h
+    core/arboria_handle.h
     core/arboria_mesh_resource.h
     core/arboria_runtime.h
     core/arboria_security.h
     gpu/arboria_buffer_manager.h
     gpu/arboria_compute_dispatch.h
     gpu/arboria_indirect_renderer.h
+    integration/arboria_abi.h
     integration/arboria_scene_bridge.h
     integration/arboria_render_pass.h
 )

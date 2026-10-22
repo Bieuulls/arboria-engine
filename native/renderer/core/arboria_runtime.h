@@ -2,6 +2,7 @@
 #define VG_RUNTIME_H
 
 #include "arboria_types.h"
+#include "arboria_handle.h"
 #include "arboria_mesh_resource.h"
 #include "../gpu/arboria_buffer_manager.h"
 #include "../gpu/arboria_compute_dispatch.h"
@@ -21,15 +22,19 @@ public:
     void shutdown();
     bool is_initialized() const { return m_initialized; }
 
-    // Gerenciamento de malhas carregadas
+    // Gerenciamento com controle de geracao (Generational Handles)
+    Handle register_mesh_handle(const std::string& filepath);
+    bool unregister_mesh_handle(Handle handle);
+    std::shared_ptr<VGMeshResource> get_mesh_by_handle(Handle handle);
+
+    // Gerenciamento legado compativel por ID
     int32_t register_mesh(const std::string& filepath);
     int32_t register_mesh_from_memory(const uint8_t* data, size_t size);
     bool unregister_mesh(int32_t mesh_id);
-
     std::shared_ptr<VGMeshResource> get_mesh(int32_t mesh_id);
 
     // Contagem de malhas ativas
-    size_t get_active_mesh_count() const { return m_meshes.size(); }
+    size_t get_active_mesh_count() const { return m_mesh_pool.active_count() + m_meshes.size(); }
 
     const char* get_version_string() const {
         return "ARBORIA ENGINE NATIVE FORWARD+ V7.0 (VULKAN 1.4)";
@@ -56,6 +61,7 @@ private:
     bool m_initialized = false;
     int32_t m_next_mesh_id = 1;
     std::unordered_map<int32_t, std::shared_ptr<VGMeshResource>> m_meshes;
+    GenerationalPool<std::shared_ptr<VGMeshResource>> m_mesh_pool;
 };
 
 } // namespace Arboria

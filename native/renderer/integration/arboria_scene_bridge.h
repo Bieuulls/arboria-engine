@@ -2,6 +2,7 @@
 #define VG_SCENE_BRIDGE_H
 
 #include "../core/arboria_types.h"
+#include "../core/arboria_handle.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -11,6 +12,8 @@
 namespace Arboria {
 
 struct SceneInstanceData {
+    Handle instance_handle{};
+    Handle mesh_handle{};
     uint32_t instance_id = 0;
     int32_t mesh_id = -1;
     float transform_matrix[16];   // Col-major 4x4 matrix
@@ -27,9 +30,21 @@ class ARBORIA_CLASS VGSceneBridge {
 public:
     static VGSceneBridge& instance();
 
+    // Controle com Geracao (Generational Handles)
+    Handle register_instance_handle(Handle mesh_handle);
+    bool unregister_instance_handle(Handle instance_handle);
+    bool set_instance_transform_handle(Handle instance_handle, const float matrix[16]);
+    bool set_instance_visible_handle(Handle instance_handle, bool visible);
+    bool set_instance_lod_handle(Handle instance_handle, float max_screen_error, uint32_t lod_mode, uint32_t forced_lod);
+
+    SceneInstanceData* get_instance_by_handle(Handle instance_handle);
+    const SceneInstanceData* get_instance_by_handle(Handle instance_handle) const;
+    bool is_valid_instance(Handle instance_handle) const { return get_instance_by_handle(instance_handle) != nullptr; }
+    size_t get_active_instance_handle_count() const { return m_instance_pool.active_count(); }
+
+    // Compatibilidade legado por ID simples
     uint32_t register_instance(int32_t mesh_id);
     bool unregister_instance(uint32_t instance_id);
-
     bool set_instance_transform(uint32_t instance_id, const float matrix[16]);
     bool set_instance_visible(uint32_t instance_id, bool visible);
     bool set_instance_lod_params(uint32_t instance_id, float max_screen_error, uint32_t lod_mode, uint32_t forced_lod);
@@ -37,7 +52,7 @@ public:
     const SceneInstanceData* get_instance(uint32_t instance_id) const;
     std::vector<SceneInstanceData> get_active_instances() const;
 
-    size_t get_instance_count() const { return m_instances.size(); }
+    size_t get_instance_count() const { return m_instance_pool.active_count() + m_instances.size(); }
     void clear();
 
 private:
@@ -46,6 +61,7 @@ private:
 
     uint32_t m_next_instance_id = 1;
     std::unordered_map<uint32_t, SceneInstanceData> m_instances;
+    GenerationalPool<SceneInstanceData> m_instance_pool;
 };
 
 } // namespace Arboria

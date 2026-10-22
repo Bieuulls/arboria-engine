@@ -103,6 +103,60 @@ int main(int argc, char** argv) {
         arboria_scene_destroy_instance(inst2);
         assert(arboria_scene_get_active_count() == 0);
         std::cout << "[TESTE 9] Limpeza de instancias - OK" << std::endl;
+
+        // 10. Validacao de Handles Geracionais e Rejeicao de Handles Obsoletos (Stale)
+        Arboria::Handle mesh_h = Arboria::Handle::from_u64(static_cast<uint64_t>(mesh_id));
+        Arboria::Handle gen_inst1 = Arboria::VGSceneBridge::instance().register_instance_handle(mesh_h);
+        assert(gen_inst1.is_valid());
+        assert(Arboria::VGSceneBridge::instance().is_valid_instance(gen_inst1));
+        
+        uint32_t slot_idx = gen_inst1.index;
+        uint32_t first_gen = gen_inst1.generation;
+
+        // Liberar a instancia
+        assert(Arboria::VGSceneBridge::instance().unregister_instance_handle(gen_inst1));
+        // Handle antigo DEVE ser rejeitado imediatamente
+        assert(!Arboria::VGSceneBridge::instance().is_valid_instance(gen_inst1));
+        
+        // Re-alocar: deve reutilizar o slot mas com geracao incrementada
+        Arboria::Handle gen_inst2 = Arboria::VGSceneBridge::instance().register_instance_handle(mesh_h);
+        assert(gen_inst2.index == slot_idx);
+        assert(gen_inst2.generation == first_gen + 1);
+
+        // Operacoes no handle antigo obsoleto DEVEM falhar com seguranca
+        float dummy_xf[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+        assert(!Arboria::VGSceneBridge::instance().set_instance_transform_handle(gen_inst1, dummy_xf));
+        assert(!Arboria::VGSceneBridge::instance().set_instance_lod_handle(gen_inst1, 2.0f, 0, 0));
+        assert(!Arboria::VGSceneBridge::instance().set_instance_visible_handle(gen_inst1, false));
+
+        // Operacoes no novo handle valido DEVEM ter sucesso
+        assert(Arboria::VGSceneBridge::instance().set_instance_transform_handle(gen_inst2, dummy_xf));
+        assert(Arboria::VGSceneBridge::instance().unregister_instance_handle(gen_inst2));
+        std::cout << "[TESTE 10] Handles Geracionais e Rejeicao Estrita de Handles Obsoletos - OK" << std::endl;
+
+        // 11. Teste de Estresse de 10.000 Ciclos de Registro/Liberacao
+        std::cout << "[TESTE 11] Executando 10.000 ciclos de registro e desregistro continuo..." << std::endl;
+        std::vector<Arboria::Handle> active_handles;
+        active_handles.reserve(100);
+
+        for (int cycle = 0; cycle < 10000; ++cycle) {
+            Arboria::Handle h = Arboria::VGSceneBridge::instance().register_instance_handle(mesh_h);
+            assert(h.is_valid());
+            active_handles.push_back(h);
+
+            if (active_handles.size() >= 100) {
+                for (Arboria::Handle rel_h : active_handles) {
+                    assert(Arboria::VGSceneBridge::instance().unregister_instance_handle(rel_h));
+                    assert(!Arboria::VGSceneBridge::instance().is_valid_instance(rel_h));
+                }
+                active_handles.clear();
+            }
+        }
+        for (Arboria::Handle rel_h : active_handles) {
+            Arboria::VGSceneBridge::instance().unregister_instance_handle(rel_h);
+        }
+        assert(Arboria::VGSceneBridge::instance().get_instance_count() == 0);
+        std::cout << "[TESTE 11] 10.000 ciclos concluidos com zero vazamento e contagem perfeita (0 ativas) - OK" << std::endl;
     }
 
     arboria_shutdown();

@@ -14,7 +14,67 @@ VGSceneBridge::~VGSceneBridge() {
 }
 
 void VGSceneBridge::clear() {
+    m_instance_pool.clear();
     m_instances.clear();
+}
+
+Handle VGSceneBridge::register_instance_handle(Handle mesh_handle) {
+    SceneInstanceData data{};
+    data.mesh_handle = mesh_handle;
+
+    // Identidade padrão
+    std::memset(data.transform_matrix, 0, sizeof(data.transform_matrix));
+    data.transform_matrix[0] = 1.0f;
+    data.transform_matrix[5] = 1.0f;
+    data.transform_matrix[10] = 1.0f;
+    data.transform_matrix[15] = 1.0f;
+
+    data.max_screen_error = 1.5f;
+    data.lod_mode = 0;
+    data.forced_lod = 0;
+    data.visible = true;
+
+    Handle h = m_instance_pool.allocate(data);
+    if (auto inst = m_instance_pool.get(h)) {
+        inst->instance_handle = h;
+    }
+    return h;
+}
+
+bool VGSceneBridge::unregister_instance_handle(Handle instance_handle) {
+    return m_instance_pool.release(instance_handle);
+}
+
+bool VGSceneBridge::set_instance_transform_handle(Handle instance_handle, const float matrix[16]) {
+    if (!matrix) return false;
+    auto inst = m_instance_pool.get(instance_handle);
+    if (!inst) return false;
+    std::memcpy(inst->transform_matrix, matrix, sizeof(float) * 16);
+    return true;
+}
+
+bool VGSceneBridge::set_instance_visible_handle(Handle instance_handle, bool visible) {
+    auto inst = m_instance_pool.get(instance_handle);
+    if (!inst) return false;
+    inst->visible = visible;
+    return true;
+}
+
+bool VGSceneBridge::set_instance_lod_handle(Handle instance_handle, float max_screen_error, uint32_t lod_mode, uint32_t forced_lod) {
+    auto inst = m_instance_pool.get(instance_handle);
+    if (!inst) return false;
+    inst->max_screen_error = max_screen_error;
+    inst->lod_mode = lod_mode;
+    inst->forced_lod = forced_lod;
+    return true;
+}
+
+SceneInstanceData* VGSceneBridge::get_instance_by_handle(Handle instance_handle) {
+    return m_instance_pool.get(instance_handle);
+}
+
+const SceneInstanceData* VGSceneBridge::get_instance_by_handle(Handle instance_handle) const {
+    return m_instance_pool.get(instance_handle);
 }
 
 uint32_t VGSceneBridge::register_instance(int32_t mesh_id) {
