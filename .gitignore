@@ -6,6 +6,7 @@
 build/
 bin/
 *.obj
+!assets/*.obj
 *.o
 *.a
 *.lib
