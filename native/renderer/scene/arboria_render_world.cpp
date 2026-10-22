@@ -1,0 +1,87 @@
+#include "arboria_render_world.h"
+#include <iostream>
+
+namespace Arboria {
+
+ArboriaRenderWorld& ArboriaRenderWorld::instance() {
+    static ArboriaRenderWorld s_inst;
+    return s_inst;
+}
+
+void ArboriaRenderWorld::initialize() {
+    if (m_initialized) return;
+    m_initialized = true;
+    std::cout << "[ArboriaRenderWorld] Inicializado com sucesso. Submissão global GPU ativa." << std::endl;
+}
+
+void ArboriaRenderWorld::shutdown() {
+    if (!m_initialized) return;
+    ArboriaInstanceRegistry::instance().clear();
+    ArboriaMeshRegistry::instance().clear();
+    ArboriaMaterialTable::instance().clear();
+    m_initialized = false;
+    std::cout << "[ArboriaRenderWorld] Finalizado com sucesso. Todos os recursos GPU liberados." << std::endl;
+}
+
+Handle ArboriaRenderWorld::register_mesh(const std::string& path) {
+    return ArboriaMeshRegistry::instance().register_mesh(path);
+}
+
+bool ArboriaRenderWorld::unregister_mesh(Handle handle) {
+    return ArboriaMeshRegistry::instance().unregister_mesh(handle);
+}
+
+Handle ArboriaRenderWorld::register_instance(Handle mesh_handle, uint32_t material_id) {
+    return ArboriaInstanceRegistry::instance().register_instance(mesh_handle, material_id);
+}
+
+bool ArboriaRenderWorld::update_instance_transform(Handle instance_handle, const float transform[16]) {
+    return ArboriaInstanceRegistry::instance().set_transform(instance_handle, transform);
+}
+
+bool ArboriaRenderWorld::update_instance_lod(Handle instance_handle, float max_screen_error, uint32_t lod_mode, uint32_t forced_lod) {
+    return ArboriaInstanceRegistry::instance().set_lod_parameters(instance_handle, max_screen_error, lod_mode, forced_lod);
+}
+
+bool ArboriaRenderWorld::update_instance_visibility(Handle instance_handle, bool visible) {
+    return ArboriaInstanceRegistry::instance().set_visibility(instance_handle, visible);
+}
+
+bool ArboriaRenderWorld::release_instance(Handle instance_handle) {
+    return ArboriaInstanceRegistry::instance().unregister_instance(instance_handle);
+}
+
+bool ArboriaRenderWorld::render_scene_global(
+    const GPUDriverContext& ctx,
+    const void* framebuffer,
+    const void* compute_pipeline,
+    const void* raster_pipeline,
+    const void* compute_uniform_set,
+    const void* raster_uniform_set,
+    const void* indirect_args_buffer,
+    uint32_t total_work_items
+) {
+    if (!m_initialized || total_work_items == 0) return false;
+
+    // 1. Passe Compute Culling Agrupado Global (Lote único de GPU)
+    if (!ArboriaGPUScene::instance().dispatch_global_cull(ctx, compute_pipeline, compute_uniform_set, total_work_items)) {
+        return false;
+    }
+
+    // 2. Passe Rasterizacao Indireta Agrupada Global (draw_count = 1 em lote único)
+    if (!ArboriaGPUScene::instance().draw_global_indirect(ctx, framebuffer, raster_pipeline, raster_uniform_set, indirect_args_buffer)) {
+        return false;
+    }
+
+    return true;
+}
+
+size_t ArboriaRenderWorld::get_registered_mesh_count() const {
+    return ArboriaMeshRegistry::instance().get_mesh_count();
+}
+
+size_t ArboriaRenderWorld::get_active_instance_count() const {
+    return ArboriaInstanceRegistry::instance().get_instance_count();
+}
+
+} // namespace Arboria

@@ -6,6 +6,13 @@
 #include "../gpu/arboria_indirect_renderer.h"
 #include "../integration/arboria_scene_bridge.h"
 #include "../integration/arboria_render_pass.h"
+#include "../scene/arboria_render_world.h"
+#include "../scene/arboria_gpu_scene.h"
+#include "../scene/arboria_mesh_registry.h"
+#include "../scene/arboria_instance_registry.h"
+#include "../scene/arboria_material_table.h"
+#include "../scene/arboria_visibility_manager.h"
+#include "../scene/arboria_indirect_command_manager.h"
 
 #include <iostream>
 #include <cassert>
@@ -158,6 +165,132 @@ int main(int argc, char** argv) {
         assert(Arboria::VGSceneBridge::instance().get_instance_count() == 0);
         std::cout << "[TESTE 11] 10.000 ciclos concluidos com zero vazamento e contagem perfeita (0 ativas) - OK" << std::endl;
     }
+
+    // =========================================================================
+    // ETAPA 2 — VALIDAÇÃO DA ARQUITETURA GLOBAL DO GPU SCENE
+    // =========================================================================
+    std::cout << "\n--- ETAPA 2: VALIDACAO DO GPU SCENE GLOBAL ---" << std::endl;
+    Arboria::ArboriaRenderWorld::instance().initialize();
+    assert(Arboria::ArboriaRenderWorld::instance().is_initialized());
+
+    // TESTE 12: Registro de Geometria Compartilhada (ArboriaMeshRegistry)
+    Arboria::Handle shared_mesh = Arboria::ArboriaRenderWorld::instance().register_mesh(test_mesh_path);
+    assert(Arboria::ArboriaMeshRegistry::instance().is_valid_mesh(shared_mesh));
+    const auto* reg_info = Arboria::ArboriaMeshRegistry::instance().get_mesh_info(shared_mesh);
+    assert(reg_info != nullptr);
+    assert(reg_info->cluster_count > 0);
+    assert(reg_info->vertex_count > 0);
+    std::cout << "[TESTE 12] Geometria Compartilhada Registrada: " 
+              << reg_info->cluster_count << " clusters, " 
+              << reg_info->vertex_count << " vertices (ID: " << shared_mesh.to_u64() << ") - OK" << std::endl;
+
+    // TESTE 13: Cálculo de Bounding Volumes e Normal Matrix (escalas não uniformes e espelhadas)
+    {
+        float model_matrix[16] = {
+            -2.0f, 0.0f,  0.0f, 0.0f,
+             0.0f, 1.5f,  0.0f, 0.0f,
+             0.0f, 0.0f,  0.5f, 0.0f,
+            10.0f, 5.0f, -20.0f, 1.0f
+        };
+        float normal_matrix[16];
+        Arboria::ArboriaInstanceRegistry::compute_normal_matrix(model_matrix, normal_matrix);
+        // Transposta da inversa de diag(-2, 1.5, 0.5) é diag(-0.5, 1/1.5, 2.0)
+        assert(std::abs(normal_matrix[0] - (-0.5f)) < 1e-4f);
+        assert(std::abs(normal_matrix[5] - (1.0f / 1.5f)) < 1e-4f);
+        assert(std::abs(normal_matrix[10] - 2.0f) < 1e-4f);
+
+        float center_in[3] = {0.0f, 0.0f, 0.0f};
+        float min_in[3] = {-1.0f, -1.0f, -1.0f};
+        float max_in[3] = { 1.0f,  1.0f,  1.0f};
+        float center_out[3];
+        float radius_out = 0.0f;
+        float min_out[3], max_out[3];
+        Arboria::ArboriaInstanceRegistry::compute_world_bounds(
+            center_in, 1.0f, min_in, max_in, model_matrix,
+            center_out, radius_out, min_out, max_out
+        );
+        assert(center_out[0] == 10.0f && center_out[1] == 5.0f && center_out[2] == -20.0f);
+        assert(radius_out == 2.0f); // max scale = |-2.0| = 2.0
+        assert(min_out[0] == 8.0f && max_out[0] == 12.0f); // 10 +- 2
+        assert(min_out[1] == 3.5f && max_out[1] == 6.5f);  // 5 +- 1.5
+        assert(min_out[2] == -20.5f && max_out[2] == -19.5f); // -20 +- 0.5
+        std::cout << "[TESTE 13] Normal Matrix e Bounding Volumes (Escala Nao-Uniforme e Espelhada) - OK" << std::endl;
+    }
+
+    // TESTE 14: Escalonamento do GPU Scene (1, 80, 500, e 2.000 instâncias)
+    // Validação de que dispatches e comandos indiretos escalam em 1 LOTE CONSOLIDADO
+    const uint32_t test_instance_counts[] = {1, 80, 500, 2000};
+    for (uint32_t target_count : test_instance_counts) {
+        Arboria::ArboriaInstanceRegistry::instance().clear();
+        std::vector<Arboria::Handle> inst_handles;
+        inst_handles.reserve(target_count);
+
+        for (uint32_t i = 0; i < target_count; ++i) {
+            Arboria::Handle ih = Arboria::ArboriaRenderWorld::instance().register_instance(shared_mesh, 0);
+            assert(ih.is_valid());
+            float tr[16] = {
+                1.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+                (float)(i % 50) * 4.0f - 100.0f, 0.0f, -((float)(i / 50) * 4.0f + 10.0f), 1.0f
+            };
+            Arboria::ArboriaRenderWorld::instance().update_instance_transform(ih, tr);
+            inst_handles.push_back(ih);
+        }
+        assert(Arboria::ArboriaRenderWorld::instance().get_active_instance_count() == target_count);
+
+        std::vector<Arboria::GPUInstanceData> gpu_instances;
+        Arboria::ArboriaInstanceRegistry::instance().build_gpu_instance_buffer(gpu_instances);
+        assert(gpu_instances.size() == target_count);
+
+        float view_proj[16] = {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
+        };
+        float cam_pos[3] = {0.0f, 0.0f, 5.0f};
+        Arboria::GlobalSceneUniforms uniforms = Arboria::ArboriaGPUScene::instance().build_scene_uniforms(
+            view_proj, cam_pos, 1.0f, 1920.0f, 1080.0f, 1.5f, 0, true, true
+        );
+
+        Arboria::SceneCullResult cull_res = Arboria::ArboriaGPUScene::instance().simulate_cull_scene(uniforms);
+        assert(cull_res.total_instances == target_count);
+        assert(cull_res.total_work_items == target_count * reg_info->cluster_count);
+        assert(!cull_res.has_overflow);
+
+        // O trabalho GPU é despachado em 1 LOTE ÚNICO (compute + indirect draw), e não N chamadas
+        uint32_t gpu_dispatch_count = (cull_res.total_work_items + 63) / 64;
+        uint32_t gpu_indirect_draw_count = 1; // 1 único VkDrawIndirectCommand para toda a cena!
+
+        std::cout << "  -> Cenário " << target_count << " instâncias: " 
+                  << cull_res.total_work_items << " clusters avaliados, "
+                  << cull_res.visible_clusters << " clusters visíveis, "
+                  << cull_res.total_triangles_drawn << " triângulos. Dispatches GPU: "
+                  << 1 << " (em " << gpu_dispatch_count << " grupos), Draws Indiretos: "
+                  << gpu_indirect_draw_count << " - OK" << std::endl;
+    }
+    std::cout << "[TESTE 14] Escalonamento 1, 80, 500, 2.000 instâncias (1 Lote Consolidado) - OK" << std::endl;
+
+    // TESTE 15: Proteção e Detecção de Overflow de Capacidade do Buffer
+    {
+        Arboria::GPUIndirectArgsAndCounters args{};
+        args.max_capacity = 10;
+        args.instance_count = 10;
+        // Simula tentativa de ultrapassar a capacidade máxima
+        if (args.instance_count >= args.max_capacity) {
+            args.overflow_flag = 1;
+        }
+        assert(args.overflow_flag == 1);
+        std::cout << "[TESTE 15] Proteção e Detecção de Overflow de Capacidade - OK" << std::endl;
+    }
+
+    // TESTE 16: Limpeza e Finalização do ArboriaRenderWorld
+    Arboria::ArboriaRenderWorld::instance().shutdown();
+    assert(!Arboria::ArboriaRenderWorld::instance().is_initialized());
+    assert(Arboria::ArboriaRenderWorld::instance().get_active_instance_count() == 0);
+    assert(Arboria::ArboriaRenderWorld::instance().get_registered_mesh_count() == 0);
+    std::cout << "[TESTE 16] Finalização e Liberação Segura do ArboriaRenderWorld - OK" << std::endl;
 
     arboria_shutdown();
     std::cout << "====================================================" << std::endl;

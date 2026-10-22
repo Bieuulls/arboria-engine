@@ -15,6 +15,13 @@ set(ARBORIA_SOURCES
     integration/arboria_render_pass.cpp
     integration/arboria_abi.cpp
     integration/arboria_gdextension.cpp
+    scene/arboria_mesh_registry.cpp
+    scene/arboria_material_table.cpp
+    scene/arboria_instance_registry.cpp
+    scene/arboria_visibility_manager.cpp
+    scene/arboria_indirect_command_manager.cpp
+    scene/arboria_gpu_scene.cpp
+    scene/arboria_render_world.cpp
 )
 
 set(ARBORIA_HEADERS
@@ -23,12 +30,21 @@ set(ARBORIA_HEADERS
     core/arboria_mesh_resource.h
     core/arboria_runtime.h
     core/arboria_security.h
+    gpu/arboria_gpu_driver.h
     gpu/arboria_buffer_manager.h
     gpu/arboria_compute_dispatch.h
     gpu/arboria_indirect_renderer.h
     integration/arboria_abi.h
     integration/arboria_scene_bridge.h
     integration/arboria_render_pass.h
+    scene/arboria_gpu_scene_types.h
+    scene/arboria_mesh_registry.h
+    scene/arboria_material_table.h
+    scene/arboria_instance_registry.h
+    scene/arboria_visibility_manager.h
+    scene/arboria_indirect_command_manager.h
+    scene/arboria_gpu_scene.h
+    scene/arboria_render_world.h
 )
 
 # Compilar Shared Library (DLL)
