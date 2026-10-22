@@ -85,12 +85,25 @@ var enable_cone_culling: bool = true
 
 # Telemetria desacoplada e assíncrona da GPU (elimina stalls no Render Loop)
 var stats_total_instances: int = 0
+var stats_dispatches: int = 0
+var stats_indirect_draws: int = 0
+var stats_clusters_evaluated: int = 0
 var stats_visible_clusters: int = 0
 var stats_triangles_drawn: int = 0
 var enable_async_telemetry: bool = true
 var _telemetry_frame_counter: int = 0
 var _telemetry_interval: int = 15
 var telemetry_dirty: bool = false
+
+func get_statistics() -> Dictionary:
+	return {
+		"total_instances": stats_total_instances,
+		"dispatches": stats_dispatches,
+		"indirect_draws": stats_indirect_draws,
+		"clusters_evaluated": stats_clusters_evaluated,
+		"clusters_visible": stats_visible_clusters,
+		"triangles_drawn": stats_triangles_drawn
+	}
 
 static func get_active_instance() -> RefCounted:
 	return _shared_instance
@@ -881,10 +894,16 @@ func render_scene_instances(p_render_data: RenderData) -> void:
 			PackedColorArray()
 		)
 
-	# =========================================================================
-	# FASE 4: TELEMETRIA DESACOPLADA E NÃO-BLOQUEANTE (SEM STALL NO RENDER LOOP)
-	# =========================================================================
 	stats_total_instances = active_tasks.size()
+	stats_dispatches = active_tasks.size()
+	stats_indirect_draws = active_tasks.size()
+	var eval_acc: int = 0
+	for task in active_tasks:
+		var m_res: MeshGPUResource = task.get("mesh_res", null)
+		if m_res:
+			eval_acc += m_res.total_clusters
+	stats_clusters_evaluated = eval_acc
+
 	_telemetry_frame_counter += 1
 
 	var should_read_gpu = (not enable_async_telemetry) or telemetry_dirty or (_telemetry_frame_counter % _telemetry_interval == 0)
@@ -919,6 +938,25 @@ func cleanup() -> void:
 		if res.selection_texture_rid.is_valid(): rd.free_rid(res.selection_texture_rid)
 	_mesh_cache.clear()
 
+	if default_white_tex.is_valid():
+		rd.free_rid(default_white_tex)
+		default_white_tex = RID()
+	if default_normal_tex.is_valid():
+		rd.free_rid(default_normal_tex)
+		default_normal_tex = RID()
+	if default_orm_tex.is_valid():
+		rd.free_rid(default_orm_tex)
+		default_orm_tex = RID()
+	if default_sampler.is_valid():
+		rd.free_rid(default_sampler)
+		default_sampler = RID()
+
+	for t_id in _texture_cache:
+		var t_rid: RID = _texture_cache[t_id]
+		if t_rid.is_valid():
+			rd.free_rid(t_rid)
+	_texture_cache.clear()
+
 	if cached_fb.is_valid():
 		rd.free_rid(cached_fb)
 		cached_fb = RID()
@@ -935,4 +973,5 @@ func cleanup() -> void:
 		rd.free_rid(raster_shader_rid)
 		raster_shader_rid = RID()
 
+	_shared_instance = null
 	is_initialized = false

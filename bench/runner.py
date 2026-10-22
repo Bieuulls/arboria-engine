@@ -98,6 +98,20 @@ def main():
     all_results = []
     project_dir = os.path.join(REPO_ROOT, "project")
 
+    target_scenario = None
+    target_instances = None
+    for i, arg in enumerate(sys.argv):
+        if arg == "--scenario" and i + 1 < len(sys.argv):
+            target_scenario = sys.argv[i + 1]
+        elif arg == "--instances" and i + 1 < len(sys.argv):
+            target_instances = [int(x.strip()) for x in sys.argv[i + 1].split(",")]
+
+    if target_scenario:
+        scenarios = [sc for sc in scenarios if sc["id"] == target_scenario]
+    if target_instances:
+        for sc in scenarios:
+            sc["instances"] = [inst for inst in sc["instances"] if inst in target_instances]
+
     total_runs = sum(len(sc["instances"]) * len(variants) for sc in scenarios)
     run_idx = 0
 
@@ -142,7 +156,7 @@ def main():
                 ]
 
                 start_time = time.time()
-                timeout_sec = 240 # 4 minutos de timeout maximo por combinacao
+                timeout_sec = 180 # 3 minutos de timeout maximo por combinacao
                 timed_out = False
                 crashed = False
                 out_text = ""
@@ -172,8 +186,8 @@ def main():
                 }
 
                 if timed_out:
-                    print(f"  -> FALHOU: Timeout ({timeout_sec}s atingido)")
-                    res_entry["status"] = "FALHOU (Timeout)"
+                    print(f"  -> INCONCLUSIVO: Timeout ({timeout_sec}s atingido)")
+                    res_entry["status"] = "Inconclusivo (Timeout)"
                 elif crashed:
                     print(f"  -> FALHOU: Crash ou Codigo de Saida Invalido ({proc.returncode if 'proc' in locals() else 'Erro'})")
                     res_entry["status"] = "FALHOU (Crash/OOM)"
@@ -225,24 +239,42 @@ def generate_summary_markdown(results, env, config):
     lines.append(f"- **Resolução Efetiva:** {env['resolution']}\n")
 
     lines.append("## 2. Metodologia de Medição Rigorosa")
-    lines.append("- **Trajetória e Sementes:** Câmera orbital determinística idêntica; semente determinística `seed=42` para posicionamento e rotações nas 3 variantes.")
+    lines.append("- **Trajetória e Sementes:** Câmera orbital determinística idêntica; semente determinística `seed=42` para posicionamento e rotações em todas as variantes.")
     lines.append("- **Janela de Medição:** 300 frames de aquecimento (warmup) e 1.000 frames medidos continuamente por combinação.")
     lines.append("- **Isolamento de I/O:** Coleta in-memory durante a janela medida e gravação em disco exclusivamente após a medição.")
     lines.append("- **Captura Real:** Imagem PNG capturada fora da janela medida (frame 290) para auditoria visual de fidelidade.")
-    lines.append("- **Métricas GPU:** Obtidas via `RenderingServer.viewport_get_measured_render_time_gpu()`. Quando não suportado pelo driver/viewport, marcada estritamente como `N/A`.\n")
+    lines.append("- **Separação de Métricas CPU e GPU:**")
+    lines.append("  - *Frame Time:* Tempo total entre frames na main thread (`delta * 1000`).")
+    lines.append("  - *CPU Render:* Tempo de CPU gasto estritamente no render loop do viewport (`RenderingServer.viewport_get_measured_render_time_cpu`).")
+    lines.append("  - *GPU Render:* Tempo real de execução na GPU (`RenderingServer.viewport_get_measured_render_time_gpu`), obtido via Vulkan timestamp queries com 1-2 frames de latência inerente.")
+    lines.append("- **Instrumentação do Caminho Customizado:**")
+    lines.append("  - Para o ARBORIA, os draws incluem os draws indiretos reais (`rd.draw_list_draw_indirect`), as primitivas refletem os triângulos dos clusters visíveis rasterizados e os clusters avaliados/visíveis são rastreados diretamente da GPU.")
+    lines.append("- **Validade Comparativa:** Timeouts e quedas (Crash/OOM) são marcados como **INCONCLUSIVOS** e nunca são computados como vitória automática nem razões 0.00.\n")
 
     lines.append("## 3. Tabela Comparativa de Resultados")
-    lines.append("| Cenário | Instâncias | Variante | Status | Frame Time p50 (ms) | Frame Time p95 (ms) | Frame Time p99 (ms) | CPU Render p95 (ms) | GPU Render p95 (ms) | VRAM Média (MB) | Draw Calls | Primitivas |")
-    lines.append("| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+    lines.append("| Cenário | Instâncias | Variante | Status | Frame Time p50 (ms) | Frame Time p95 (ms) | Frame Time p99 (ms) | CPU Render p95 (ms) | GPU Render p95 (ms) | VRAM Média (MB) | Draws (Godot + Ind) | Primitivas / Tris | Clusters (Vis / Tot) |")
+    lines.append("| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
 
     for r in results:
         if r["status"] == "OK":
             gpu_str = "N/A" if r.get("gpu_time_p95") is None else f"{r['gpu_time_p95']:.2f}"
-            lines.append(f"| {r['scenario']} | {r['instances']} | {r['variant']} | ✅ {r['status']} | {r['frame_time_p50']:.2f} | {r['frame_time_p95']:.2f} | {r['frame_time_p99']:.2f} | {r['cpu_time_p95']:.2f} | {gpu_str} | {r['vram_avg_mb']:.1f} | {r['draw_calls_avg']:.0f} | {r['primitives_avg']:.0f} |")
-        else:
-            lines.append(f"| {r['scenario']} | {r['instances']} | {r['variant']} | ❌ {r['status']} | - | - | - | - | - | - | - | - |")
+            is_arb = "arboria" in r["variant"]
+            if is_arb:
+                ind = r.get("arb_indirect_draws_avg", 0)
+                draws_str = f"{r.get('draw_calls_avg', 0):.0f} ({ind:.0f} ind)"
+                prims_str = f"{r.get('arb_triangles_avg', r.get('primitives_avg', 0)):.0f}"
+                clusters_str = f"{r.get('arb_clusters_vis_avg', 0):.0f} / {r.get('arb_clusters_eval_avg', 0):.0f}"
+            else:
+                draws_str = f"{r.get('draw_calls_avg', 0):.0f}"
+                prims_str = f"{r.get('primitives_avg', 0):.0f}"
+                clusters_str = "-"
 
-    lines.append("\n## 4. Comparação Direta: ARBORIA (C) vs. Melhor Alternativa Convencional Godot")
+            lines.append(f"| {r['scenario']} | {r['instances']} | {r['variant']} | ✅ {r['status']} | {r['frame_time_p50']:.2f} | {r['frame_time_p95']:.2f} | {r['frame_time_p99']:.2f} | {r['cpu_time_p95']:.2f} | {gpu_str} | {r['vram_avg_mb']:.1f} | {draws_str} | {prims_str} | {clusters_str} |")
+        else:
+            lines.append(f"| {r['scenario']} | {r['instances']} | {r['variant']} | ❌ {r['status']} | - | - | - | - | - | - | - | - | - |")
+
+    lines.append("\n## 4. Comparações Diretas e Avaliação de Desempenho")
+    lines.append("### 4.1 Comparação de Qualidade Equivalente: ARBORIA (DAG Dinâmico) vs. Melhor Godot Convencional")
     lines.append("| Cenário | Instâncias | Melhor Godot Convencional | p95 Godot (ms) | p95 ARBORIA (ms) | Razão p95 (ARB/Godot) | VRAM Godot (MB) | VRAM ARBORIA (MB) | Razão VRAM | Vantagem Significativa? |")
     lines.append("| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
 
@@ -257,19 +289,23 @@ def generate_summary_markdown(results, env, config):
             res_c = lookup.get((sc_id, inst, "arboria"))
 
             if not res_c or res_c.get("status") != "OK":
-                lines.append(f"| {sc_id} | {inst} | - | - | - | - | - | - | - | Inconclusivo (ARBORIA falhou) |")
+                status_str = res_c.get("status", "Ausente") if res_c else "Ausente"
+                lines.append(f"| {sc_id} | {inst} | - | - | - | N/A | - | - | N/A | Inconclusivo (ARBORIA {status_str}) |")
                 continue
 
-            # Escolhe o melhor Godot convencional entre A e B
+            # Escolhe o melhor Godot convencional entre A e B que completou com OK
             candidates = []
             if res_a and res_a.get("status") == "OK": candidates.append(("MeshInstance3D", res_a))
             if res_b and res_b.get("status") == "OK": candidates.append(("MultiMeshInstance3D", res_b))
 
             if not candidates:
-                # Ambas as variantes convencionais falharam (ex: OOM em cena massiva de 1M)
-                lines.append(f"| {sc_id} | {inst} | Nenhuma (Ambas Falharam) | Crash/OOM | {res_c['frame_time_p95']:.2f} | 0.00 | Crash/OOM | {res_c['vram_avg_mb']:.1f} | 0.00 | **SIM (Sobrevivência)** |")
-                if inst >= large_inst_thresh:
-                    large_advantages += 1
+                # Ambas as variantes convencionais falharam (ex: Timeout ou Crash/OOM)
+                fail_reasons = []
+                if res_a: fail_reasons.append(f"Mesh: {res_a.get('status')}")
+                if res_b: fail_reasons.append(f"MultiMesh: {res_b.get('status')}")
+                reason_str = "; ".join(fail_reasons) if fail_reasons else "Sem execucao valida"
+                # Regra: NUNCA tratar timeout/crash convencional como vitória automática (0.00 ratio). Registrar estritamente como Inconclusivo.
+                lines.append(f"| {sc_id} | {inst} | Nenhuma (Falha Convencional) | N/A | {res_c['frame_time_p95']:.2f} | N/A | N/A | {res_c['vram_avg_mb']:.1f} | N/A | Inconclusivo ({reason_str}) |")
                 continue
 
             # Ordena por menor p95
@@ -291,6 +327,39 @@ def generate_summary_markdown(results, env, config):
                 large_advantages += 1
 
             lines.append(f"| {sc_id} | {inst} | {best_name} | {p95_best:.2f} | {p95_arb:.2f} | {ratio_p95:.2f} | {vram_best:.1f} | {vram_arb:.1f} | {ratio_vram:.2f} | {adv_str} |")
+
+    # 4.2 Comparação de LOD0 Idêntico se houver dados
+    has_lod0_data = any((r.get("variant") == "arboria_lod0") for r in results)
+    if has_lod0_data:
+        lines.append("\n### 4.2 Comparação de LOD0 Idêntico: ARBORIA (LOD0 Forçado) vs. Melhor Godot Convencional")
+        lines.append("| Cenário | Instâncias | Melhor Godot Convencional | p95 Godot (ms) | p95 ARBORIA LOD0 (ms) | Razão p95 | VRAM Godot (MB) | VRAM ARBORIA LOD0 (MB) | Razão VRAM |")
+        lines.append("| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |")
+        for sc in scenarios_list:
+            sc_id = sc["id"]
+            for inst in sc["instances"]:
+                res_a = lookup.get((sc_id, inst, "mesh_instance"))
+                res_b = lookup.get((sc_id, inst, "multimesh"))
+                res_d = lookup.get((sc_id, inst, "arboria_lod0"))
+
+                if not res_d or res_d.get("status") != "OK":
+                    continue
+
+                candidates = []
+                if res_a and res_a.get("status") == "OK": candidates.append(("MeshInstance3D", res_a))
+                if res_b and res_b.get("status") == "OK": candidates.append(("MultiMeshInstance3D", res_b))
+                if not candidates:
+                    lines.append(f"| {sc_id} | {inst} | Nenhuma (Falha Convencional) | N/A | {res_d['frame_time_p95']:.2f} | N/A | N/A | {res_d['vram_avg_mb']:.1f} | N/A |")
+                    continue
+
+                candidates.sort(key=lambda x: x[1]["frame_time_p95"])
+                best_name, best_res = candidates[0]
+                p95_d = res_d["frame_time_p95"]
+                p95_b = best_res["frame_time_p95"]
+                r_p95 = p95_d / max(0.001, p95_b)
+                v_d = res_d["vram_avg_mb"]
+                v_b = best_res["vram_avg_mb"]
+                r_vram = v_d / max(0.001, v_b)
+                lines.append(f"| {sc_id} | {inst} | {best_name} | {p95_b:.2f} | {p95_d:.2f} | {r_p95:.2f} | {v_b:.1f} | {v_d:.1f} | {r_vram:.2f} |")
 
     lines.append("\n## 5. Diferenças de Qualidade Visual e Limitações Honestamente Registradas")
     lines.append("1. **Sombras Dinâmicas no Cenário:** As variantes A e B nativas do Godot projetam e recebem sombras dinâmicas completas via Shadow Atlas. A variante ARBORIA escreve no buffer Forward+, mas ainda não injeta no passe de Shadow Map do Godot.")

@@ -52,8 +52,13 @@
     },
     {
       "id": "arboria",
-      "name": "ARBORIA Native Virtual Geometry",
-      "description": "Pipeline nativo C++ de geometria virtualizada com Nanite DAG e culling GPU"
+      "name": "ARBORIA Virtual Geometry (DAG Dinâmico)",
+      "description": "Pipeline nativo C++ de geometria virtualizada com Nanite DAG e culling GPU (qualidade visual equivalente)"
+    },
+    {
+      "id": "arboria_lod0",
+      "name": "ARBORIA Virtual Geometry (LOD0 Idêntico)",
+      "description": "Pipeline nativo C++ de geometria virtualizada com LOD0 forçado (LOD0 idêntico)"
     }
   ],
   "go_decision_criteria": {

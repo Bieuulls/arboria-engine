@@ -90,7 +90,9 @@ func _ready() -> void:
 		"multimesh":
 			_setup_variant_multimesh(transforms)
 		"arboria":
-			_setup_variant_arboria(transforms)
+			_setup_variant_arboria(transforms, false)
+		"arboria_lod0":
+			_setup_variant_arboria(transforms, true)
 		_:
 			push_error("[FALHA] Variante desconhecida: " + variant_id)
 			get_tree().quit(3)
@@ -179,8 +181,9 @@ func _setup_variant_multimesh(transforms: Array[Transform3D]) -> void:
 	mmi.material_override = default_material
 	container.add_child(mmi)
 
-func _setup_variant_arboria(transforms: Array[Transform3D]) -> void:
-	print("[Variante C: ARBORIA] Inicializando pipeline nativo de geometria virtualizada...")
+func _setup_variant_arboria(transforms: Array[Transform3D], force_lod0: bool = false) -> void:
+	var mode_name = "ARBORIA (LOD0 Forçado)" if force_lod0 else "ARBORIA (DAG Dinâmico)"
+	print("[Variante: %s] Inicializando pipeline nativo de geometria virtualizada..." % mode_name)
 	var pipeline = ArboriaNativePipeline.get_or_create_shared()
 
 	# Configura CompositorEffect
@@ -197,8 +200,12 @@ func _setup_variant_arboria(transforms: Array[Transform3D]) -> void:
 	for i in range(transforms.size()):
 		var vmi = ArboriaInstance3D.new()
 		vmi.mesh_path = mesh_path_vg
-		vmi.lod_mode = 0 # DAG dinâmico
-		vmi.max_screen_error = 1.5
+		if force_lod0:
+			vmi.lod_mode = 1 # Forced LOD
+			vmi.forced_lod = 0 # LOD 0
+		else:
+			vmi.lod_mode = 0 # DAG dinâmico
+			vmi.max_screen_error = 1.5
 		vmi.transform = transforms[i]
 		container.add_child(vmi)
 
@@ -228,7 +235,7 @@ func _process(delta: float) -> void:
 		var cpu_ms = RenderingServer.viewport_get_measured_render_time_cpu(vp_rid)
 		var gpu_ms_raw = RenderingServer.viewport_get_measured_render_time_gpu(vp_rid)
 
-		# Regra 6: "Não substitua tempo GPU ausente por FPS ou tempo CPU. Marque a métrica como indisponível."
+		# Regra: GPU render time medido via Vulkan timestamp queries (latência inerente de 1-2 frames)
 		var gpu_ms_val = null
 		if gpu_ms_raw > 0.0001:
 			gpu_ms_val = gpu_ms_raw
@@ -238,6 +245,28 @@ func _process(delta: float) -> void:
 		var objs = RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)
 		var vram_mb = float(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED)) / (1024.0 * 1024.0)
 
+		# Instrumentação do pipeline customizado ARBORIA (não assumir 0 do Godot como zero trabalho de GPU)
+		var arb_dispatches: int = 0
+		var arb_indirect_draws: int = 0
+		var arb_clusters_eval: int = 0
+		var arb_clusters_vis: int = 0
+		var arb_triangles: int = 0
+
+		if variant_id.begins_with("arboria"):
+			var pipe = ArboriaNativePipeline.get_active_instance()
+			if pipe and pipe.has_method("get_statistics"):
+				var stats = pipe.get_statistics()
+				arb_dispatches = stats.get("dispatches", 0)
+				arb_indirect_draws = stats.get("indirect_draws", 0)
+				arb_clusters_eval = stats.get("clusters_evaluated", 0)
+				arb_clusters_vis = stats.get("clusters_visible", 0)
+				arb_triangles = stats.get("triangles_drawn", 0)
+
+			# Trabalho real de renderização customizada
+			draws += arb_indirect_draws
+			if prims == 0:
+				prims = arb_triangles
+
 		sample_records.append({
 			"frame": current_frame - start_measure,
 			"frame_time_ms": frame_time_ms,
@@ -246,7 +275,12 @@ func _process(delta: float) -> void:
 			"draw_calls": draws,
 			"primitives": prims,
 			"objects": objs,
-			"vram_mb": vram_mb
+			"vram_mb": vram_mb,
+			"arb_dispatches": arb_dispatches,
+			"arb_draws": arb_indirect_draws,
+			"arb_clusters_eval": arb_clusters_eval,
+			"arb_clusters_vis": arb_clusters_vis,
+			"arb_triangles": arb_triangles
 		})
 
 	if current_frame >= end_measure:
@@ -267,6 +301,11 @@ func _finalize_benchmark() -> void:
 	var vrams: Array[float] = []
 	var draws: Array[float] = []
 	var prims: Array[float] = []
+	var arb_disp_list: Array[float] = []
+	var arb_draw_list: Array[float] = []
+	var arb_eval_list: Array[float] = []
+	var arb_vis_list: Array[float] = []
+	var arb_tri_list: Array[float] = []
 
 	for s in sample_records:
 		frame_times.append(s["frame_time_ms"])
@@ -276,6 +315,11 @@ func _finalize_benchmark() -> void:
 		vrams.append(s["vram_mb"])
 		draws.append(float(s["draw_calls"]))
 		prims.append(float(s["primitives"]))
+		arb_disp_list.append(float(s["arb_dispatches"]))
+		arb_draw_list.append(float(s["arb_draws"]))
+		arb_eval_list.append(float(s["arb_clusters_eval"]))
+		arb_vis_list.append(float(s["arb_clusters_vis"]))
+		arb_tri_list.append(float(s["arb_triangles"]))
 
 	frame_times.sort()
 	cpu_times.sort()
@@ -302,6 +346,11 @@ func _finalize_benchmark() -> void:
 	var max_vram = vrams[vrams.size() - 1]
 	var avg_draws = _average(draws)
 	var avg_prims = _average(prims)
+	var avg_dispatches = _average(arb_disp_list)
+	var avg_indirect_draws = _average(arb_draw_list)
+	var avg_clusters_eval = _average(arb_eval_list)
+	var avg_clusters_vis = _average(arb_vis_list)
+	var avg_triangles = _average(arb_tri_list)
 
 	var summary = {
 		"scenario": scenario_id,
@@ -321,6 +370,11 @@ func _finalize_benchmark() -> void:
 		"vram_max_mb": max_vram,
 		"draw_calls_avg": avg_draws,
 		"primitives_avg": avg_prims,
+		"arb_dispatches_avg": avg_dispatches,
+		"arb_indirect_draws_avg": avg_indirect_draws,
+		"arb_clusters_eval_avg": avg_clusters_eval,
+		"arb_clusters_vis_avg": avg_clusters_vis,
+		"arb_triangles_avg": avg_triangles,
 		"status": "OK"
 	}
 
@@ -339,13 +393,15 @@ func _finalize_benchmark() -> void:
 			if file_exists:
 				f.seek_end()
 			else:
-				f.store_line("scenario,variant,instances,frame,frame_time_ms,cpu_render_ms,gpu_render_ms,draw_calls,primitives,vram_mb")
+				f.store_line("scenario,variant,instances,frame,frame_time_ms,cpu_render_ms,gpu_render_ms,draw_calls,primitives,vram_mb,arb_dispatches,arb_draws,arb_clusters_eval,arb_clusters_vis,arb_tris")
 			for s in sample_records:
 				var gpu_str = "N/A" if s["gpu_render_ms"] == null else str(s["gpu_render_ms"])
-				f.store_line("%s,%s,%d,%d,%.4f,%.4f,%s,%d,%d,%.2f" % [
+				f.store_line("%s,%s,%d,%d,%.4f,%.4f,%s,%d,%d,%.2f,%d,%d,%d,%d,%d" % [
 					scenario_id, variant_id, instance_count, s["frame"],
 					s["frame_time_ms"], s["cpu_render_ms"], gpu_str,
-					s["draw_calls"], s["primitives"], s["vram_mb"]
+					s["draw_calls"], s["primitives"], s["vram_mb"],
+					s["arb_dispatches"], s["arb_draws"], s["arb_clusters_eval"],
+					s["arb_clusters_vis"], s["arb_triangles"]
 				])
 			f.close()
 
@@ -357,7 +413,15 @@ func _finalize_benchmark() -> void:
 	print("   GPU Render (p50/p95/p99) : ", gpu_display)
 	print("   VRAM Media / Max         : %.1f / %.1f MB" % [avg_vram, max_vram])
 	print("   Draw Calls / Primitives  : %.0f / %.0f" % [avg_draws, avg_prims])
+	if variant_id.begins_with("arboria"):
+		print("   ARBORIA Dispatches/Draws : %.0f / %.0f" % [avg_dispatches, avg_indirect_draws])
+		print("   ARBORIA Clusters Vis/Tot : %.0f / %.0f" % [avg_clusters_vis, avg_clusters_eval])
+		print("   ARBORIA Triangulos Reais : %.0f" % avg_triangles)
 	print("================================================================")
+
+	var pipe = ArboriaNativePipeline.get_active_instance()
+	if pipe and pipe.has_method("cleanup"):
+		pipe.cleanup()
 
 	get_tree().quit(0)
 
