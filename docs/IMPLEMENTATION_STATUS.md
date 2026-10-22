@@ -13,8 +13,8 @@
 | Etapa | Descrição | Status | Commit | Arquivos Alterados | Testes / Comprovação | Pendências Verificáveis |
 | :---: | :--- | :---: | :---: | :--- | :--- | :--- |
 | **0** | **Proteger a Base e Corrigir Medições** | ✅ **APROVADO** | `98deecf` | `bench/runner.py`, `project/bench/benchmark_scene.gd`, `project/scripts/arboria_native_pipeline.gd`, `bench/config.json` | 8 combinações x 1000 frames validadas, zero vitórias fictícias, métricas GPU/CPU/Clusters/Tris instrumentadas | Nenhuma |
-| **1** | **Corrigir Camada Nativa C++ e ABI** | 🔄 *Em Execução* | Pendente | `native/renderer/integration/*`, `native/renderer/core/*` | Teste CTest de ciclo de vida (registros, updates, releases repetidos sem memory leak) | Eliminar buffers improvisados de 32 bytes, adotar bindings tipados e API estrita |
-| **2** | **Construir o GPU Scene Global** | ⏳ *Pendente* | - | `ArboriaRenderWorld`, `ArboriaGPUScene`, shaders GLSL | 1, 80, 500, 2000 instâncias sem submissão 1:1, dispatches e draws agrupados | Múltiplos draws indiretos agrupados em buffers globais |
+| **1** | **Corrigir Camada Nativa C++ e ABI** | ✅ **APROVADO** | `6f0baf0` | `native/renderer/core/arboria_handle.h`, `native/renderer/integration/arboria_abi.*`, `arboria_runtime.*`, `arboria_scene_bridge.*`, `arboria_gdextension.cpp`, `test_native_core.cpp`, `arboria_native_pipeline.gd`, `main_viewer.gd` | Teste CTest de ciclo de vida (10.000 ciclos contínuos sem leak, rejeição de handles stale, execução Vulkan 1.4 Forward+ sem falhas no Godot) | Nenhuma |
+| **2** | **Construir o GPU Scene Global** | 🔄 *Em Execução* | Pendente | `ArboriaRenderWorld`, `ArboriaGPUScene`, `ArboriaMeshRegistry`, `ArboriaInstanceRegistry`, `cull_clusters.glsl`, `arboria_forward_raster.glsl` | 1, 80, 500, 2000 instâncias sem submissão 1:1, dispatches e draws agrupados em lote único | Múltiplos draws indiretos agrupados em buffers globais |
 | **3** | **Integração Completa ao Forward+** | ⏳ *Pendente* | - | Compositor / Fork Vulkan Forward+, Shaders | Depth prepass com Reversed-Z, sombras Directional/Omni/Spot, oclusão mista | Geometria ARBORIA projetando e recebendo sombras |
 | **4** | **Materiais PBR e Qualidade Visual** | ⏳ *Pendente* | - | Shaders PBR, Baker de materiais | Teste lado a lado com StandardMaterial3D (Albedo, Normal, Roughness, Metalness, Cutout) | Suporte completo de texturas e UVs sem perda em troca de LOD |
 | **5** | **Refinar o DAG e Eliminar Defeitos Geométricos** | ⏳ *Pendente* | - | Baker DAG, Shaders de seleção | Testes automatizados de cracks, T-junctions e pixel error | Continuidade estrita entre clusters de níveis adjacentes |
@@ -28,5 +28,6 @@
 
 ## 2. Registro de Commits na Branch `arboria/renderer-completion`
 
-1. `Etapa 0`: feat(etapa-0): proteger base, preservar benchmarks históricos e corrigir telemetria/critérios de medição
+1. `Etapa 0`: `98deecf` — feat(etapa-0): proteger base, preservar benchmarks históricos e corrigir telemetria/critérios de medição
+2. `Etapa 1`: `6f0baf0` — feat(etapa-1): implementar camada nativa C++ tipada, handles geracionais e eliminar buffers ad-hoc de 32 bytes
 
