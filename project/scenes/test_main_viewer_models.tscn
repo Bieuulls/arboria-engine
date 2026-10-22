@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cx8v3b2m1q7w0"]
+
+[ext_resource type="Script" path="res://scripts/test_main_viewer_models.gd" id="1_test"]
+
+[node name="TestMainViewerModels" type="Node3D"]
+script = ExtResource("1_test")
