@@ -14,7 +14,7 @@
 | :---: | :--- | :---: | :---: | :--- | :--- | :--- |
 | **0** | **Proteger a Base e Corrigir Medições** | ✅ **APROVADO** | `98deecf` | `bench/runner.py`, `project/bench/benchmark_scene.gd`, `project/scripts/arboria_native_pipeline.gd`, `bench/config.json` | 8 combinações x 1000 frames validadas, zero vitórias fictícias, métricas GPU/CPU/Clusters/Tris instrumentadas | Nenhuma |
 | **1** | **Corrigir Camada Nativa C++ e ABI** | ✅ **APROVADO** | `6f0baf0` | `native/renderer/core/arboria_handle.h`, `native/renderer/integration/arboria_abi.*`, `arboria_runtime.*`, `arboria_scene_bridge.*`, `arboria_gdextension.cpp`, `test_native_core.cpp`, `arboria_native_pipeline.gd`, `main_viewer.gd` | Teste CTest de ciclo de vida (10.000 ciclos contínuos sem leak, rejeição de handles stale, execução Vulkan 1.4 Forward+ sem falhas no Godot) | Nenhuma |
-| **2** | **Construir o GPU Scene Global** | ✅ **APROVADO** | `4b7130a` | `native/renderer/scene/*`, `native/renderer/CMakeLists.txt`, `native/renderer/tests/test_native_core.cpp`, `project/shaders/*_global.glsl` | 1, 80, 500 e 2.000 instâncias consolidadas em 1 lote de compute dispatch e 1 draw indirect global; geometria compartilhada sem duplicação de VRAM; eliminação de limite 2048 de textura; test_native_core 100% OK; Godot massive world 80 instâncias validado em hardware RTX 3050 | Nenhuma |
+| **2** | **Construir o GPU Scene Global** | ✅ **APROVADO** | `e78a155` | `native/renderer/scene/*`, `native/renderer/CMakeLists.txt`, `native/renderer/tests/test_native_core.cpp`, `project/shaders/*_global.glsl` | 1, 80, 500 e 2.000 instâncias consolidadas em 1 lote de compute dispatch e 1 draw indirect global; geometria compartilhada sem duplicação de VRAM; eliminação de limite 2048 de textura; test_native_core 100% OK; Godot massive world 80 instâncias validado em hardware RTX 3050 | Nenhuma |
 | **3** | **Integração Completa ao Forward+** | 🔄 *Em Execução* | Pendente | Compositor / Fork Vulkan Forward+, Shaders | Depth prepass com Reversed-Z, sombras Directional/Omni/Spot, oclusão mista | Geometria ARBORIA projetando e recebendo sombras |
 | **4** | **Materiais PBR e Qualidade Visual** | ⏳ *Pendente* | - | Shaders PBR, Baker de materiais | Teste lado a lado com StandardMaterial3D (Albedo, Normal, Roughness, Metalness, Cutout) | Suporte completo de texturas e UVs sem perda em troca de LOD |
 | **5** | **Refinar o DAG e Eliminar Defeitos Geométricos** | ⏳ *Pendente* | - | Baker DAG, Shaders de seleção | Testes automatizados de cracks, T-junctions e pixel error | Continuidade estrita entre clusters de níveis adjacentes |
@@ -30,6 +30,6 @@
 
 1. `Etapa 0`: `98deecf` — feat(etapa-0): proteger base, preservar benchmarks históricos e corrigir telemetria/critérios de medição
 2. `Etapa 1`: `6f0baf0` — feat(etapa-1): implementar camada nativa C++ tipada, handles geracionais e eliminar buffers ad-hoc de 32 bytes
-3. `Etapa 2`: `feat(etapa-2): implementar GPU Scene global, geometria compartilhada e submissão consolidada em lote único`
+3. `Etapa 2`: `e78a155` — feat(etapa-2): implementar GPU Scene global, geometria compartilhada e submissao consolidada em lote unico
 
 
