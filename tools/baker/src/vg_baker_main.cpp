@@ -360,60 +360,93 @@ bool write_vgmesh_v2(
     return true;
 }
 
-struct CanonicalVertex {
-    float px, py, pz;
-    float nx, ny, nz;
-    float u, v;
+// -----------------------------------------------------------------------------
+// CHAVES QUANTIZADAS E VERIFICACAO RIGOROSA DE TRIANGULOS (Auditoria P1 & Missao 1)
+// -----------------------------------------------------------------------------
+static constexpr double QUANT_POS_SCALE  = 10000.0; // 0.1 mm precision
+static constexpr double QUANT_NORM_SCALE = 1000.0;  // 0.001 precision
+static constexpr double QUANT_UV_SCALE   = 10000.0; // 0.0001 precision
 
-    bool operator<(const CanonicalVertex& o) const {
-        const float eps = 1e-4f;
-        if (std::abs(px - o.px) > eps) return px < o.px;
-        if (std::abs(py - o.py) > eps) return py < o.py;
-        if (std::abs(pz - o.pz) > eps) return pz < o.pz;
-        if (std::abs(nx - o.nx) > 1e-2f) return nx < o.nx;
-        if (std::abs(ny - o.ny) > 1e-2f) return ny < o.ny;
-        if (std::abs(nz - o.nz) > 1e-2f) return nz < o.nz;
-        if (std::abs(u - o.u) > 1e-3f) return u < o.u;
+static constexpr float TOL_POS_VERIFY  = 1e-4f;
+static constexpr float TOL_NORM_VERIFY = 0.05f;
+static constexpr float TOL_UV_VERIFY   = 1e-3f;
+
+struct QuantizedVertexKey {
+    int64_t x, y, z;
+    int32_t nx, ny, nz;
+    int32_t u, v;
+
+    bool operator<(const QuantizedVertexKey& o) const {
+        if (x != o.x) return x < o.x;
+        if (y != o.y) return y < o.y;
+        if (z != o.z) return z < o.z;
+        if (nx != o.nx) return nx < o.nx;
+        if (ny != o.ny) return ny < o.ny;
+        if (nz != o.nz) return nz < o.nz;
+        if (u != o.u) return u < o.u;
         return v < o.v;
+    }
+
+    bool operator==(const QuantizedVertexKey& o) const {
+        return x == o.x && y == o.y && z == o.z &&
+               nx == o.nx && ny == o.ny && nz == o.nz &&
+               u == o.u && v == o.v;
     }
 };
 
-struct CanonicalTriangle {
-    CanonicalVertex v[3];
-    float area;
+inline QuantizedVertexKey quantize_vertex(const Vertex& v, int64_t off_x = 0, int64_t off_y = 0, int64_t off_z = 0) {
+    QuantizedVertexKey k;
+    k.x = static_cast<int64_t>(std::floor(v.px * QUANT_POS_SCALE + 0.5)) + off_x;
+    k.y = static_cast<int64_t>(std::floor(v.py * QUANT_POS_SCALE + 0.5)) + off_y;
+    k.z = static_cast<int64_t>(std::floor(v.pz * QUANT_POS_SCALE + 0.5)) + off_z;
+    k.nx = static_cast<int32_t>(std::floor(v.nx * QUANT_NORM_SCALE + 0.5));
+    k.ny = static_cast<int32_t>(std::floor(v.ny * QUANT_NORM_SCALE + 0.5));
+    k.nz = static_cast<int32_t>(std::floor(v.nz * QUANT_NORM_SCALE + 0.5));
+    k.u = static_cast<int32_t>(std::floor(v.u * QUANT_UV_SCALE + 0.5));
+    k.v = static_cast<int32_t>(std::floor(v.v * QUANT_UV_SCALE + 0.5));
+    return k;
+}
 
-    bool operator<(const CanonicalTriangle& o) const {
+struct QuantizedTriangleKey {
+    QuantizedVertexKey v[3];
+
+    bool operator<(const QuantizedTriangleKey& o) const {
         for (int i = 0; i < 3; ++i) {
             if (v[i] < o.v[i]) return true;
             if (o.v[i] < v[i]) return false;
         }
         return false;
     }
+
+    bool operator==(const QuantizedTriangleKey& o) const {
+        return v[0] == o.v[0] && v[1] == o.v[1] && v[2] == o.v[2];
+    }
 };
 
-inline CanonicalTriangle make_canonical_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2) {
-    CanonicalVertex cv0 = { v0.px, v0.py, v0.pz, v0.nx, v0.ny, v0.nz, v0.u, v0.v };
-    CanonicalVertex cv1 = { v1.px, v1.py, v1.pz, v1.nx, v1.ny, v1.nz, v1.u, v1.v };
-    CanonicalVertex cv2 = { v2.px, v2.py, v2.pz, v2.nx, v2.ny, v2.nz, v2.u, v2.v };
+inline QuantizedTriangleKey make_canonical_triangle_key(const Vertex& v0, const Vertex& v1, const Vertex& v2, int& out_rot) {
+    QuantizedVertexKey k[3] = { quantize_vertex(v0), quantize_vertex(v1), quantize_vertex(v2) };
+    QuantizedTriangleKey t[3];
+    // Permutacoes ciclicas preservando estritamente a orientacao da face (winding order)
+    t[0] = { {k[0], k[1], k[2]} };
+    t[1] = { {k[1], k[2], k[0]} };
+    t[2] = { {k[2], k[0], k[1]} };
 
+    int best = 0;
+    if (t[1] < t[best]) best = 1;
+    if (t[2] < t[best]) best = 2;
+    out_rot = best;
+    return t[best];
+}
+
+inline bool is_degenerate_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, float& out_area) {
     float e1x = v1.px - v0.px, e1y = v1.py - v0.py, e1z = v1.pz - v0.pz;
     float e2x = v2.px - v0.px, e2y = v2.py - v0.py, e2z = v2.pz - v0.pz;
     float cx = e1y * e2z - e1z * e2y;
     float cy = e1z * e2x - e1x * e2z;
     float cz = e1x * e2y - e1y * e2x;
-    float area = 0.5f * std::sqrt(cx * cx + cy * cy + cz * cz);
-
-    CanonicalTriangle ct;
-    ct.area = area;
-    // Permutacao ciclica preservando estritamente a orientacao da face (winding order)
-    if (cv1 < cv0 && cv1 < cv2) {
-        ct.v[0] = cv1; ct.v[1] = cv2; ct.v[2] = cv0;
-    } else if (cv2 < cv0 && cv2 < cv1) {
-        ct.v[0] = cv2; ct.v[1] = cv0; ct.v[2] = cv1;
-    } else {
-        ct.v[0] = cv0; ct.v[1] = cv1; ct.v[2] = cv2;
-    }
-    return ct;
+    float cross_len = std::sqrt(cx * cx + cy * cy + cz * cz);
+    out_area = 0.5f * cross_len;
+    return (cross_len < 1e-10f);
 }
 
 // 3. VERIFICACAO INDEPENDENTE E PROFUNDA DE INTEGRIDADE (Missao 1 & 2 & Auditoria P1)
@@ -422,6 +455,7 @@ struct VerificationReport {
     uint32_t total_triangles_checked = 0;
     uint32_t invalid_indices = 0;
     uint32_t degenerate_triangles = 0;
+    uint32_t orig_degenerate_discarded = 0;
     uint32_t flipped_windings = 0;
     uint32_t unnormalized_normals = 0;
     uint32_t invalid_uvs = 0;
@@ -434,6 +468,7 @@ struct VerificationReport {
     // Metricas rigorosas de Lossless LOD 0
     bool lod0_lossless_validated = false;
     uint32_t orig_triangle_count = 0;
+    uint32_t orig_valid_triangles = 0;
     uint32_t lod0_triangle_count = 0;
     float orig_surface_area = 0.0f;
     float lod0_surface_area = 0.0f;
@@ -666,14 +701,20 @@ VerificationReport verify_deep_vgmesh(
         }
     }
 
-    // D. Verificacao Rigorosa de Equivalencia Geometrica Lossless LOD 0 (Auditoria P1)
+    // D. Verificacao Rigorosa de Equivalencia Geometrica Lossless LOD 0 (Auditoria P1 & Missao 1)
     if (!lods.empty() && !original_indices.empty()) {
         rep.orig_triangle_count = static_cast<uint32_t>(original_indices.size() / 3);
         rep.lod0_triangle_count = lods[0].triangle_count;
 
-        // Reconstroi triangulos canonicos da malha original
-        std::vector<CanonicalTriangle> orig_canon;
-        orig_canon.reserve(rep.orig_triangle_count);
+        struct StoredOriginalTriangle {
+            Vertex v[3];
+            float area;
+            bool matched;
+        };
+
+        // Multiconjunto mapeado por chaves quantizadas com operadores estritos
+        std::map<QuantizedTriangleKey, std::vector<StoredOriginalTriangle>> orig_multiset;
+
         for (uint32_t i = 0; i < rep.orig_triangle_count; ++i) {
             uint32_t idx0 = original_indices[i * 3 + 0];
             uint32_t idx1 = original_indices[i * 3 + 1];
@@ -685,16 +726,32 @@ VerificationReport verify_deep_vgmesh(
             const Vertex& v0 = original_vertices[idx0];
             const Vertex& v1 = original_vertices[idx1];
             const Vertex& v2 = original_vertices[idx2];
-            CanonicalTriangle ct = make_canonical_triangle(v0, v1, v2);
-            rep.orig_surface_area += ct.area;
-            orig_canon.push_back(ct);
+
+            float area = 0.0f;
+            if (is_degenerate_triangle(v0, v1, v2, area)) {
+                rep.orig_degenerate_discarded++;
+                continue;
+            }
+
+            int rot = 0;
+            QuantizedTriangleKey key = make_canonical_triangle_key(v0, v1, v2, rot);
+            StoredOriginalTriangle st;
+            if (rot == 0) { st.v[0] = v0; st.v[1] = v1; st.v[2] = v2; }
+            else if (rot == 1) { st.v[0] = v1; st.v[1] = v2; st.v[2] = v0; }
+            else { st.v[0] = v2; st.v[1] = v0; st.v[2] = v1; }
+            st.area = area;
+            st.matched = false;
+
+            rep.orig_surface_area += area;
+            rep.orig_valid_triangles++;
+            orig_multiset[key].push_back(st);
         }
 
-        // Reconstroi triangulos canonicos do LOD 0 a partir dos clusters
-        std::vector<CanonicalTriangle> lod0_canon;
-        lod0_canon.reserve(rep.lod0_triangle_count);
+        // Reconstroi e faz correspondencia dos triangulos do LOD 0 a partir dos clusters
         uint32_t c_start = lods[0].cluster_offset;
         uint32_t c_end = c_start + lods[0].cluster_count;
+        uint32_t unmatched_lod0 = 0;
+
         for (uint32_t ci = c_start; ci < c_end && ci < descs.size(); ++ci) {
             const auto& c = descs[ci];
             for (uint32_t t = 0; t < c.triangle_count; ++t) {
@@ -705,62 +762,136 @@ VerificationReport verify_deep_vgmesh(
                 const Vertex& v0 = packed_verts[c.vertex_offset + i0];
                 const Vertex& v1 = packed_verts[c.vertex_offset + i1];
                 const Vertex& v2 = packed_verts[c.vertex_offset + i2];
-                CanonicalTriangle ct = make_canonical_triangle(v0, v1, v2);
-                rep.lod0_surface_area += ct.area;
-                lod0_canon.push_back(ct);
-            }
-        }
 
-        // Ordena ambas as colecoes canonicas para comparacao 1:1
-        std::sort(orig_canon.begin(), orig_canon.end());
-        std::sort(lod0_canon.begin(), lod0_canon.end());
+                float area = 0.0f;
+                if (is_degenerate_triangle(v0, v1, v2, area)) {
+                    rep.degenerate_triangles++;
+                    continue;
+                }
+                rep.lod0_surface_area += area;
 
-        if (orig_canon.size() != lod0_canon.size()) {
-            std::cerr << "ERRO: Contagem de triangulos canonicos difere: Original=" << orig_canon.size() << " vs LOD0=" << lod0_canon.size() << "!\n";
-            rep.unmatched_triangles += static_cast<uint32_t>(std::abs((int)orig_canon.size() - (int)lod0_canon.size()));
-        }
+                int rot = 0;
+                QuantizedTriangleKey primary_key = make_canonical_triangle_key(v0, v1, v2, rot);
+                Vertex lv[3];
+                if (rot == 0) { lv[0] = v0; lv[1] = v1; lv[2] = v2; }
+                else if (rot == 1) { lv[0] = v1; lv[1] = v2; lv[2] = v0; }
+                else { lv[0] = v2; lv[1] = v0; lv[2] = v1; }
 
-        size_t compare_count = std::min(orig_canon.size(), lod0_canon.size());
-        for (size_t i = 0; i < compare_count; ++i) {
-            const auto& ot = orig_canon[i];
-            const auto& lt = lod0_canon[i];
+                auto test_match = [&](StoredOriginalTriangle& cand) -> bool {
+                    if (cand.matched) return false;
+                    for (int k = 0; k < 3; ++k) {
+                        float pos_diff = std::max({std::abs(cand.v[k].px - lv[k].px),
+                                                  std::abs(cand.v[k].py - lv[k].py),
+                                                  std::abs(cand.v[k].pz - lv[k].pz)});
+                        float norm_diff = std::max({std::abs(cand.v[k].nx - lv[k].nx),
+                                                   std::abs(cand.v[k].ny - lv[k].ny),
+                                                   std::abs(cand.v[k].nz - lv[k].nz)});
+                        float uv_diff = std::max(std::abs(cand.v[k].u - lv[k].u),
+                                                std::abs(cand.v[k].v - lv[k].v));
+                        if (pos_diff > TOL_POS_VERIFY || norm_diff > TOL_NORM_VERIFY || uv_diff > TOL_UV_VERIFY) {
+                            return false;
+                        }
+                    }
+                    for (int k = 0; k < 3; ++k) {
+                        float pos_diff = std::max({std::abs(cand.v[k].px - lv[k].px),
+                                                  std::abs(cand.v[k].py - lv[k].py),
+                                                  std::abs(cand.v[k].pz - lv[k].pz)});
+                        float norm_diff = std::max({std::abs(cand.v[k].nx - lv[k].nx),
+                                                   std::abs(cand.v[k].ny - lv[k].ny),
+                                                   std::abs(cand.v[k].nz - lv[k].nz)});
+                        float uv_diff = std::max(std::abs(cand.v[k].u - lv[k].u),
+                                                std::abs(cand.v[k].v - lv[k].v));
+                        rep.max_vertex_pos_diff = std::max(rep.max_vertex_pos_diff, pos_diff);
+                        rep.max_normal_diff = std::max(rep.max_normal_diff, norm_diff);
+                        rep.max_uv_diff = std::max(rep.max_uv_diff, uv_diff);
+                    }
+                    cand.matched = true;
+                    return true;
+                };
 
-            bool match = true;
-            for (int k = 0; k < 3; ++k) {
-                float dpx = std::abs(ot.v[k].px - lt.v[k].px);
-                float dpy = std::abs(ot.v[k].py - lt.v[k].py);
-                float dpz = std::abs(ot.v[k].pz - lt.v[k].pz);
-                float pos_diff = std::max({dpx, dpy, dpz});
-                rep.max_vertex_pos_diff = std::max(rep.max_vertex_pos_diff, pos_diff);
+                bool matched = false;
+                auto it = orig_multiset.find(primary_key);
+                if (it != orig_multiset.end()) {
+                    for (auto& cand : it->second) {
+                        if (test_match(cand)) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
 
-                float dnx = std::abs(ot.v[k].nx - lt.v[k].nx);
-                float dny = std::abs(ot.v[k].ny - lt.v[k].ny);
-                float dnz = std::abs(ot.v[k].nz - lt.v[k].nz);
-                float norm_diff = std::max({dnx, dny, dnz});
-                rep.max_normal_diff = std::max(rep.max_normal_diff, norm_diff);
+                if (!matched) {
+                    // Tratar celulas vizinhas de fronteira
+                    int cand_offsets[3][3] = { {0, 0, 0}, {0, 0, 0}, {0, 0, 0} };
+                    for (int vi = 0; vi < 3; ++vi) {
+                        double vx = lv[vi].px * QUANT_POS_SCALE;
+                        double vy = lv[vi].py * QUANT_POS_SCALE;
+                        double vz = lv[vi].pz * QUANT_POS_SCALE;
+                        double qx = std::floor(vx + 0.5);
+                        double qy = std::floor(vy + 0.5);
+                        double qz = std::floor(vz + 0.5);
+                        if (std::abs(vx - qx) > 0.45) cand_offsets[vi][0] = (vx > qx) ? 1 : -1;
+                        if (std::abs(vy - qy) > 0.45) cand_offsets[vi][1] = (vy > qy) ? 1 : -1;
+                        if (std::abs(vz - qz) > 0.45) cand_offsets[vi][2] = (vz > qz) ? 1 : -1;
+                    }
 
-                float du = std::abs(ot.v[k].u - lt.v[k].u);
-                float dv = std::abs(ot.v[k].v - lt.v[k].v);
-                float uv_diff = std::max(du, dv);
-                rep.max_uv_diff = std::max(rep.max_uv_diff, uv_diff);
+                    for (int vi = 0; vi < 3 && !matched; ++vi) {
+                        for (int axis = 0; axis < 3 && !matched; ++axis) {
+                            if (cand_offsets[vi][axis] == 0) continue;
+                            int64_t ox = (axis == 0) ? cand_offsets[vi][axis] : 0;
+                            int64_t oy = (axis == 1) ? cand_offsets[vi][axis] : 0;
+                            int64_t oz = (axis == 2) ? cand_offsets[vi][axis] : 0;
 
-                if (pos_diff > 1e-4f || norm_diff > 0.05f || uv_diff > 1e-3f) {
-                    match = false;
+                            QuantizedVertexKey alt_k[3];
+                            for (int k = 0; k < 3; ++k) {
+                                if (k == vi) alt_k[k] = quantize_vertex(lv[k], ox, oy, oz);
+                                else alt_k[k] = quantize_vertex(lv[k]);
+                            }
+                            QuantizedTriangleKey alt_t[3] = {
+                                { {alt_k[0], alt_k[1], alt_k[2]} },
+                                { {alt_k[1], alt_k[2], alt_k[0]} },
+                                { {alt_k[2], alt_k[0], alt_k[1]} }
+                            };
+                            int best = 0;
+                            if (alt_t[1] < alt_t[best]) best = 1;
+                            if (alt_t[2] < alt_t[best]) best = 2;
+
+                            auto alt_it = orig_multiset.find(alt_t[best]);
+                            if (alt_it != orig_multiset.end()) {
+                                for (auto& cand : alt_it->second) {
+                                    if (test_match(cand)) {
+                                        matched = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!matched) {
+                    unmatched_lod0++;
                 }
             }
-            if (!match) {
-                rep.unmatched_triangles++;
+        }
+
+        uint32_t unmatched_orig = 0;
+        for (const auto& pair : orig_multiset) {
+            for (const auto& cand : pair.second) {
+                if (!cand.matched) {
+                    unmatched_orig++;
+                }
             }
         }
 
+        rep.unmatched_triangles = unmatched_orig + unmatched_lod0;
         float rel_area_diff = std::abs(rep.orig_surface_area - rep.lod0_surface_area) / std::max(1e-6f, rep.orig_surface_area);
-        rep.lod0_lossless_validated = (rep.unmatched_triangles == 0 && 
-                                       orig_canon.size() == lod0_canon.size() && 
-                                       rel_area_diff < 1e-4f);
+        rep.lod0_lossless_validated = (rep.unmatched_triangles == 0 && rel_area_diff < 1e-4f);
 
         if (!rep.lod0_lossless_validated) {
             std::cerr << "ERRO: Validacao geometrica de LOD 0 falhou! "
-                      << rep.unmatched_triangles << " triangulos divergentes, diferenca de area: " << (rel_area_diff * 100.0f) << "%\n";
+                      << rep.unmatched_triangles << " triangulos divergentes (orig=" << unmatched_orig
+                      << ", lod0=" << unmatched_lod0 << "), diferenca de area: " << (rel_area_diff * 100.0f) << "%\n";
         }
     }
 
@@ -932,22 +1063,47 @@ int main(int argc, char** argv) {
         for (size_t c_idx : c_indices) {
             const auto& raw_c = collector.clusters[c_idx];
 
-            std::vector<unsigned int> local_verts(raw_c.indices.size());
-            std::vector<unsigned char> local_tris(raw_c.indices.size());
+            std::vector<unsigned int> cluster_clean_indices;
+            cluster_clean_indices.reserve(raw_c.indices.size());
+            for (size_t ti = 0; ti < raw_c.indices.size(); ti += 3) {
+                unsigned int i0 = raw_c.indices[ti + 0];
+                unsigned int i1 = raw_c.indices[ti + 1];
+                unsigned int i2 = raw_c.indices[ti + 2];
+                if (i0 == i1 || i1 == i2 || i0 == i2) continue;
+                const Vertex& v0 = vertices[i0];
+                const Vertex& v1 = vertices[i1];
+                const Vertex& v2 = vertices[i2];
+                float e1x = v1.px - v0.px, e1y = v1.py - v0.py, e1z = v1.pz - v0.pz;
+                float e2x = v2.px - v0.px, e2y = v2.py - v0.py, e2z = v2.pz - v0.pz;
+                float cx = e1y * e2z - e1z * e2y;
+                float cy = e1z * e2x - e1x * e2z;
+                float cz = e1x * e2y - e1y * e2x;
+                if (cx * cx + cy * cy + cz * cz < 1e-12f) continue;
+                cluster_clean_indices.push_back(i0);
+                cluster_clean_indices.push_back(i1);
+                cluster_clean_indices.push_back(i2);
+            }
+
+            if (cluster_clean_indices.empty()) {
+                continue;
+            }
+
+            std::vector<unsigned int> local_verts(cluster_clean_indices.size());
+            std::vector<unsigned char> local_tris(cluster_clean_indices.size());
             size_t unique_c_verts = clodLocalIndices(
                 local_verts.data(),
                 local_tris.data(),
-                raw_c.indices.data(),
-                raw_c.indices.size()
+                cluster_clean_indices.data(),
+                cluster_clean_indices.size()
             );
 
             assert(unique_c_verts <= max_vertices);
-            assert((raw_c.indices.size() / 3) <= max_triangles);
+            assert((cluster_clean_indices.size() / 3) <= max_triangles);
 
             meshopt_Bounds mb = meshopt_computeMeshletBounds(
                 local_verts.data(),
                 local_tris.data(),
-                raw_c.indices.size() / 3,
+                cluster_clean_indices.size() / 3,
                 &vertices[0].px,
                 vertices.size(),
                 sizeof(Vertex)
@@ -971,7 +1127,7 @@ int main(int argc, char** argv) {
             desc.vertex_offset = static_cast<uint32_t>(packed_vertices.size());
             desc.vertex_count = static_cast<uint32_t>(unique_c_verts);
             desc.triangle_offset = static_cast<uint32_t>(packed_triangles.size());
-            desc.triangle_count = static_cast<uint32_t>(raw_c.indices.size() / 3);
+            desc.triangle_count = static_cast<uint32_t>(cluster_clean_indices.size() / 3);
 
             cluster_descriptors.push_back(desc);
 
@@ -979,7 +1135,7 @@ int main(int argc, char** argv) {
                 packed_vertices.push_back(vertices[local_verts[vi]]);
             }
 
-            for (size_t ti = 0; ti < raw_c.indices.size(); ++ti) {
+            for (size_t ti = 0; ti < cluster_clean_indices.size(); ++ti) {
                 packed_triangles.push_back(local_tris[ti]);
             }
 

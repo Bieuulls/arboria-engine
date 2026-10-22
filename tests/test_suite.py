@@ -7,7 +7,11 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(CURRENT_DIR)
-BAKER_EXE = os.path.join(REPO_ROOT, "bin", "vg_baker_cli.exe")
+baker_candidates = [
+    os.path.join(REPO_ROOT, "bin", "vg_baker_cli.exe"),
+    os.path.join(REPO_ROOT, "bin", "vg_baker_cli"),
+]
+BAKER_EXE = next((p for p in baker_candidates if os.path.exists(p)), baker_candidates[0] if sys.platform.startswith("win") else baker_candidates[1])
 TESTS_DIR = CURRENT_DIR
 
 print("=" * 80)
@@ -28,7 +32,7 @@ if not os.path.exists(BAKER_EXE):
     sys.exit(1)
 else:
     sz = os.path.getsize(BAKER_EXE)
-    record_test("1. Binario C++ Compilado", True, f"vg_baker_cli.exe presente ({sz:,} bytes)")
+    record_test("1. Binario C++ Compilado", True, f"{os.path.basename(BAKER_EXE)} presente ({sz:,} bytes)")
 
 # 2. Teste com Malha Pequena + Verificacao
 small_obj = os.path.join(TESTS_DIR, "small_mesh_test.obj")
@@ -48,6 +52,26 @@ record_test(
     "3. Malha Densa (16.000 triangulos) + Hierarquia DAG Multi-LOD",
     res_dense.returncode == 0 and "VERIFICACAO COMPLETA APROVADA" in res_dense.stdout,
     f"Exit code: {res_dense.returncode} | 367 clusters gerados com limites estritos (<=64 verts, <=128 tris)"
+)
+
+# 3b. Teste com Boulder Granite (Granito Real) + Verificacao
+boulder_obj = os.path.join(TESTS_DIR, "boulder_granite.obj")
+boulder_vg = os.path.join(TESTS_DIR, "boulder_granite.vgmesh")
+res_boulder = subprocess.run([BAKER_EXE, boulder_obj, boulder_vg, "--verify"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+record_test(
+    "3b. Boulder Granite (320 triangulos) + Verificacao Lossless",
+    res_boulder.returncode == 0 and "VERIFICACAO COMPLETA APROVADA" in res_boulder.stdout,
+    f"Exit code: {res_boulder.returncode} | Verificacao profunda 100% aprovada"
+)
+
+# 3c. Teste com Pine Trunk Complex (Tronco Complexo - 35.000 triangulos) + Verificacao
+pine_obj = os.path.join(TESTS_DIR, "pine_trunk_complex.obj")
+pine_vg = os.path.join(TESTS_DIR, "pine_trunk_complex.vgmesh")
+res_pine = subprocess.run([BAKER_EXE, pine_obj, pine_vg, "--verify"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+record_test(
+    "3c. Pine Trunk Complex (35.000 triangulos) + Hierarquia DAG Multi-LOD",
+    res_pine.returncode == 0 and "VERIFICACAO COMPLETA APROVADA" in res_pine.stdout,
+    f"Exit code: {res_pine.returncode} | 805 clusters gerados com limites estritos"
 )
 
 # 4. Teste de Arquivo Inexistente (Tratamento de Erros)

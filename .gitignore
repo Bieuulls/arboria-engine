@@ -37,3 +37,7 @@ desktop.ini
 *.gz
 *.tmp
 *.log
+
+# Large generated procedural test meshes
+tests/procedural_1m.*
+
