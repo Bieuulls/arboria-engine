@@ -15,6 +15,7 @@ baker_candidates = [
 ]
 BAKER_EXE = next((p for p in baker_candidates if os.path.exists(p)), baker_candidates[0] if sys.platform.startswith("win") else baker_candidates[1])
 TESTS_DIR = CURRENT_DIR
+ASSETS_DIR = os.path.join(REPO_ROOT, "assets")
 
 print("=" * 80)
 print("ARBORIA VIRTUAL GEOMETRY — BATERIA DE TESTES DE INTEGRIDADE & VALIDACAO (FASE 3)")
@@ -37,8 +38,8 @@ else:
     record_test("1. Binario C++ Compilado", True, f"{os.path.basename(BAKER_EXE)} presente ({sz:,} bytes)")
 
 # 2. Teste com Malha Pequena + Verificacao
-small_obj = os.path.join(TESTS_DIR, "small_mesh_test.obj")
-small_vg = os.path.join(TESTS_DIR, "small_mesh.vgmesh")
+small_obj = os.path.join(ASSETS_DIR, "small_mesh_test.obj")
+small_vg = os.path.join(ASSETS_DIR, "small_mesh.vgmesh")
 res_small = subprocess.run([BAKER_EXE, small_obj, small_vg, "--verify"], capture_output=True, text=True, encoding="utf-8", errors="replace")
 record_test(
     "2. Malha Pequena (512 triangulos) + Reconstrucao",
@@ -47,8 +48,8 @@ record_test(
 )
 
 # 3. Teste com Malha Densa + Reconstrucao
-dense_obj = os.path.join(TESTS_DIR, "dense_rock_test.obj")
-dense_vg = os.path.join(TESTS_DIR, "dense_rock.vgmesh")
+dense_obj = os.path.join(ASSETS_DIR, "dense_rock_test.obj")
+dense_vg = os.path.join(ASSETS_DIR, "dense_rock.vgmesh")
 res_dense = subprocess.run([BAKER_EXE, dense_obj, dense_vg, "--verify"], capture_output=True, text=True, encoding="utf-8", errors="replace")
 record_test(
     "3. Malha Densa (16.000 triangulos) + Hierarquia DAG Multi-LOD",
@@ -57,8 +58,8 @@ record_test(
 )
 
 # 3b. Teste com Boulder Granite (Granito Real) + Verificacao
-boulder_obj = os.path.join(TESTS_DIR, "boulder_granite.obj")
-boulder_vg = os.path.join(TESTS_DIR, "boulder_granite.vgmesh")
+boulder_obj = os.path.join(ASSETS_DIR, "boulder_granite.obj")
+boulder_vg = os.path.join(ASSETS_DIR, "boulder_granite.vgmesh")
 res_boulder = subprocess.run([BAKER_EXE, boulder_obj, boulder_vg, "--verify"], capture_output=True, text=True, encoding="utf-8", errors="replace")
 record_test(
     "3b. Boulder Granite (320 triangulos) + Verificacao Lossless",
@@ -67,8 +68,8 @@ record_test(
 )
 
 # 3c. Teste com Pine Trunk Complex (Tronco Complexo - 35.000 triangulos) + Verificacao
-pine_obj = os.path.join(TESTS_DIR, "pine_trunk_complex.obj")
-pine_vg = os.path.join(TESTS_DIR, "pine_trunk_complex.vgmesh")
+pine_obj = os.path.join(ASSETS_DIR, "pine_trunk_complex.obj")
+pine_vg = os.path.join(ASSETS_DIR, "pine_trunk_complex.vgmesh")
 res_pine = subprocess.run([BAKER_EXE, pine_obj, pine_vg, "--verify"], capture_output=True, text=True, encoding="utf-8", errors="replace")
 record_test(
     "3c. Pine Trunk Complex (35.000 triangulos) + Hierarquia DAG Multi-LOD",

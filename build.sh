@@ -27,6 +27,10 @@ if [ ! -f "bin/arboria_baker_cli" ] && [ ! -f "bin/arboria_baker_cli.exe" ] && [
     exit 1
 fi
 
+echo "[Extra] Sincronizando assets/ com project/assets/ para o Godot..."
+mkdir -p project/assets
+cp -u assets/*.vgmesh project/assets/ 2>/dev/null || true
+
 echo "================================================================"
 echo "  BUILD CONCLUIDO COM SUCESSO E REPRODUZIVEL!"
 echo "================================================================"

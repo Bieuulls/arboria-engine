@@ -55,6 +55,12 @@ if not exist "project\bin\libarboria_native.dll" (
     exit /b 1
 )
 
+echo [Extra] Sincronizando assets/ com project/assets/ para o Godot...
+if not exist "project\assets" mkdir "project\assets"
+for %%f in (assets\*.vgmesh) do (
+    copy /Y "%%f" "project\assets\" >nul
+)
+
 echo ================================================================
 echo   BUILD CONCLUIDO COM SUCESSO E REPRODUZIVEL!
 echo ================================================================
