@@ -12,7 +12,7 @@
 
 | Etapa | Descrição | Status | Commit | Arquivos Alterados | Testes / Comprovação | Pendências Verificáveis |
 | :---: | :--- | :---: | :---: | :--- | :--- | :--- |
-| **0** | **Proteger a Base e Corrigir Medições** | ✅ **APROVADO** | `f6a4b10` (pendente commit) | `bench/runner.py`, `project/bench/benchmark_scene.gd`, `project/scripts/arboria_native_pipeline.gd`, `bench/config.json` | 8 combinações x 1000 frames validadas, zero vitórias fictícias, métricas GPU/CPU/Clusters/Tris instrumentadas | Nenhuma |
+| **0** | **Proteger a Base e Corrigir Medições** | ✅ **APROVADO** | `98deecf` | `bench/runner.py`, `project/bench/benchmark_scene.gd`, `project/scripts/arboria_native_pipeline.gd`, `bench/config.json` | 8 combinações x 1000 frames validadas, zero vitórias fictícias, métricas GPU/CPU/Clusters/Tris instrumentadas | Nenhuma |
 | **1** | **Corrigir Camada Nativa C++ e ABI** | 🔄 *Em Execução* | Pendente | `native/renderer/integration/*`, `native/renderer/core/*` | Teste CTest de ciclo de vida (registros, updates, releases repetidos sem memory leak) | Eliminar buffers improvisados de 32 bytes, adotar bindings tipados e API estrita |
 | **2** | **Construir o GPU Scene Global** | ⏳ *Pendente* | - | `ArboriaRenderWorld`, `ArboriaGPUScene`, shaders GLSL | 1, 80, 500, 2000 instâncias sem submissão 1:1, dispatches e draws agrupados | Múltiplos draws indiretos agrupados em buffers globais |
 | **3** | **Integração Completa ao Forward+** | ⏳ *Pendente* | - | Compositor / Fork Vulkan Forward+, Shaders | Depth prepass com Reversed-Z, sombras Directional/Omni/Spot, oclusão mista | Geometria ARBORIA projetando e recebendo sombras |
