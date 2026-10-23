@@ -1,6 +1,6 @@
 # ARBORIA ENGINE — REGISTRO OFICIAL DE IMPLEMENTAÇÃO E GATES
 
-**Projeto:** ARBORIA ENGINE OFFICIAL (`D:\ARBORIA_ENGINE\ARBORIA_ENGINE_OFFICIAL`)  
+**Projeto:** ARBORIA ENGINE OFFICIAL  
 **Hardware de Teste:** NVIDIA GeForce RTX 3050 Laptop GPU (6 GB VRAM) / Windows 11  
 **Driver Gráfico / Motor:** Vulkan 1.4 / Godot 4.7.2 Forward+  
 **Branch Ativa:** `antigravity/arboria-renderer-completion`  

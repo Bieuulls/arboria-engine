@@ -16,13 +16,23 @@ SUMMARY_MD_PATH = os.path.join(RESULTS_DIR, "summary.md")
 
 os.makedirs(CAPTURES_DIR, exist_ok=True)
 
-# 1. Localiza o executável do Godot
+# 1. Localiza o executável do Godot dinamicamente
 def find_godot():
+    env_bin = os.environ.get("GODOT_BIN")
+    if env_bin and os.path.exists(env_bin):
+        return env_bin
+
+    localapp = os.environ.get("LOCALAPPDATA", "")
+    winget_godot = os.path.join(
+        localapp, "Microsoft", "WinGet", "Packages",
+        "GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe",
+        "Godot_v4.7.2-stable_win64_console.exe"
+    )
+
     candidates = [
-        r"D:\ARBORIA_ENGINE\bin\godot_console.exe",
-        r"D:\ARBORIA_ENGINE\bin\godot.exe",
-        os.path.join(REPO_ROOT, "..", "bin", "godot_console.exe"),
-        os.path.join(REPO_ROOT, "..", "bin", "godot.exe"),
+        winget_godot,
+        os.path.join(REPO_ROOT, "bin", "godot_console.exe"),
+        os.path.join(REPO_ROOT, "bin", "godot.exe"),
         "godot_console.exe",
         "godot.exe",
         "godot"
@@ -31,11 +41,10 @@ def find_godot():
         if os.path.isabs(c) and os.path.exists(c):
             return c
         elif not os.path.isabs(c):
-            # check PATH
             which = subprocess.run(["where.exe", c] if sys.platform.startswith("win") else ["which", c], capture_output=True, text=True)
             if which.returncode == 0 and which.stdout.strip():
                 return which.stdout.strip().splitlines()[0]
-    return candidates[0]
+    return "godot"
 
 GODOT_BIN = find_godot()
 

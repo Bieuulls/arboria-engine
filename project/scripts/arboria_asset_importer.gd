@@ -186,7 +186,7 @@ static func _find_baker() -> String:
 		var abs_path := ProjectSettings.globalize_path(p).simplify_path()
 		if FileAccess.file_exists(abs_path): return abs_path
 	var root := ProjectSettings.globalize_path("res://").simplify_path()
-	for p in [root.path_join("../bin/vg_baker_cli.exe").simplify_path(), root.path_join("../bin/arboria_baker_cli.exe").simplify_path(), "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/bin/vg_baker_cli.exe"]:
+	for p in [root.path_join("../bin/vg_baker_cli.exe").simplify_path(), root.path_join("../bin/arboria_baker_cli.exe").simplify_path(), root.path_join("bin/arboria_baker_cli.exe").simplify_path()]:
 		if FileAccess.file_exists(p): return p
 	return ""
 

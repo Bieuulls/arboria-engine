@@ -11,10 +11,24 @@ $ErrorActionPreference = "Continue"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Resolve-Path "$ScriptDir\..\.."
 $ProjectDir = "$RepoRoot\project"
-$GodotBin = "D:\ARBORIA_ENGINE\bin\godot_console.exe"
+$GodotBin = $env:GODOT_BIN
+if (-not $GodotBin -or -not (Test-Path $GodotBin)) {
+    $Candidates = @(
+        "$RepoRoot\bin\godot_console.exe",
+        "$RepoRoot\bin\godot.exe",
+        "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7.2-stable_win64_console.exe",
+        (Get-Command godot -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1)
+    )
+    foreach ($c in $Candidates) {
+        if ($c -and (Test-Path $c)) {
+            $GodotBin = $c
+            break
+        }
+    }
+}
 
-if (-not (Test-Path $GodotBin)) {
-    Write-Error "Godot executavel nao encontrado em: $GodotBin"
+if (-not $GodotBin -or -not (Test-Path $GodotBin)) {
+    Write-Error "Godot executavel nao encontrado. Defina a variavel GODOT_BIN ou coloque o executavel no PATH."
     exit 1
 }
 

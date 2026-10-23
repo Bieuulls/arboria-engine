@@ -1,6 +1,6 @@
 # ARBORIA ENGINE — STATUS OFICIAL DE IMPLEMENTAÇÃO E EXECUÇÃO
 
-**Projeto:** `D:\ARBORIA_ENGINE\ARBORIA_ENGINE_OFFICIAL`  
+**Projeto:** ARBORIA ENGINE OFFICIAL  
 **Motor:** Godot 4.7.2 Forward+ / Vulkan 1.4  
 **Hardware de Validação:** NVIDIA GeForce RTX 3050 Laptop GPU (6 GB VRAM) / Windows 11  
 **Branch de Desenvolvimento:** `arboria/renderer-completion`  

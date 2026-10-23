@@ -27,9 +27,19 @@ if [ ! -f "bin/arboria_baker_cli" ] && [ ! -f "bin/arboria_baker_cli.exe" ] && [
     exit 1
 fi
 
+mkdir -p addons/arboria/bin
+if [ -f "project/bin/libarboria_native.so" ]; then
+    cp project/bin/libarboria_native.so addons/arboria/bin/
+elif [ -f "project/bin/libarboria_native.dylib" ]; then
+    cp project/bin/libarboria_native.dylib addons/arboria/bin/
+elif [ -f "project/bin/libarboria_native.dll" ]; then
+    cp project/bin/libarboria_native.dll addons/arboria/bin/
+fi
+
 echo "[Extra] Sincronizando assets/ com project/assets/ para o Godot..."
 mkdir -p project/assets
 cp -u assets/*.vgmesh project/assets/ 2>/dev/null || true
+cp -u assets/*.obj project/assets/ 2>/dev/null || true
 
 echo "================================================================"
 echo "  BUILD CONCLUIDO COM SUCESSO E REPRODUZIVEL!"
