@@ -30,10 +30,14 @@ int main(int argc, char** argv) {
     std::cout << "[TESTE 1] Runtime inicializado: " << arboria_get_version() << " - OK" << std::endl;
 
     // 2. Carregamento de malha .vgmesh
-    std::string test_mesh_path = (argc > 1) ? argv[1] : "assets/dense_rock_verified.vgmesh";
+    std::string test_mesh_path = (argc > 1) ? argv[1] : "assets/dense_rock.vgmesh";
     int32_t mesh_id = arboria_load_mesh(test_mesh_path.c_str());
     if (mesh_id <= 0) {
-        test_mesh_path = "../../assets/dense_rock_verified.vgmesh";
+        test_mesh_path = "../../assets/dense_rock.vgmesh";
+        mesh_id = arboria_load_mesh(test_mesh_path.c_str());
+    }
+    if (mesh_id <= 0) {
+        test_mesh_path = "assets/dense_rock_verified.vgmesh";
         mesh_id = arboria_load_mesh(test_mesh_path.c_str());
     }
     if (mesh_id <= 0) {

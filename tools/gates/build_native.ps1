@@ -33,12 +33,12 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "[3/3] Executando testes unitarios do nucleo nativo..." -ForegroundColor Yellow
 $TestExe = "$BuildDir\test_native_core.exe"
-$TestMesh = "$RepoRoot\project\assets\dense_rock_test.vgmesh"
+$TestMesh = "$RepoRoot\assets\dense_rock.vgmesh"
 if (-not (Test-Path $TestMesh)) {
-    $TestMesh = "$RepoRoot\assets\dense_rock_verified.vgmesh"
+    $TestMesh = "$RepoRoot\project\assets\dense_rock_test.vgmesh"
 }
 if (-not (Test-Path $TestMesh)) {
-    $TestMesh = "$RepoRoot\tests\dense_rock_verified.vgmesh"
+    $TestMesh = "$RepoRoot\assets\dense_rock_verified.vgmesh"
 }
 if (Test-Path $TestExe) {
     & "$TestExe" "$TestMesh"
