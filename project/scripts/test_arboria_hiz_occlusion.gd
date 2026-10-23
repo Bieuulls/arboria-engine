@@ -87,4 +87,6 @@ func _process(_delta: float) -> void:
 		print("  -> Reducao de Carga GPU por Oclusao: %.1f%% de clusters eliminados!" % reduction_pct)
 		print("[SUCESSO] Hi-Z Occlusion Culling validado com reducao mensuravel e zero falsos positivos!")
 		print("====================================================")
+		if is_instance_valid(pipeline):
+			pipeline.cleanup()
 		get_tree().quit(0)

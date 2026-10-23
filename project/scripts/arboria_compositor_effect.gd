@@ -62,3 +62,14 @@ static func attach_to_environment(target: Variant) -> void:
 		comp.compositor_effects = [pre_eff, post_eff]
 		print("[ArboriaCompositorEffect] Integracao Forward+ completa ativada (Depth Prepass + Main Opaque).")
 
+static func detach_from_environment(target: Variant) -> void:
+	if not target:
+		return
+	var comp: Compositor = null
+	if target is WorldEnvironment or target is Camera3D:
+		comp = target.compositor
+	elif target is Compositor:
+		comp = target
+	if comp:
+		comp.compositor_effects = []
+

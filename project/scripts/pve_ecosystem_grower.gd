@@ -106,3 +106,15 @@ func _populate_virtual_geometry() -> void:
 		spawned_entities.append(rock)
 		
 	print("[PVEEcosystemGrower] Ecossistema gerado com %d entidades virtuais Nanite DAG." % spawned_entities.size())
+
+func _exit_tree() -> void:
+	var env = get_node_or_null("../WorldEnvironment")
+	if env and env is WorldEnvironment:
+		ArboriaCompositorEffect.detach_from_environment(env)
+	for ent in spawned_entities:
+		if is_instance_valid(ent):
+			ent.queue_free()
+	spawned_entities.clear()
+	if ArboriaNativePipeline._shared_instance:
+		ArboriaNativePipeline._shared_instance.cleanup()
+		ArboriaNativePipeline._shared_instance = null

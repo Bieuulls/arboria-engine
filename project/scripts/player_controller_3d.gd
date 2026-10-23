@@ -23,9 +23,26 @@ var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var visual_mesh: Node3D = $VisualMesh
 
 func _ready() -> void:
+	_setup_input_actions()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	floor_snap_length = 0.4 # Fixação precisa no solo para não flutuar
 	floor_stop_on_slope = true
+
+func _setup_input_actions() -> void:
+	_ensure_action("move_left", [KEY_A, KEY_LEFT])
+	_ensure_action("move_right", [KEY_D, KEY_RIGHT])
+	_ensure_action("move_forward", [KEY_W, KEY_UP])
+	_ensure_action("move_back", [KEY_S, KEY_DOWN])
+	_ensure_action("jump", [KEY_SPACE])
+	_ensure_action("sprint", [KEY_SHIFT])
+
+func _ensure_action(action_name: String, keys: Array) -> void:
+	if not InputMap.has_action(action_name):
+		InputMap.add_action(action_name)
+		for key in keys:
+			var ev := InputEventKey.new()
+			ev.physical_keycode = key
+			InputMap.action_add_event(action_name, ev)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:

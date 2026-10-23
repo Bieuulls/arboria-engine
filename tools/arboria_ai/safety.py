@@ -51,7 +51,7 @@ def apply_literal_edits(original: str, edits: list[dict], target: str, max_edits
         if old == new:
             raise ValueError('Alteração vazia.')
         if result.count(old) != 1:
-            raise ValueError('Trecho original não é único ou não existe.')
+            raise ValueError('Trecho original não é único ou não existe. Encontrado: %d. Trecho: %r' % (result.count(old), old))
         additions += len(new)
         if additions > max_added_chars:
             raise ValueError('Alterações maiores que o limite permitido.')
