@@ -44,6 +44,14 @@ int main(int argc, char** argv) {
         test_mesh_path = "../../project/assets/dense_rock_verified.vgmesh";
         mesh_id = arboria_load_mesh(test_mesh_path.c_str());
     }
+    if (mesh_id <= 0) {
+        test_mesh_path = "project/assets/dense_rock_test.vgmesh";
+        mesh_id = arboria_load_mesh(test_mesh_path.c_str());
+    }
+    if (mesh_id <= 0) {
+        test_mesh_path = "../../project/assets/dense_rock_test.vgmesh";
+        mesh_id = arboria_load_mesh(test_mesh_path.c_str());
+    }
 
     if (mesh_id <= 0) {
         std::cerr << "[TESTE 2] AVISO: Nao foi possivel carregar " << test_mesh_path << " (caminho relativo). Testando com dados sinteticos." << std::endl;
