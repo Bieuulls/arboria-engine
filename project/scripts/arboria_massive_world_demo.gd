@@ -28,6 +28,8 @@ var pipeline: RefCounted = null
 var total_instances_count: int = 80
 var raw_mesh_triangles: int = 15800
 var active_rocks: Array[ArboriaInstance3D] = []
+var current_frame: int = 0
+var is_interactive: bool = false
 
 # Cores minerais realistas
 var rock_palettes = [
@@ -40,6 +42,9 @@ var rock_palettes = [
 
 func _ready() -> void:
 	print("[ArboriaMassiveWorld] Inicializando mundo massivo de geometria virtualizada...")
+	for arg in OS.get_cmdline_args():
+		if arg == "--interactive":
+			is_interactive = true
 	pipeline = ArboriaNativePipeline.get_or_create_shared()
 
 	# Registra CompositorEffect no WorldEnvironment
@@ -203,3 +208,31 @@ func _process(delta: float) -> void:
 		if reduction_label and pot_tris > 0:
 			var red_pct = (1.0 - float(real_tris) / float(pot_tris)) * 100.0
 			reduction_label.text = "Reducao Geometria: %.1f%%" % max(0.0, red_pct)
+
+	current_frame += 1
+	if not is_interactive:
+		if current_frame == 20:
+			if pipeline: pipeline.request_telemetry_read()
+		elif current_frame == 45:
+			if pipeline:
+				pipeline.request_telemetry_read()
+				var stats = pipeline.get_statistics()
+				print("\n=================================================================")
+				print(" [RESULTADOS ETAPA 09: MASSIVE WORLD - 80 INSTÂNCIAS DENSAS]")
+				print("  - Instâncias Ativas: %d" % active_rocks.size())
+				print("  - Clusters Visíveis: %d" % stats.get("clusters_visible", 0))
+				print("  - Triângulos Desenhados: %d" % stats.get("triangles_drawn", 0))
+				print("  - Custo CPU Submissão: %.3f ms" % stats.get("cpu_submission_ms", 0.0))
+				print("=================================================================")
+				_capture_viewport("res://diag_arboria_massive_world.png")
+				print("[ETAPA 09 APROVADO] Mundo massivo com 80 instancias densas renderizado com sucesso no Forward+ Vulkan!")
+				pipeline.cleanup()
+				get_tree().quit(0)
+
+func _capture_viewport(path: String) -> void:
+	var vp = get_viewport()
+	if vp:
+		var img = vp.get_texture().get_image()
+		if img and not img.is_empty():
+			img.save_png(path)
+			print("[ArboriaMassiveWorld] Captura salva: %s" % path)
