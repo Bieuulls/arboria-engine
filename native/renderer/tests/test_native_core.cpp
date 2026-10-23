@@ -253,20 +253,22 @@ int main(int argc, char** argv) {
         assert(gpu_instances.size() == target_count);
 
         float view_proj[16] = {
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 1.0f
+            1.0f / 150.0f, 0.0f,          0.0f,           0.0f,
+            0.0f,          1.0f / 100.0f, 0.0f,           0.0f,
+            0.0f,          0.0f,         -1.0f / 250.0f,  0.0f,
+            0.0f,          0.0f,          20.0f / 250.0f, 1.0f
         };
-        float cam_pos[3] = {0.0f, 0.0f, 5.0f};
+        float cam_pos[3] = {0.0f, 20.0f, 10.0f};
         Arboria::GlobalSceneUniforms uniforms = Arboria::ArboriaGPUScene::instance().build_scene_uniforms(
-            view_proj, cam_pos, 1.0f, 1920.0f, 1080.0f, 1.5f, 0, true, true
+            view_proj, cam_pos, 1.0f, 1920.0f, 1080.0f, 1.5f, 0, true, false
         );
 
         Arboria::SceneCullResult cull_res = Arboria::ArboriaGPUScene::instance().simulate_cull_scene(uniforms);
         assert(cull_res.total_instances == target_count);
         assert(cull_res.total_work_items == target_count * reg_info->cluster_count);
         assert(!cull_res.has_overflow);
+        assert(cull_res.visible_clusters > 0);
+        assert(cull_res.total_triangles_drawn > 0);
 
         // O trabalho GPU é despachado em 1 LOTE ÚNICO (compute + indirect draw), e não N chamadas
         uint32_t gpu_dispatch_count = (cull_res.total_work_items + 63) / 64;
