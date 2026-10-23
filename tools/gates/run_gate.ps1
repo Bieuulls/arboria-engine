@@ -51,7 +51,7 @@ if (-not $SkipBuild) {
 # 2. SELECAO DA CENA DO STAGE
 $SceneMap = @{
     "00" = "scenes/test_arboria_native_demo.tscn"
-    "01" = "scenes/test_arboria_native_demo.tscn"
+    "01" = "scenes/test_arboria_gpu_scene_global.tscn"
     "02" = "scenes/arboria_massive_world_demo.tscn"
     "03" = "scenes/test_arboria_native_demo.tscn"
     "04" = "scenes/test_arboria_native_demo.tscn"
@@ -119,7 +119,8 @@ $ImageEvidence = @(
     "$RepoRoot\project\diag_arboria_native_demo_frame.png",
     "$RepoRoot\project\diag_arboria_hiz_occlusion.png",
     "$RepoRoot\project\diag_arboria_dag_integrity.png",
-    "$RepoRoot\project\diag_arboria_pbr_side_by_side.png"
+    "$RepoRoot\project\diag_arboria_pbr_side_by_side.png",
+    "$RepoRoot\project\diag_arboria_gpu_scene_global.png"
 )
 
 foreach ($img in $ImageEvidence) {

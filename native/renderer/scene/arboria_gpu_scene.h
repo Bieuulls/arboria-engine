@@ -61,7 +61,8 @@ public:
         const void* framebuffer,
         const void* raster_pipeline,
         const void* raster_uniform_set,
-        const void* indirect_args_buffer
+        const void* indirect_args_buffer,
+        const void* initial_colors = nullptr
     );
 
     // Barreiras e sincronização Vulkan Compute-to-Raster

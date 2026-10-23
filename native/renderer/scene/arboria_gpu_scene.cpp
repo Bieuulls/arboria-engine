@@ -302,7 +302,8 @@ bool ArboriaGPUScene::draw_global_indirect(
     const void* framebuffer,
     const void* raster_pipeline,
     const void* raster_uniform_set,
-    const void* indirect_args_buffer
+    const void* indirect_args_buffer,
+    const void* initial_colors
 ) {
     if (!ctx.call_method || !ctx.rd || !framebuffer || !raster_pipeline || !raster_uniform_set || !indirect_args_buffer) {
         return false;
@@ -313,7 +314,8 @@ bool ArboriaGPUScene::draw_global_indirect(
     int64_t clear_0 = 0;
     if (ctx.from_int) ctx.from_int(clear_flags_var, &clear_0);
 
-    const void* dl_begin_args[] = { framebuffer, clear_flags_var, nullptr };
+    const void* colors_arg = initial_colors;
+    const void* dl_begin_args[] = { framebuffer, clear_flags_var, colors_arg };
     alignas(8) uint8_t dl_var[24] = {0};
     if (!ctx.call_method(ctx.rd, "draw_list_begin", dl_begin_args, 3, dl_var)) {
         return false;

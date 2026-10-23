@@ -59,7 +59,8 @@ bool ArboriaRenderWorld::render_scene_global(
     const void* compute_uniform_set,
     const void* raster_uniform_set,
     const void* indirect_args_buffer,
-    uint32_t total_work_items
+    uint32_t total_work_items,
+    const void* initial_colors
 ) {
     if (!m_initialized || total_work_items == 0) return false;
 
@@ -69,7 +70,7 @@ bool ArboriaRenderWorld::render_scene_global(
     }
 
     // 2. Passe Rasterizacao Indireta Agrupada Global (draw_count = 1 em lote único)
-    if (!ArboriaGPUScene::instance().draw_global_indirect(ctx, framebuffer, raster_pipeline, raster_uniform_set, indirect_args_buffer)) {
+    if (!ArboriaGPUScene::instance().draw_global_indirect(ctx, framebuffer, raster_pipeline, raster_uniform_set, indirect_args_buffer, initial_colors)) {
         return false;
     }
 

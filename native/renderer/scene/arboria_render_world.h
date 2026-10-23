@@ -39,7 +39,8 @@ public:
         const void* compute_uniform_set,
         const void* raster_uniform_set,
         const void* indirect_args_buffer,
-        uint32_t total_work_items
+        uint32_t total_work_items,
+        const void* initial_colors = nullptr
     );
 
     // Estatísticas da cena global

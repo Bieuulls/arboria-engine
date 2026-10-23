@@ -1,0 +1,19 @@
+{
+  "stage": "01",
+  "status": "PASSED",
+  "commit": "3ea13d24da87c457e752ddd0da532d886c1527c8",
+  "build": "PASSED",
+  "runtime": "PASSED",
+  "geometry": "PASSED",
+  "gpu": "PASSED",
+  "regressions": "PASSED",
+  "evidence": [
+    "D:\\ARBORIA_ENGINE\\ARBORIA_ENGINE_OFFICIAL\\artifacts\\gates\\stage_01\\godot_run.log",
+    "D:\\ARBORIA_ENGINE\\ARBORIA_ENGINE_OFFICIAL\\artifacts\\gates\\stage_01\\diag_arboria_native_demo_frame.png",
+    "D:\\ARBORIA_ENGINE\\ARBORIA_ENGINE_OFFICIAL\\artifacts\\gates\\stage_01\\diag_arboria_hiz_occlusion.png",
+    "D:\\ARBORIA_ENGINE\\ARBORIA_ENGINE_OFFICIAL\\artifacts\\gates\\stage_01\\diag_arboria_dag_integrity.png",
+    "D:\\ARBORIA_ENGINE\\ARBORIA_ENGINE_OFFICIAL\\artifacts\\gates\\stage_01\\diag_arboria_pbr_side_by_side.png",
+    "D:\\ARBORIA_ENGINE\\ARBORIA_ENGINE_OFFICIAL\\artifacts\\gates\\stage_01\\diag_arboria_gpu_scene_global.png"
+  ],
+  "blocking_errors": []
+}

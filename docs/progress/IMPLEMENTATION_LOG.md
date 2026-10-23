@@ -11,8 +11,8 @@
 
 | Gate | Descrição | Status | Commit | Verificações (Build / Runtime / GPU / Geometria) | Evidências |
 | :---: | :--- | :---: | :---: | :--- | :--- |
-| **00** | **Proteção do Projeto e Infraestrutura dos Gates** | ✅ **APROVADO** | `6285a50` | Build C++ OK / Testes unitários 18/18 OK / Godot Forward+ OK | `artifacts/gates/stage_00/` |
-| **01** | **Ativar Definitivamente o GPU Scene Global** | ⏳ *Pendente* | - | 1, 80, 500, 2000 instâncias consolidadas no caminho principal | `artifacts/gates/stage_01/` |
+| **00** | **Proteção do Projeto e Infraestrutura dos Gates** | ✅ **APROVADO** | `3ea13d2` | Build C++ OK (18/18 testes) / Godot Forward+ OK / 0 leaks | `artifacts/gates/stage_00/` |
+| **01** | **Ativar Definitivamente o GPU Scene Global** | ✅ **APROVADO** | *Em commit* | 1, 80, 500, 2.000 instâncias consolidadas no caminho principal (1 dispatch, 1 draw) | `artifacts/gates/stage_01/` |
 | **02** | **Submissão Indireta Agrupada Real** | ⏳ *Pendente* | - | Agrupamento de draws indiretos e redução mensurável de CPU cost | `artifacts/gates/stage_02/` |
 | **03** | **Remover Bloqueios CPU/GPU e Gerenciamento de Buffers** | ⏳ *Pendente* | - | Eliminação de `buffer_get_data` síncrono no caminho de render | `artifacts/gates/stage_03/` |
 | **04** | **Profundidade e Integração Forward+ Verificadas** | ⏳ *Pendente* | - | Depth prepass Reversed-Z, sombras Directional/Spot/Omni, oclusão mútua | `artifacts/gates/stage_04/` |
@@ -31,4 +31,23 @@
 
 ## 2. Histórico de Execução de Gates
 
-*Nenhum gate formal concluído nesta branch ainda.*
+### [GATE 00] Proteção do Projeto e Infraestrutura dos Gates
+- **Data:** 2026-10-22
+- **Commit:** `3ea13d2`
+- **Resultados:** Build C++ (Clang++/Ninja) 18/18 testes unitários OK; Godot Forward+ Vulkan 1.4 na RTX 3050 executado com 0 erros, 0 crashes e 0 RIDs vazados.
+- **Evidências:** `artifacts/gates/stage_00/gate_result.json`, `artifacts/gates/stage_00/godot_run.log`.
+
+### [GATE 01] Ativar Definitivamente o GPU Scene Global
+- **Data:** 2026-10-22
+- **Resultados:**
+  * O GPU Scene Global assumiu com sucesso o caminho principal de renderização.
+  * Geometria compartilhada entre todas as instâncias (1 única cópia na VRAM).
+  * Escalonamento testado de 1 a 2.000 instâncias:
+    - 1 instância: 1 dispatch, 1 draw indirect (367 clusters avaliados, 23 visíveis, 1.956 triângulos).
+    - 80 instâncias: 1 dispatch, 1 draw indirect (29.360 clusters avaliados, 1.364 visíveis, 115.468 triângulos).
+    - 500 instâncias: 1 dispatch, 1 draw indirect (183.500 clusters avaliados, 5.641 visíveis, 475.651 triângulos).
+    - 2.000 instâncias: 1 dispatch, 1 draw indirect (734.000 clusters avaliados, 12.090 visíveis, 993.912 triângulos).
+  * Custo de submissão rigorosamente constante: 1 dispatch e 1 draw consolidado independente do número de objetos.
+  * Suporte a transformações não uniformes, espelhadas (FLAG_MIRRORED bit 2) e materiais PBR Cook-Torrance GGX.
+  * Zero vazamentos de recursos GPU (0 RIDs vazados) e zero erros Vulkan no encerramento.
+- **Evidências:** `artifacts/gates/stage_01/gate_result.json`, `artifacts/gates/stage_01/godot_run.log`, `artifacts/gates/stage_01/diag_arboria_gpu_scene_global.png`.

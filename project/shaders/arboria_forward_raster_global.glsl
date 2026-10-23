@@ -235,6 +235,12 @@ void main() {
         return;
     }
 
+    if (shading_mode == 2u) {
+        // Unshaded Albedo View
+        out_color = vec4(inst.material_albedo_rough.rgb, 1.0);
+        return;
+    }
+
     // PBR Shading (Cook-Torrance GGX)
     vec3 albedo = inst.material_albedo_rough.rgb;
     float roughness = clamp(inst.material_albedo_rough.w, 0.04, 0.98);

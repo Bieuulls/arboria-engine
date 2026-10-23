@@ -90,6 +90,25 @@ var depth_prepass_pipeline: RID
 var raster_fb_format: int = -1
 var _last_cull_frame: int = -1
 
+# GPU Scene Global (V7.2 - 1 Dispatch e 1 Draw Indireto Consolidado para toda a cena)
+var use_global_scene: bool = true
+var global_compute_shader_rid: RID
+var global_compute_pipeline: RID
+var global_raster_shader_rid: RID
+var global_raster_pipeline: RID
+var global_depth_prepass_pipeline: RID
+
+var global_visible_items_buf: RID
+var global_indirect_args_buf: RID
+var global_scene_uniforms_buf: RID
+var global_instances_buf: RID
+var global_instances_capacity: int = 0
+
+var global_compute_uniform_set: RID
+var global_raster_uniform_set: RID
+var _global_cached_hiz_tex: RID
+var _global_cached_clusters_buf: RID
+
 # Framebuffer Cache
 var cached_fb: RID
 var cached_fb_color: RID
@@ -233,6 +252,7 @@ func _setup_shaders() -> void:
 	_compile_compute_shader()
 	_compile_raster_shader()
 	_compile_hiz_shader()
+	_compile_global_shaders()
 
 func _compile_hiz_shader() -> void:
 	var f = FileAccess.open("res://shaders/hiz_downsample.glsl", FileAccess.READ)
@@ -477,6 +497,86 @@ func _compile_raster_shader() -> void:
 		return
 	raster_shader_rid = rd.shader_create_from_spirv(spirv)
 
+func _compile_global_shaders() -> void:
+	if not rd: return
+
+	# 1. Compute Shader Global (cull_clusters_global.glsl)
+	var f_c = FileAccess.open("res://shaders/cull_clusters_global.glsl", FileAccess.READ)
+	if f_c:
+		var c_code = f_c.get_as_text()
+		f_c.close()
+		if c_code.begins_with("#[compute]"):
+			c_code = c_code.substr(c_code.find("\n") + 1)
+		var src_c = RDShaderSource.new()
+		src_c.language = RenderingDevice.SHADER_LANGUAGE_GLSL
+		src_c.source_compute = c_code
+		var spirv_c = rd.shader_compile_spirv_from_source(src_c)
+		if spirv_c.compile_error_compute != "":
+			push_error("[ArboriaNativePipeline] Erro de compilacao do Compute Global: " + spirv_c.compile_error_compute)
+		else:
+			global_compute_shader_rid = rd.shader_create_from_spirv(spirv_c)
+			if global_compute_shader_rid.is_valid():
+				global_compute_pipeline = rd.compute_pipeline_create(global_compute_shader_rid)
+				print("[ArboriaNativePipeline] Compute Global Pipeline compilado com sucesso.")
+
+	# 2. Raster Shader Global (arboria_forward_raster_global.glsl)
+	var f_r = FileAccess.open("res://shaders/arboria_forward_raster_global.glsl", FileAccess.READ)
+	if f_r:
+		var r_code = f_r.get_as_text()
+		f_r.close()
+		if r_code.contains("#[vertex]") and r_code.contains("#[fragment]"):
+			var v_start = r_code.find("#[vertex]") + 9
+			var f_start = r_code.find("#[fragment]")
+			var vs_code = r_code.substr(v_start, f_start - v_start).strip_edges()
+			var fs_code = r_code.substr(f_start + 11).strip_edges()
+			var src_r = RDShaderSource.new()
+			src_r.language = RenderingDevice.SHADER_LANGUAGE_GLSL
+			src_r.source_vertex = vs_code
+			src_r.source_fragment = fs_code
+			var spirv_r = rd.shader_compile_spirv_from_source(src_r)
+			if spirv_r.compile_error_vertex != "" or spirv_r.compile_error_fragment != "":
+				push_error("[ArboriaNativePipeline] Erro de compilacao do Raster Global: " + spirv_r.compile_error_vertex + " " + spirv_r.compile_error_fragment)
+			else:
+				global_raster_shader_rid = rd.shader_create_from_spirv(spirv_r)
+				print("[ArboriaNativePipeline] Raster Global Shader compilado com sucesso.")
+
+func _ensure_global_buffers(num_instances: int) -> bool:
+	if not rd: return false
+
+	# 1. Buffer de Visibilidade Compactado (65.536 itens * 8 bytes = 524.288 bytes)
+	if not global_visible_items_buf.is_valid():
+		global_visible_items_buf = rd.storage_buffer_create(65536 * 8)
+
+	# 2. Buffer de Argumentos Indiretos e Contadores (32 bytes)
+	if not global_indirect_args_buf.is_valid():
+		var init_args = PackedByteArray()
+		init_args.resize(32)
+		init_args.encode_u32(0, 384)    # vertex_count (128 triangulos * 3)
+		init_args.encode_u32(4, 0)      # instance_count
+		init_args.encode_u32(8, 0)      # first_vertex
+		init_args.encode_u32(12, 0)     # first_instance
+		init_args.encode_u32(16, 0)     # total_triangles_drawn
+		init_args.encode_u32(20, 0)     # total_clusters_evaluated
+		init_args.encode_u32(24, 65536) # max_capacity
+		init_args.encode_u32(28, 0)     # overflow_flag
+		global_indirect_args_buf = rd.storage_buffer_create(32, init_args, RenderingDevice.STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT)
+
+	# 3. Buffer de Uniforms Globais da Cena (256 bytes)
+	if not global_scene_uniforms_buf.is_valid():
+		global_scene_uniforms_buf = rd.uniform_buffer_create(256)
+
+	# 4. Buffer de Instâncias Globais (240 bytes por instancia, capacidade dinamica)
+	var required_cap = max(256, nearest_po2(num_instances))
+	if not global_instances_buf.is_valid() or global_instances_capacity < required_cap:
+		if global_instances_buf.is_valid():
+			rd.free_rid(global_instances_buf)
+		global_instances_capacity = required_cap
+		global_instances_buf = rd.storage_buffer_create(global_instances_capacity * 240)
+		global_compute_uniform_set = RID()
+		global_raster_uniform_set = RID()
+
+	return global_visible_items_buf.is_valid() and global_indirect_args_buf.is_valid() and global_scene_uniforms_buf.is_valid() and global_instances_buf.is_valid()
+
 func setup_raster_pipeline(color_fmt: int, depth_fmt: int) -> bool:
 	if raster_pipeline.is_valid() and depth_prepass_pipeline.is_valid() and raster_fb_format != -1:
 		return true
@@ -534,6 +634,28 @@ func setup_raster_pipeline(color_fmt: int, depth_fmt: int) -> bool:
 		depth_state,
 		depth_blend
 	)
+
+	if not global_raster_pipeline.is_valid() and global_raster_shader_rid.is_valid():
+		global_raster_pipeline = rd.render_pipeline_create(
+			global_raster_shader_rid,
+			raster_fb_format,
+			-1,
+			RenderingDevice.RENDER_PRIMITIVE_TRIANGLES,
+			raster_state,
+			RDPipelineMultisampleState.new(),
+			depth_state,
+			blend
+		)
+		global_depth_prepass_pipeline = rd.render_pipeline_create(
+			global_raster_shader_rid,
+			raster_fb_format,
+			-1,
+			RenderingDevice.RENDER_PRIMITIVE_TRIANGLES,
+			raster_state,
+			RDPipelineMultisampleState.new(),
+			depth_state,
+			depth_blend
+		)
 
 	return raster_pipeline.is_valid() and depth_prepass_pipeline.is_valid()
 
@@ -1055,6 +1177,14 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 	if not is_prepass and enable_hiz and depth_tex.is_valid():
 		_build_hiz_pyramid(depth_tex, Vector2i(vp_size))
 
+	# =========================================================================
+	# CAMINHO PRINCIPAL: GPU SCENE GLOBAL (V7.2 CONSOLIDADO)
+	# 1 Dispatch de Compute Culling e 1 Draw Indireto para TODAS as Instâncias
+	# =========================================================================
+	if use_global_scene and global_compute_pipeline.is_valid() and global_raster_pipeline.is_valid():
+		_render_scene_global_internal(p_render_data, active_tasks, is_prepass, cam_view_proj, cam_pos_world, vp_size, depth_tex)
+		return
+
 	for task in active_tasks:
 		var inst = task["inst"]
 		var mesh_res: MeshGPUResource = task["mesh_res"]
@@ -1243,9 +1373,361 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 		if _telemetry_frame_counter % 60 == 0:
 			print("[ARBORIA GPU TELEMETRIA NÃO-BLOQUEANTE] Instancias: ", stats_total_instances, " Clusters: ", stats_visible_clusters, " Triangulos: ", stats_triangles_drawn)
 
+func _render_scene_global_internal(
+	p_render_data: RenderData,
+	active_tasks: Array[Dictionary],
+	is_prepass: bool,
+	cam_view_proj: Projection,
+	cam_pos_world: Vector3,
+	vp_size: Vector2,
+	depth_tex: RID
+) -> void:
+	if active_tasks.is_empty():
+		return
+
+	if not _ensure_global_buffers(active_tasks.size()):
+		return
+
+	var first_mesh: MeshGPUResource = active_tasks[0]["mesh_res"]
+	var total_work_items: int = 0
+	for task in active_tasks:
+		var m_res: MeshGPUResource = task["mesh_res"]
+		total_work_items += m_res.total_clusters
+
+	if total_work_items == 0:
+		return
+
+	# 1. Atualiza Uniforms Globais da Cena (GlobalSceneUniforms - 256 bytes)
+	var ubo_data = PackedByteArray()
+	ubo_data.resize(256)
+
+	for col in range(4):
+		for row in range(4):
+			ubo_data.encode_float((col * 4 + row) * 4, cam_view_proj[col][row])
+
+	var f_planes = extract_frustum_planes(cam_view_proj)
+	for i in range(min(6, f_planes.size())):
+		var pl = f_planes[i]
+		var p_off = 64 + i * 16
+		ubo_data.encode_float(p_off + 0, pl.normal.x)
+		ubo_data.encode_float(p_off + 4, pl.normal.y)
+		ubo_data.encode_float(p_off + 8, pl.normal.z)
+		ubo_data.encode_float(p_off + 12, pl.d)
+
+	var fov_rad = deg_to_rad(60.0)
+	var fov_factor = 1.0 / tan(fov_rad * 0.5)
+	ubo_data.encode_float(160, cam_pos_world.x)
+	ubo_data.encode_float(164, cam_pos_world.y)
+	ubo_data.encode_float(168, cam_pos_world.z)
+	ubo_data.encode_float(172, fov_factor)
+
+	ubo_data.encode_float(176, vp_size.x)
+	ubo_data.encode_float(180, vp_size.y)
+	ubo_data.encode_float(184, 1.5)
+	ubo_data.encode_float(188, 0.0)
+
+	ubo_data.encode_u32(192, active_tasks.size())
+	ubo_data.encode_u32(196, total_work_items)
+	ubo_data.encode_u32(200, 1 if enable_frustum_culling else 0)
+	ubo_data.encode_u32(204, 1 if enable_cone_culling else 0)
+
+	ubo_data.encode_u32(208, global_shading_mode)
+	ubo_data.encode_u32(212, 1 if (enable_hiz and hiz_texture.is_valid()) else 0)
+	ubo_data.encode_u32(216, 65536)
+	ubo_data.encode_u32(220, 0)
+
+	rd.buffer_update(global_scene_uniforms_buf, 0, ubo_data.size(), ubo_data)
+
+	# 2. Empacota Instâncias Globais (GPUInstanceData - 240 bytes cada)
+	var inst_bytes = PackedByteArray()
+	inst_bytes.resize(active_tasks.size() * 240)
+
+	for i in range(active_tasks.size()):
+		var task = active_tasks[i]
+		var inst: Node3D = task["inst"]
+		var m_res: MeshGPUResource = task["mesh_res"]
+		var base_off = i * 240
+
+		var model_xform: Transform3D = inst.global_transform
+		var b = model_xform.basis
+		var model_proj = Projection(model_xform)
+
+		for col in range(4):
+			for row in range(4):
+				inst_bytes.encode_float(base_off + (col * 4 + row) * 4, model_proj[col][row])
+
+		var c00 = b.y.y * b.z.z - b.y.z * b.z.y
+		var c01 = b.y.z * b.z.x - b.y.x * b.z.z
+		var c02 = b.y.x * b.z.y - b.y.y * b.z.x
+		var det = b.x.x * c00 + b.x.y * c01 + b.x.z * c02
+		var inv_det = 1.0 / det if abs(det) > 1e-7 else 1.0
+
+		var n00 = c00 * inv_det
+		var n01 = (b.x.z * b.z.y - b.x.y * b.z.z) * inv_det
+		var n02 = (b.x.y * b.y.z - b.x.z * b.y.y) * inv_det
+
+		var n10 = c01 * inv_det
+		var n11 = (b.x.x * b.z.z - b.x.z * b.z.x) * inv_det
+		var n12 = (b.x.z * b.y.x - b.x.x * b.y.z) * inv_det
+
+		var n20 = c02 * inv_det
+		var n21 = (b.x.y * b.z.x - b.x.x * b.z.y) * inv_det
+		var n22 = (b.x.x * b.y.y - b.x.y * b.x.x) * inv_det
+
+		inst_bytes.encode_float(base_off + 64, n00)
+		inst_bytes.encode_float(base_off + 68, n10)
+		inst_bytes.encode_float(base_off + 72, n20)
+		inst_bytes.encode_float(base_off + 76, 0.0)
+
+		inst_bytes.encode_float(base_off + 80, n01)
+		inst_bytes.encode_float(base_off + 84, n11)
+		inst_bytes.encode_float(base_off + 88, n21)
+		inst_bytes.encode_float(base_off + 92, 0.0)
+
+		inst_bytes.encode_float(base_off + 96, n02)
+		inst_bytes.encode_float(base_off + 100, n12)
+		inst_bytes.encode_float(base_off + 104, n22)
+		inst_bytes.encode_float(base_off + 108, 0.0)
+
+		inst_bytes.encode_float(base_off + 112, 0.0)
+		inst_bytes.encode_float(base_off + 116, 0.0)
+		inst_bytes.encode_float(base_off + 120, 0.0)
+		inst_bytes.encode_float(base_off + 124, 1.0)
+
+		var local_c = (m_res.bbox_min + m_res.bbox_max) * 0.5
+		var local_r = (m_res.bbox_max - local_c).length()
+		var w_c = model_xform * local_c
+		var sx = b.x.length()
+		var sy = b.y.length()
+		var sz = b.z.length()
+		var max_s = max(sx, max(sy, sz))
+		var w_r = local_r * max_s
+		inst_bytes.encode_float(base_off + 128, w_c.x)
+		inst_bytes.encode_float(base_off + 132, w_c.y)
+		inst_bytes.encode_float(base_off + 136, w_c.z)
+		inst_bytes.encode_float(base_off + 140, w_r)
+
+		var w_min = Vector3(1e30, 1e30, 1e30)
+		var w_max = Vector3(-1e30, -1e30, -1e30)
+		for c_i in range(8):
+			var corner = Vector3(
+				m_res.bbox_max.x if (c_i & 1) else m_res.bbox_min.x,
+				m_res.bbox_max.y if (c_i & 2) else m_res.bbox_min.y,
+				m_res.bbox_max.z if (c_i & 4) else m_res.bbox_min.z
+			)
+			var wc = model_xform * corner
+			w_min = w_min.min(wc)
+			w_max = w_max.max(wc)
+
+		var max_err = inst.max_screen_error if "max_screen_error" in inst else 1.5
+		var lod_mode = float(inst.lod_mode if "lod_mode" in inst else 0)
+		var forced_lod = float(inst.forced_lod if "forced_lod" in inst else 0)
+
+		inst_bytes.encode_float(base_off + 144, w_min.x)
+		inst_bytes.encode_float(base_off + 148, w_min.y)
+		inst_bytes.encode_float(base_off + 152, w_min.z)
+		inst_bytes.encode_float(base_off + 156, max_err)
+
+		inst_bytes.encode_float(base_off + 160, w_max.x)
+		inst_bytes.encode_float(base_off + 164, w_max.y)
+		inst_bytes.encode_float(base_off + 168, w_max.z)
+		inst_bytes.encode_float(base_off + 172, lod_mode)
+
+		var alb = inst.base_albedo if "base_albedo" in inst else Color(0.8, 0.82, 0.85)
+		var rgh = inst.roughness if "roughness" in inst else 0.5
+		inst_bytes.encode_float(base_off + 176, alb.r)
+		inst_bytes.encode_float(base_off + 180, alb.g)
+		inst_bytes.encode_float(base_off + 184, alb.b)
+		inst_bytes.encode_float(base_off + 188, rgh)
+
+		var mtl = inst.metallic if "metallic" in inst else 0.0
+		var spc = inst.specular if "specular" in inst else 0.5
+		inst_bytes.encode_float(base_off + 192, mtl)
+		inst_bytes.encode_float(base_off + 196, spc)
+		inst_bytes.encode_float(base_off + 200, 0.0)
+		inst_bytes.encode_float(base_off + 204, forced_lod)
+
+		var is_mirrored = (det < 0.0)
+		var vis_flag = (1 if inst.visible else 0) | (2 if (not "cast_shadow" in inst or inst.cast_shadow) else 0) | (4 if is_mirrored else 0)
+		inst_bytes.encode_u32(base_off + 208, i)
+		inst_bytes.encode_u32(base_off + 212, 0)
+		inst_bytes.encode_u32(base_off + 216, vis_flag)
+		inst_bytes.encode_u32(base_off + 220, 1)
+
+		inst_bytes.encode_u32(base_off + 224, 0)
+		inst_bytes.encode_u32(base_off + 228, m_res.total_clusters)
+		inst_bytes.encode_u32(base_off + 232, 0)
+		inst_bytes.encode_u32(base_off + 236, 0)
+
+	rd.buffer_update(global_instances_buf, 0, inst_bytes.size(), inst_bytes)
+
+	# 3. Zera Contadores e Reseta Argumentos Indiretos (32 bytes)
+	var reset_args = PackedByteArray()
+	reset_args.resize(32)
+	reset_args.encode_u32(0, 384)   # vertex_count
+	reset_args.encode_u32(4, 0)     # instance_count
+	reset_args.encode_u32(8, 0)     # first_vertex
+	reset_args.encode_u32(12, 0)    # first_instance
+	reset_args.encode_u32(16, 0)    # total_triangles_drawn
+	reset_args.encode_u32(20, 0)    # total_clusters_evaluated
+	reset_args.encode_u32(24, 65536)# max_capacity
+	reset_args.encode_u32(28, 0)    # overflow_flag
+	rd.buffer_update(global_indirect_args_buf, 0, reset_args.size(), reset_args)
+
+	# 4. Atualiza Uniform Sets Globais (Set 0)
+	var target_hiz_tex = hiz_texture if (enable_hiz and hiz_texture.is_valid()) else default_white_tex
+	var target_hiz_sampler = hiz_sampler if (enable_hiz and hiz_sampler.is_valid()) else default_sampler
+
+	if not global_compute_uniform_set.is_valid() or target_hiz_tex != _global_cached_hiz_tex or first_mesh.in_clusters_buf != _global_cached_clusters_buf:
+		_global_cached_hiz_tex = target_hiz_tex
+		_global_cached_clusters_buf = first_mesh.in_clusters_buf
+
+		var cu0 = RDUniform.new()
+		cu0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		cu0.binding = 0
+		cu0.add_id(first_mesh.in_clusters_buf)
+
+		var cu1 = RDUniform.new()
+		cu1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		cu1.binding = 1
+		cu1.add_id(global_visible_items_buf)
+
+		var cu2 = RDUniform.new()
+		cu2.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		cu2.binding = 2
+		cu2.add_id(global_indirect_args_buf)
+
+		var cu3 = RDUniform.new()
+		cu3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+		cu3.binding = 3
+		cu3.add_id(global_scene_uniforms_buf)
+
+		var cu4 = RDUniform.new()
+		cu4.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		cu4.binding = 4
+		cu4.add_id(global_instances_buf)
+
+		var cu5 = RDUniform.new()
+		cu5.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+		cu5.binding = 5
+		cu5.add_id(target_hiz_sampler)
+		cu5.add_id(target_hiz_tex)
+
+		global_compute_uniform_set = rd.uniform_set_create([cu0, cu1, cu2, cu3, cu4, cu5], global_compute_shader_rid, 0)
+
+		var ru0 = RDUniform.new()
+		ru0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru0.binding = 0
+		ru0.add_id(first_mesh.in_clusters_buf)
+
+		var ru1 = RDUniform.new()
+		ru1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru1.binding = 1
+		ru1.add_id(global_visible_items_buf)
+
+		var ru3 = RDUniform.new()
+		ru3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+		ru3.binding = 3
+		ru3.add_id(global_scene_uniforms_buf)
+
+		var ru4 = RDUniform.new()
+		ru4.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru4.binding = 4
+		ru4.add_id(global_instances_buf)
+
+		var ru5 = RDUniform.new()
+		ru5.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru5.binding = 5
+		ru5.add_id(first_mesh.in_vertices_buf)
+
+		var ru6 = RDUniform.new()
+		ru6.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru6.binding = 6
+		ru6.add_id(first_mesh.in_triangles_buf)
+
+		global_raster_uniform_set = rd.uniform_set_create([ru0, ru1, ru3, ru4, ru5, ru6], global_raster_shader_rid, 0)
+
+	# 5. Execução do Pipeline Gráfico Global
+	var active_pipe = global_depth_prepass_pipeline if is_prepass else global_raster_pipeline
+	var executed_native = false
+
+	if native_core and native_core.has_method("render_scene_global"):
+		executed_native = native_core.render_scene_global(
+			rd,
+			cached_fb,
+			global_compute_pipeline,
+			active_pipe,
+			global_compute_uniform_set,
+			global_raster_uniform_set,
+			global_indirect_args_buf,
+			total_work_items,
+			PackedColorArray()
+		)
+
+	if not executed_native:
+		var cl = rd.compute_list_begin()
+		rd.compute_list_bind_compute_pipeline(cl, global_compute_pipeline)
+		rd.compute_list_bind_uniform_set(cl, global_compute_uniform_set, 0)
+		var gx = int(ceil(float(total_work_items) / 64.0))
+		rd.compute_list_dispatch(cl, gx, 1, 1)
+		rd.compute_list_end()
+
+		var dl = rd.draw_list_begin(cached_fb, 0, PackedColorArray())
+		rd.draw_list_bind_render_pipeline(dl, active_pipe)
+		rd.draw_list_bind_uniform_set(dl, global_raster_uniform_set, 0)
+		rd.draw_list_draw_indirect(dl, false, global_indirect_args_buf, 0, 1, 16)
+		rd.draw_list_end()
+
+	# 6. Atualização de Telemetria Consolidada
+	stats_total_instances = active_tasks.size()
+	stats_dispatches = 1
+	stats_indirect_draws = 1
+	stats_clusters_evaluated = total_work_items
+
+	_telemetry_frame_counter += 1
+	var should_read_gpu = (not enable_async_telemetry) or telemetry_dirty or (_telemetry_frame_counter % _telemetry_interval == 0)
+	if should_read_gpu:
+		telemetry_dirty = false
+		var cnt_data = rd.buffer_get_data(global_indirect_args_buf)
+		if cnt_data.size() >= 32:
+			stats_visible_clusters = cnt_data.decode_u32(4)
+			stats_triangles_drawn = cnt_data.decode_u32(16)
+			if _telemetry_frame_counter % 60 == 0:
+				print("[ARBORIA GPU SCENE GLOBAL] Instâncias: %d, Clusters: %d, Triângulos: %d, Dispatches: 1, Draws: 1" % [
+					stats_total_instances, stats_visible_clusters, stats_triangles_drawn
+				])
+
 func cleanup() -> void:
 	if not rd:
 		return
+
+	if global_visible_items_buf.is_valid():
+		rd.free_rid(global_visible_items_buf)
+		global_visible_items_buf = RID()
+	if global_indirect_args_buf.is_valid():
+		rd.free_rid(global_indirect_args_buf)
+		global_indirect_args_buf = RID()
+	if global_scene_uniforms_buf.is_valid():
+		rd.free_rid(global_scene_uniforms_buf)
+		global_scene_uniforms_buf = RID()
+	if global_instances_buf.is_valid():
+		rd.free_rid(global_instances_buf)
+		global_instances_buf = RID()
+	if global_compute_pipeline.is_valid():
+		rd.free_rid(global_compute_pipeline)
+		global_compute_pipeline = RID()
+	if global_compute_shader_rid.is_valid():
+		rd.free_rid(global_compute_shader_rid)
+		global_compute_shader_rid = RID()
+	if global_raster_pipeline.is_valid():
+		rd.free_rid(global_raster_pipeline)
+		global_raster_pipeline = RID()
+	if global_depth_prepass_pipeline.is_valid():
+		rd.free_rid(global_depth_prepass_pipeline)
+		global_depth_prepass_pipeline = RID()
+	if global_raster_shader_rid.is_valid():
+		rd.free_rid(global_raster_shader_rid)
+		global_raster_shader_rid = RID()
 
 	for inst_id in _instance_gpu_map:
 		_free_instance_gpu_data(_instance_gpu_map[inst_id])

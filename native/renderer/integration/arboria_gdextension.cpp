@@ -1,6 +1,7 @@
 #include "../core/arboria_types.h"
 #include "../core/arboria_runtime.h"
 #include "../core/arboria_security.h"
+#include "../scene/arboria_render_world.h"
 #include "arboria_scene_bridge.h"
 #include "arboria_abi.h"
 #include "../core/gdextension_interface.h"
@@ -461,6 +462,28 @@ static void call_render_scene_batch(void *method_userdata, GDExtensionClassInsta
     if (Arboria::ABI::from_bool) Arboria::ABI::from_bool(r_return, &ok);
 }
 
+static void call_render_scene_global(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    uint8_t ok = 0;
+    if (p_argument_count >= 8) {
+        GDExtensionVariantPtr rd = const_cast<GDExtensionVariantPtr>(p_args[0]);
+        const void* fb = p_args[1];
+        const void* comp_pipe = p_args[2];
+        const void* rast_pipe = p_args[3];
+        const void* comp_set = p_args[4];
+        const void* rast_set = p_args[5];
+        const void* indirect_buf = p_args[6];
+        int64_t total_work = 0;
+        if (Arboria::ABI::to_int) Arboria::ABI::to_int(&total_work, const_cast<GDExtensionVariantPtr>(p_args[7]));
+        const void* colors = (p_argument_count >= 9) ? p_args[8] : nullptr;
+
+        Arboria::GPUDriverContext ctx = get_driver_context(rd);
+        ok = Arboria::ArboriaRenderWorld::instance().render_scene_global(
+            ctx, fb, comp_pipe, rast_pipe, comp_set, rast_set, indirect_buf, static_cast<uint32_t>(total_work), colors
+        ) ? 1 : 0;
+    }
+    if (Arboria::ABI::from_bool) Arboria::ABI::from_bool(r_return, &ok);
+}
+
 // ============================================================================
 // INICIALIZAÇÃO DA EXTENSÃO NO GODOT
 // ============================================================================
@@ -468,6 +491,7 @@ static void call_render_scene_batch(void *method_userdata, GDExtensionClassInsta
 static void arboria_gdextension_initialize(void* userdata, GDExtensionInitializationLevel level) {
     if (level == GDEXTENSION_INITIALIZATION_SCENE) {
         Arboria::VGRuntime::instance().initialize();
+        Arboria::ArboriaRenderWorld::instance().initialize();
         std::cout << "[Arboria GDExtension] Backend Nativo ARBORIA V7 vinculado com sucesso ao Godot Forward+." << std::endl;
         
         if (Arboria::ABI::get_proc_address) {
@@ -613,7 +637,25 @@ static void arboria_gdextension_initialize(void* userdata, GDExtensionInitializa
                     };
                     register_method(lib, cname, "render_scene_batch", call_render_scene_batch, GDEXTENSION_VARIANT_TYPE_BOOL, true, 10, args_batch, names_batch);
 
-                    std::cout << "[Arboria GDExtension] Metodos de 'ArboriaNativeCore' registrados com sucesso no ClassDB (API Tipada Etapa 1 + Suporte Legado)." << std::endl;
+                    GDExtensionVariantType args_global[] = {
+                        GDEXTENSION_VARIANT_TYPE_OBJECT,
+                        GDEXTENSION_VARIANT_TYPE_RID,
+                        GDEXTENSION_VARIANT_TYPE_RID,
+                        GDEXTENSION_VARIANT_TYPE_RID,
+                        GDEXTENSION_VARIANT_TYPE_RID,
+                        GDEXTENSION_VARIANT_TYPE_RID,
+                        GDEXTENSION_VARIANT_TYPE_RID,
+                        GDEXTENSION_VARIANT_TYPE_INT,
+                        GDEXTENSION_VARIANT_TYPE_PACKED_COLOR_ARRAY
+                    };
+                    const char* names_global[] = {
+                        "rd", "framebuffer", "compute_pipeline", "raster_pipeline",
+                        "compute_uniform_set", "raster_uniform_set", "indirect_args_buffer",
+                        "total_work_items", "initial_colors"
+                    };
+                    register_method(lib, cname, "render_scene_global", call_render_scene_global, GDEXTENSION_VARIANT_TYPE_BOOL, true, 9, args_global, names_global);
+
+                    std::cout << "[Arboria GDExtension] Metodos de 'ArboriaNativeCore' registrados com sucesso no ClassDB (GPU Scene Global + API Tipada + Suporte Legado)." << std::endl;
                 }
             }
         }
@@ -622,6 +664,7 @@ static void arboria_gdextension_initialize(void* userdata, GDExtensionInitializa
 
 static void arboria_gdextension_deinitialize(void* userdata, GDExtensionInitializationLevel level) {
     if (level == GDEXTENSION_INITIALIZATION_SCENE) {
+        Arboria::ArboriaRenderWorld::instance().shutdown();
         Arboria::VGSceneBridge::instance().clear();
         Arboria::VGRuntime::instance().shutdown();
         std::cout << "[Arboria GDExtension] Backend Nativo ARBORIA V7 desvinculado com sucesso." << std::endl;

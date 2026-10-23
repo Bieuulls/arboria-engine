@@ -182,17 +182,24 @@ void main() {
     uint total_inst = ubo.count_params.x;
     if (total_inst == 0) return;
 
-    // Busca binária rápida ou mapeamento uniforme
+    // Mapeamento O(1) quando as instâncias compartilham a mesma malha (típico em lotes)
     uint curr_acc = 0;
     bool found = false;
-    for (uint i = 0; i < total_inst; ++i) {
-        uint c_count = instances[i].cluster_count;
-        if (g_idx >= curr_acc && g_idx < curr_acc + c_count) {
-            inst_idx = i;
-            found = true;
-            break;
+    uint c_count0 = instances[0].cluster_count;
+    if (c_count0 > 0u && ubo.count_params.y == total_inst * c_count0) {
+        inst_idx = g_idx / c_count0;
+        curr_acc = inst_idx * c_count0;
+        found = (inst_idx < total_inst);
+    } else {
+        for (uint i = 0; i < total_inst; ++i) {
+            uint c_count = instances[i].cluster_count;
+            if (g_idx >= curr_acc && g_idx < curr_acc + c_count) {
+                inst_idx = i;
+                found = true;
+                break;
+            }
+            curr_acc += c_count;
         }
-        curr_acc += c_count;
     }
     if (!found) return;
 
