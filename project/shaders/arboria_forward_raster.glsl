@@ -46,7 +46,8 @@ layout(set = 0, binding = 7, std140) uniform InstanceUniforms {
     vec4 material_metal_spec;   // x = metallic, y = specular, z = material_id, w = use_textures
     vec4 light_direction_energy;// xyz = light_dir, w = light_energy
     vec4 light_color;           // rgb = light_color, w = ambient_intensity
-    vec4 texture_params;        // xy = uv_scale, z = normal_scale, w = unused
+    vec4 texture_params;        // xy = uv_scale, z = normal_scale, w = alpha_scissor_threshold
+    vec4 emission_params;       // rgb = emission_color, w = emission_energy
 } instance_ubo;
 
 void main() {
@@ -125,7 +126,8 @@ layout(set = 0, binding = 7, std140) uniform InstanceUniforms {
     vec4 material_metal_spec;   // x = metallic, y = specular, z = material_id, w = use_textures (1.0 = on, 0.0 = procedural)
     vec4 light_direction_energy;// xyz = light_dir, w = light_energy
     vec4 light_color;           // rgb = light_color, w = ambient_intensity
-    vec4 texture_params;        // xy = uv_scale, z = normal_scale, w = unused
+    vec4 texture_params;        // xy = uv_scale, z = normal_scale, w = alpha_scissor_threshold
+    vec4 emission_params;       // rgb = emission_color, w = emission_energy
 } instance_ubo;
 
 layout(set = 0, binding = 8) uniform sampler2D albedo_map;
@@ -199,6 +201,9 @@ vec3 F_Schlick(float VoH, vec3 f0) {
 void main() {
     uint mode = ubo.render_params.x;
     vec3 geom_n = normalize(v_world_normal);
+    if (!gl_FrontFacing) {
+        geom_n = -geom_n;
+    }
 
     if (mode == 0u) {
         // =====================================================================
@@ -207,6 +212,16 @@ void main() {
         
         bool use_tex = (instance_ubo.material_metal_spec.w > 0.5);
         vec2 uv = v_uv * instance_ubo.texture_params.xy;
+
+        // Alpha Cutout para vegetacao / folhagens / telas
+        float alpha_scissor = instance_ubo.texture_params.w;
+        vec4 tex_albedo = vec4(1.0);
+        if (use_tex) {
+            tex_albedo = texture(albedo_map, uv);
+            if (alpha_scissor > 0.001 && tex_albedo.a < alpha_scissor) {
+                discard;
+            }
+        }
 
         // Calculo de base normal e tangentes de tela
         vec3 dPdx = dFdx(v_world_pos);
@@ -225,7 +240,6 @@ void main() {
 
         if (use_tex) {
             // Amostragem de texturas PBR externas
-            vec4 tex_albedo = texture(albedo_map, uv);
             albedo = tex_albedo.rgb * instance_ubo.material_albedo_rough.rgb;
 
             vec3 tex_n = texture(normal_map, uv).rgb * 2.0 - 1.0;
@@ -292,8 +306,11 @@ void main() {
         vec3 ambient_fresnel = F_Schlick(NoV, f0) * 0.25;
         vec3 ambient_light = (albedo * ambient_env * (1.0 - metallic) + ambient_fresnel) * cavity_ao;
 
+        // Emissao de luz
+        vec3 emission = instance_ubo.emission_params.rgb * instance_ubo.emission_params.w;
+
         // Cor final PBR
-        vec3 final_color = direct_light + ambient_light;
+        vec3 final_color = direct_light + ambient_light + emission;
         out_color = vec4(final_color, 1.0);
 
     } else if (mode == 1u) {

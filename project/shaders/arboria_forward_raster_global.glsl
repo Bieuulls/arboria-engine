@@ -189,9 +189,35 @@ vec3 cluster_color(uint id) {
     return max(vec3(r, g, b), vec3(0.15));
 }
 
+// Cook-Torrance GGX PBR functions
+const float PI = 3.141592653589793;
+
+float D_GGX(float NoH, float roughness) {
+    float a = max(0.04, roughness * roughness);
+    float a2 = a * a;
+    float d = (NoH * a2 - NoH) * NoH + 1.0;
+    return a2 / (PI * d * d + 1e-5);
+}
+
+float G_SmithGGXCorrelated(float NoV, float NoL, float roughness) {
+    float a = max(0.04, roughness * roughness);
+    float a2 = a * a;
+    float lambdaV = NoL * sqrt((NoV - a2 * NoV) * NoV + a2);
+    float lambdaL = NoV * sqrt((NoL - a2 * NoL) * NoL + a2);
+    return 0.5 / (lambdaV + lambdaL + 1e-5);
+}
+
+vec3 F_Schlick(float VoH, vec3 f0) {
+    float f = pow(clamp(1.0 - VoH, 0.0, 1.0), 5.0);
+    return f0 + (vec3(1.0) - f0) * f;
+}
+
 void main() {
     GPUInstanceData inst = instances[v_instance_id];
     vec3 N = normalize(v_world_normal);
+    if (!gl_FrontFacing) {
+        N = -N;
+    }
 
     uint shading_mode = ubo.render_params.x;
 
@@ -207,16 +233,33 @@ void main() {
         return;
     }
 
-    // PBR Shading
+    // PBR Shading (Cook-Torrance GGX)
     vec3 albedo = inst.material_albedo_rough.rgb;
-    float roughness = inst.material_albedo_rough.w;
-    float metallic = inst.material_metal_spec.x;
+    float roughness = clamp(inst.material_albedo_rough.w, 0.04, 0.98);
+    float metallic = clamp(inst.material_metal_spec.x, 0.0, 1.0);
+    float specular_intensity = inst.material_metal_spec.y;
 
     vec3 L = normalize(vec3(0.5, 0.8, 0.6));
-    float NdotL = max(dot(N, L), 0.0);
-    vec3 ambient = vec3(0.2) * albedo;
-    vec3 diffuse = albedo * NdotL;
+    vec3 V = normalize(ubo.camera_pos_fov.xyz - v_world_pos);
+    vec3 H = normalize(L + V);
 
-    vec3 final_rgb = ambient + diffuse;
+    float NoL = clamp(dot(N, L), 0.0, 1.0);
+    float NoV = clamp(abs(dot(N, V)), 1e-4, 1.0);
+    float NoH = clamp(dot(N, H), 0.0, 1.0);
+    float VoH = clamp(dot(V, H), 0.0, 1.0);
+
+    vec3 f0 = mix(vec3(0.04 * specular_intensity), albedo, metallic);
+    float D = D_GGX(NoH, roughness);
+    float G = G_SmithGGXCorrelated(NoV, NoL, roughness);
+    vec3 F = F_Schlick(VoH, f0);
+
+    vec3 specular_brdf = (D * G) * F;
+    vec3 kd = (vec3(1.0) - F) * (1.0 - metallic);
+    vec3 diffuse_brdf = kd * (albedo / PI);
+
+    vec3 direct_light = (diffuse_brdf + specular_brdf) * vec3(1.2) * (NoL * PI);
+    vec3 ambient_light = albedo * vec3(0.18, 0.20, 0.25) * (1.0 - metallic);
+
+    vec3 final_rgb = direct_light + ambient_light;
     out_color = vec4(final_rgb, 1.0);
 }

@@ -526,10 +526,10 @@ func _get_or_create_instance_gpu_data(inst: Node3D, mesh_res: MeshGPUResource) -
 	u_cam.resize(224)
 	data.camera_ubo_buf = rd.uniform_buffer_create(224, u_cam)
 
-	# UBO de Instancia (160 bytes: model_matrix + material + light)
+	# UBO de Instancia (192 bytes: model_matrix + material + light + texture + emission)
 	var u_inst = PackedByteArray()
-	u_inst.resize(160)
-	data.instance_ubo_buf = rd.uniform_buffer_create(160, u_inst)
+	u_inst.resize(192)
+	data.instance_ubo_buf = rd.uniform_buffer_create(192, u_inst)
 
 	# Compute Uniform Set (Set 0)
 	var cu0 = RDUniform.new()
@@ -861,9 +861,9 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 
 		rd.buffer_update(inst_gpu.camera_ubo_buf, 0, u_cam.size(), u_cam)
 
-		# 2. Atualiza Instance UBO desta instancia (160 bytes: PBR e Luz Real)
+		# 2. Atualiza Instance UBO desta instancia (192 bytes: PBR, Luz Real, Alpha Scissor e Emissao)
 		var u_inst = PackedByteArray()
-		u_inst.resize(160)
+		u_inst.resize(192)
 		var model_proj = Projection(model_xform)
 		for col in range(4):
 			for row in range(4):
@@ -892,10 +892,18 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 
 		var uv_sc = inst.uv_scale if "uv_scale" in inst else Vector2.ONE
 		var n_sc = inst.normal_scale if "normal_scale" in inst else 1.0
+		var alpha_sc = inst.alpha_scissor_threshold if "alpha_scissor_threshold" in inst else 0.0
 		u_inst.encode_float(128, uv_sc.x)
 		u_inst.encode_float(132, uv_sc.y)
 		u_inst.encode_float(136, n_sc)
-		u_inst.encode_float(140, 0.0)
+		u_inst.encode_float(140, alpha_sc)
+
+		var em_col = inst.emission if "emission" in inst else Color.BLACK
+		var em_eng = inst.emission_energy if "emission_energy" in inst else 0.0
+		u_inst.encode_float(144, em_col.r)
+		u_inst.encode_float(148, em_col.g)
+		u_inst.encode_float(152, em_col.b)
+		u_inst.encode_float(156, em_eng)
 
 		rd.buffer_update(inst_gpu.instance_ubo_buf, 0, u_inst.size(), u_inst)
 

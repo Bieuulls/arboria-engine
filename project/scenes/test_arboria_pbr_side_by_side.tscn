@@ -1,0 +1,50 @@
+[gd_scene load_steps=7 format=3 uid="uid://c5y1m9k2p7x04"]
+
+[ext_resource type="Script" path="res://scripts/test_pbr_side_by_side.gd" id="1_test"]
+[ext_resource type="Script" path="res://scripts/arboria_instance_3d.gd" id="2_arboria"]
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.12, 0.14, 0.18, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.2, 0.22, 0.26, 1)
+
+[sub_resource type="Compositor" id="Compositor_main"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ref"]
+albedo_color = Color(0.8, 0.4, 0.2, 1)
+metallic = 0.2
+roughness = 0.35
+
+[sub_resource type="SphereMesh" id="SphereMesh_ref"]
+material = SubResource("StandardMaterial3D_ref")
+radius = 1.0
+height = 2.0
+
+[node name="TestPBRSideBySide" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+compositor = SubResource("Compositor_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 5, 10, 5)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4.5)
+current = true
+fov = 50.0
+
+[node name="ArboriaPBRMesh" type="VisualInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 0)
+script = ExtResource("2_arboria")
+mesh_path = "res://assets/dense_rock_test.vgmesh"
+base_albedo = Color(0.8, 0.4, 0.2, 1)
+metallic = 0.2
+roughness = 0.35
+
+[node name="GodotStandardMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 0)
+mesh = SubResource("SphereMesh_ref")

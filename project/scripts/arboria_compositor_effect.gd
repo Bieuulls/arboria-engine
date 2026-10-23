@@ -43,14 +43,21 @@ func _render_callback(p_effect_callback_type: int, p_render_data: RenderData) ->
 	elif p_effect_callback_type == CompositorEffect.EFFECT_CALLBACK_TYPE_POST_OPAQUE:
 		pipeline.render_scene_instances(p_render_data)
 
-## Vincula ambos os passos (Depth Prepass e Main Opaque) ao Compositor do ambiente
-static func attach_to_environment(env: WorldEnvironment) -> void:
-	if not env:
+## Vincula ambos os passos (Depth Prepass e Main Opaque) ao Compositor do ambiente ou câmera
+static func attach_to_environment(target: Variant) -> void:
+	if not target:
 		return
-	if not env.compositor:
-		env.compositor = Compositor.new()
+	var comp: Compositor = null
+	if target is WorldEnvironment or target is Camera3D:
+		if not target.compositor:
+			target.compositor = Compositor.new()
+		comp = target.compositor
+	elif target is Compositor:
+		comp = target
 
-	var pre_eff = ArboriaCompositorEffect.new(CompositorEffect.EFFECT_CALLBACK_TYPE_PRE_OPAQUE)
-	var post_eff = ArboriaCompositorEffect.new(CompositorEffect.EFFECT_CALLBACK_TYPE_POST_OPAQUE)
-	env.compositor.compositor_effects = [pre_eff, post_eff]
-	print("[ArboriaCompositorEffect] Integracao Forward+ completa ativada (Depth Prepass + Main Opaque).")
+	if comp:
+		var pre_eff = ArboriaCompositorEffect.new(CompositorEffect.EFFECT_CALLBACK_TYPE_PRE_OPAQUE)
+		var post_eff = ArboriaCompositorEffect.new(CompositorEffect.EFFECT_CALLBACK_TYPE_POST_OPAQUE)
+		comp.compositor_effects = [pre_eff, post_eff]
+		print("[ArboriaCompositorEffect] Integracao Forward+ completa ativada (Depth Prepass + Main Opaque).")
+

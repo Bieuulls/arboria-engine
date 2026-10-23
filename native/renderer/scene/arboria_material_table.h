@@ -16,6 +16,8 @@ struct MaterialRecord {
     float alpha_cutoff = 0.5f;
     float uv_scale[2] = { 1.0f, 1.0f };
     float normal_scale = 1.0f;
+    float emission[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    float emission_energy = 0.0f;
     uint32_t flags = 0; // bit 0: alpha_cutout, bit 1: double_sided
 };
 

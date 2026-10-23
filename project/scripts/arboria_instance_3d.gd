@@ -80,6 +80,22 @@ signal transform_updated()
 		normal_scale = value
 		notify_pipeline_update()
 
+@export_group("Alpha Cutout & Emissao")
+@export_range(0.0, 1.0, 0.01) var alpha_scissor_threshold: float = 0.0:
+	set(value):
+		alpha_scissor_threshold = value
+		notify_pipeline_update()
+
+@export var emission: Color = Color.BLACK:
+	set(value):
+		emission = value
+		notify_pipeline_update()
+
+@export_range(0.0, 16.0, 0.1) var emission_energy: float = 0.0:
+	set(value):
+		emission_energy = value
+		notify_pipeline_update()
+
 var _pipeline: RefCounted = null
 var _aabb: AABB = AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2))
 var _mesh_data: Dictionary = {}
