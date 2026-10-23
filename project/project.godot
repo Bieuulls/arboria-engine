@@ -23,3 +23,10 @@ renderer/rendering_method="forward_plus"
 [physics]
 
 3d/physics_engine="Jolt Physics"
+jolt_physics_3d/simulation/velocity_steps=10
+jolt_physics_3d/simulation/position_steps=2
+jolt_physics_3d/simulation/allow_sleep=true
+jolt_physics_3d/sleep/linear_threshold=0.1
+jolt_physics_3d/sleep/angular_threshold=0.1
+jolt_physics_3d/sleep/time_threshold=0.4
+jolt_physics_3d/continuous_collision_detection/use_shape_cast=true

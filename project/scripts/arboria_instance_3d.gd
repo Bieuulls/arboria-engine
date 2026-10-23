@@ -218,6 +218,9 @@ func _exit_tree() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSFORM_CHANGED:
+		var parent = get_parent()
+		if parent is RigidBody3D and parent.sleeping:
+			return # Otimizacao: Nao suja a GPU Scene se o corpo fisico estiver dormindo
 		notify_pipeline_update()
 		emit_signal("transform_updated")
 	elif what == NOTIFICATION_VISIBILITY_CHANGED:
