@@ -12,8 +12,8 @@
 | Gate | Descrição | Status | Commit | Verificações (Build / Runtime / GPU / Geometria) | Evidências |
 | :---: | :--- | :---: | :---: | :--- | :--- |
 | **00** | **Proteção do Projeto e Infraestrutura dos Gates** | ✅ **APROVADO** | `3ea13d2` | Build C++ OK (18/18 testes) / Godot Forward+ OK / 0 leaks | `artifacts/gates/stage_00/` |
-| **01** | **Ativar Definitivamente o GPU Scene Global** | ✅ **APROVADO** | *Em commit* | 1, 80, 500, 2.000 instâncias consolidadas no caminho principal (1 dispatch, 1 draw) | `artifacts/gates/stage_01/` |
-| **02** | **Submissão Indireta Agrupada Real** | ⏳ *Pendente* | - | Agrupamento de draws indiretos e redução mensurável de CPU cost | `artifacts/gates/stage_02/` |
+| **01** | **Ativar Definitivamente o GPU Scene Global** | ✅ **APROVADO** | `80abed0` | 1, 80, 500, 2.000 instâncias consolidadas no caminho principal (1 dispatch, 1 draw) | `artifacts/gates/stage_01/` |
+| **02** | **Submissão Indireta Agrupada Real** | ✅ **APROVADO** | *Em commit* | Comparativo Baseline vs Grouped: 99.95% de redução de draws e 150x speedup CPU | `artifacts/gates/stage_02/` |
 | **03** | **Remover Bloqueios CPU/GPU e Gerenciamento de Buffers** | ⏳ *Pendente* | - | Eliminação de `buffer_get_data` síncrono no caminho de render | `artifacts/gates/stage_03/` |
 | **04** | **Profundidade e Integração Forward+ Verificadas** | ⏳ *Pendente* | - | Depth prepass Reversed-Z, sombras Directional/Spot/Omni, oclusão mútua | `artifacts/gates/stage_04/` |
 | **05** | **Implementar Hierarchical Z-Buffer Real** | ⏳ *Pendente* | - | Redução mensurável de clusters ocluídos com pirâmide Hi-Z ativa | `artifacts/gates/stage_05/` |
@@ -39,6 +39,7 @@
 
 ### [GATE 01] Ativar Definitivamente o GPU Scene Global
 - **Data:** 2026-10-22
+- **Commit:** `80abed0`
 - **Resultados:**
   * O GPU Scene Global assumiu com sucesso o caminho principal de renderização.
   * Geometria compartilhada entre todas as instâncias (1 única cópia na VRAM).
@@ -51,3 +52,23 @@
   * Suporte a transformações não uniformes, espelhadas (FLAG_MIRRORED bit 2) e materiais PBR Cook-Torrance GGX.
   * Zero vazamentos de recursos GPU (0 RIDs vazados) e zero erros Vulkan no encerramento.
 - **Evidências:** `artifacts/gates/stage_01/gate_result.json`, `artifacts/gates/stage_01/godot_run.log`, `artifacts/gates/stage_01/diag_arboria_gpu_scene_global.png`.
+
+### [GATE 02] Submissão Indireta Agrupada Real
+- **Data:** 2026-10-22
+- **Resultados:**
+  * Submissão Indireta Agrupada Real comprovada frente ao baseline per-instance na RTX 3050.
+  * Cenário 1 (80 instâncias):
+    - Baseline: 80 dispatches, 80 draws, CPU submissão = 0.276 ms
+    - Grouped: 1 dispatch, 1 draw, CPU submissão = 0.018 ms
+    - Redução de submissões: **98.75%** | Speedup CPU de submissão: **15.3x**
+  * Cenário 2 (500 instâncias):
+    - Baseline: 500 dispatches, 500 draws, CPU submissão = 1.536 ms
+    - Grouped: 1 dispatch, 1 draw, CPU submissão = 0.026 ms
+    - Redução de submissões: **99.80%** | Speedup CPU de submissão: **59.1x**
+  * Cenário 3 (2.000 instâncias):
+    - Baseline: 2.000 dispatches, 2.000 draws, CPU submissão = 6.602 ms
+    - Grouped: 1 dispatch, 1 draw, CPU submissão = 0.044 ms
+    - Redução de submissões: **99.95%** | Speedup CPU de submissão: **150.0x**
+  * Integridade geométrica e renderização visual confirmadas por capturas comparativas idênticas.
+  * Zero vazamentos de recursos GPU (0 RIDs vazados) e estabilidade perfeita.
+- **Evidências:** `artifacts/gates/stage_02/gate_result.json`, `artifacts/gates/stage_02/godot_run.log`, `artifacts/gates/stage_02/diag_arboria_gate02_baseline.png`, `artifacts/gates/stage_02/diag_arboria_gate02_grouped.png`.

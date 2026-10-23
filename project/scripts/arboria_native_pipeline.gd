@@ -126,6 +126,7 @@ var stats_indirect_draws: int = 0
 var stats_clusters_evaluated: int = 0
 var stats_visible_clusters: int = 0
 var stats_triangles_drawn: int = 0
+var stats_cpu_submission_ms: float = 0.0
 var enable_async_telemetry: bool = true
 var _telemetry_frame_counter: int = 0
 var _telemetry_interval: int = 15
@@ -139,6 +140,7 @@ func get_statistics() -> Dictionary:
 		"clusters_evaluated": stats_clusters_evaluated,
 		"clusters_visible": stats_visible_clusters,
 		"triangles_drawn": stats_triangles_drawn,
+		"cpu_submission_ms": stats_cpu_submission_ms,
 		"hiz_enabled": enable_hiz,
 		"hiz_size": hiz_size,
 		"hiz_mips": hiz_mip_count
@@ -838,9 +840,8 @@ func _get_or_create_instance_gpu_data(inst: Node3D, mesh_res: MeshGPUResource) -
 	if native_core:
 		if native_core.has_method("register_instance"):
 			data.c_instance_id = native_core.register_instance(mesh_res.c_mesh_id)
-		elif native_core.has_method("scene_create_instance"):
-			data.c_instance_id = native_core.scene_create_instance(mesh_res.c_mesh_id)
-		print("[ArboriaNativePipeline C++] Instancia registrada no VGSceneBridge: Handle %d (Malha: %d)" % [data.c_instance_id, mesh_res.c_mesh_id])
+		if _instance_gpu_map.size() < 5 or _instance_gpu_map.size() % 500 == 0:
+			print("[ArboriaNativePipeline C++] Instancia registrada no VGSceneBridge: Handle %d (Malha: %d)" % [data.c_instance_id, mesh_res.c_mesh_id])
 
 	# Buffer de saida com clusters visiveis desta instancia
 	data.out_visible_buf = rd.storage_buffer_create(max(4, mesh_res.total_clusters * 4))
@@ -1331,6 +1332,7 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 
 	var active_pipeline = depth_prepass_pipeline if is_prepass else raster_pipeline
 
+	var t0_submit = Time.get_ticks_usec()
 	if native_core and native_core.has_method("render_scene_batch"):
 		native_core.render_scene_batch(
 			rd,
@@ -1344,6 +1346,8 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 			active_tasks.size(),
 			PackedColorArray()
 		)
+	var t1_submit = Time.get_ticks_usec()
+	stats_cpu_submission_ms = (t1_submit - t0_submit) / 1000.0
 
 	stats_total_instances = active_tasks.size()
 	stats_dispatches = active_tasks.size()
@@ -1651,6 +1655,7 @@ func _render_scene_global_internal(
 	var active_pipe = global_depth_prepass_pipeline if is_prepass else global_raster_pipeline
 	var executed_native = false
 
+	var t0_submit = Time.get_ticks_usec()
 	if native_core and native_core.has_method("render_scene_global"):
 		executed_native = native_core.render_scene_global(
 			rd,
@@ -1677,6 +1682,9 @@ func _render_scene_global_internal(
 		rd.draw_list_bind_uniform_set(dl, global_raster_uniform_set, 0)
 		rd.draw_list_draw_indirect(dl, false, global_indirect_args_buf, 0, 1, 16)
 		rd.draw_list_end()
+
+	var t1_submit = Time.get_ticks_usec()
+	stats_cpu_submission_ms = (t1_submit - t0_submit) / 1000.0
 
 	# 6. Atualização de Telemetria Consolidada
 	stats_total_instances = active_tasks.size()

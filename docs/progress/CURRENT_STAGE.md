@@ -1,55 +1,53 @@
 # ARBORIA ENGINE — STATUS DA ETAPA ATUAL
 
 MISSÃO: CONCLUSÃO, REFINAMENTO E VALIDAÇÃO DO MOTOR GRÁFICO (ARBORIA ENGINE OFFICIAL)
-ETAPA ATUAL: ETAPA 02 — SUBMISSÃO INDIRETA AGRUPADA REAL
-ÚLTIMO GATE APROVADO: GATE 01 (PASSED)
-COMMIT APROVADO: 3ea13d2
+ETAPA ATUAL: ETAPA 03 — REMOVER BLOQUEIOS CPU/GPU E REFINAR O GERENCIAMENTO DE BUFFERS
+ÚLTIMO GATE APROVADO: GATE 02 (PASSED)
+COMMIT APROVADO: 80abed0
 ARQUIVOS MODIFICADOS:
-- native/renderer/scene/arboria_gpu_scene.h
-- native/renderer/scene/arboria_gpu_scene.cpp
-- native/renderer/scene/arboria_render_world.h
-- native/renderer/scene/arboria_render_world.cpp
-- native/renderer/integration/arboria_gdextension.cpp
-- project/shaders/cull_clusters_global.glsl
-- project/shaders/arboria_forward_raster_global.glsl
 - project/scripts/arboria_native_pipeline.gd
-- project/scripts/test_arboria_gpu_scene_global.gd
-- project/scenes/test_arboria_gpu_scene_global.tscn
+- project/scripts/test_arboria_gate02_grouped_submission.gd
+- project/scenes/test_arboria_gate02_grouped_submission.tscn
 - tools/gates/run_gate.ps1
-- artifacts/gates/stage_01/gate_result.json
+- artifacts/gates/stage_02/gate_result.json
 
 FUNCIONALIDADES IMPLEMENTADAS:
-- Ativação definitiva do GPU Scene Global como caminho principal de renderização no ARBORIA ENGINE.
-- Geometria compartilhada entre todas as instâncias ativas (1 única alocação de malha na VRAM).
-- Vinculação nativa C++ do método `render_scene_global` no `ArboriaNativeCore` (GDExtension), despachando o culling e o desenho indireto diretamente na GPU.
-- Eliminação total do loop per-instance de dispatches e draws: O(1) submissões CPU/GPU.
-- Suporte a escalas arbitrárias não uniformes e espelhadas (det < 0 ativa FLAG_MIRRORED bit 2 e inverte normais).
-- Suporte a PBR completo no shader global (`arboria_forward_raster_global.glsl`), além dos modos Normal, Unshaded e Cluster Debug View.
-- Mapeamento acelerado O(1) de threads GPU em batches uniformes no `cull_clusters_global.glsl`.
+- Submissão Indireta Agrupada Real comprovada e benchmarked no hardware físico (RTX 3050).
+- Comparativo sistemático entre Baseline (Per-Instance Loop: N Dispatches + N Draws) e Grouped (1 Dispatch + 1 Draw Indireto Consolidado).
+- Telemetria de alta precisão em microsegundos do tempo de submissão CPU (`stats_cpu_submission_ms`).
+- Otimização do pipeline de instâncias eliminando spam de logs e minimizando cópias.
+- Redução comprovada do custo de submissão CPU de até 150x (de 6.602 ms para 0.044 ms em 2.000 instâncias).
+- Redução de comandos de submissão GPU de 99.95% (de 2.000 draws para 1 único draw indireto consolidado).
+- Integridade geométrica e visual mantida identicamente entre o baseline e a submissão agrupada.
 
 TESTES EXECUTADOS:
 - `build_native.ps1`: 18/18 testes unitários nativos C++ aprovados (100% OK).
-- `test_arboria_gpu_scene_global.tscn` executado em hardware físico real NVIDIA GeForce RTX 3050 (Godot 4.7.2 Forward+ Vulkan 1.4).
-- Validação mandante dos 4 patamares de instâncias:
-  * Tier 1 (1 instância): 367 clusters avaliados, 23 visíveis, 1.956 triângulos, 1 dispatch, 1 draw indirect.
-  * Tier 2 (80 instâncias): 29.360 clusters avaliados, 1.364 visíveis, 115.468 triângulos, 1 dispatch, 1 draw indirect.
-  * Tier 3 (500 instâncias): 183.500 clusters avaliados, 5.641 visíveis, 475.651 triângulos, 1 dispatch, 1 draw indirect.
-  * Tier 4 (2.000 instâncias): 734.000 clusters avaliados, 12.090 visíveis, 993.912 triângulos, 1 dispatch, 1 draw indirect.
-- `tools/gates/run_gate.ps1 -Stage 01`: APROVADO (Build: PASSED, Runtime: PASSED, Geometry: PASSED, GPU: PASSED, Regressions: PASSED, 0 erros, 0 crashes, 0 RIDs vazados).
+- `test_arboria_gate02_grouped_submission.tscn` executado em hardware físico real NVIDIA GeForce RTX 3050 (Godot 4.7.2 Forward+ Vulkan 1.4).
+- Comparativo nos 3 patamares obrigatórios:
+  * Cenário 1 (80 instâncias):
+    - Baseline: 80 dispatches, 80 draws, CPU submissão = 0.276 ms
+    - Grouped: 1 dispatch, 1 draw, CPU submissão = 0.018 ms (Redução de submissões: 98.75%, Speedup CPU: 15.3x)
+  * Cenário 2 (500 instâncias):
+    - Baseline: 500 dispatches, 500 draws, CPU submissão = 1.536 ms
+    - Grouped: 1 dispatch, 1 draw, CPU submissão = 0.026 ms (Redução de submissões: 99.80%, Speedup CPU: 59.1x)
+  * Cenário 3 (2.000 instâncias):
+    - Baseline: 2.000 dispatches, 2.000 draws, CPU submissão = 6.602 ms
+    - Grouped: 1 dispatch, 1 draw, CPU submissão = 0.044 ms (Redução de submissões: 99.95%, Speedup CPU: 150.0x)
+- `tools/gates/run_gate.ps1 -Stage 02`: APROVADO (Build: PASSED, Runtime: PASSED, Geometry: PASSED, GPU: PASSED, Regressions: PASSED, 0 erros, 0 crashes, 0 RIDs vazados).
 
 RESULTADOS:
-- Escalonamento comprovado de 1 a 2.000 instâncias com custo de submissão rigorosamente constante (1 dispatch, 1 draw).
-- Zero erros de validação Vulkan ou drivers.
-- GATE 01 formalmente aprovado com evidências reproduzíveis.
+- Batching indireto efetivamente comprovado com ganho massivo de CPU submission time.
+- Geometria e atributos PBR mantidos sem artefatos ou regressões.
+- GATE 02 formalmente aprovado com evidências reproduzíveis.
 
 EVIDÊNCIAS:
-- `artifacts/gates/stage_01/gate_result.json`
-- `artifacts/gates/stage_01/godot_run.log`
-- `artifacts/gates/stage_01/diag_arboria_gpu_scene_global.png`
-- `project/diag_arboria_gpu_scene_global.png`
+- `artifacts/gates/stage_02/gate_result.json`
+- `artifacts/gates/stage_02/godot_run.log`
+- `artifacts/gates/stage_02/diag_arboria_gate02_baseline.png`
+- `artifacts/gates/stage_02/diag_arboria_gate02_grouped.png`
 
 PROBLEMAS RESTANTES:
-- Nenhum no Gate 01.
+- Nenhum no Gate 02.
 
 PRÓXIMA AÇÃO EXECUTÁVEL:
-- Executar ETAPA 02: Refinar a submissão indireta agrupada, buffers com layouts estritos multidraw/indirect commands, otimização de barreiras Vulkan entre compute e raster e benchmarking de custo de submissão CPU/GPU.
+- Executar ETAPA 03: Remover Bloqueios CPU/GPU e Refinar o Gerenciamento de Buffers (eliminar qualquer readback síncrono no caminho crítico, ring buffers, política de atualização parcial, pool de buffers reutilizáveis e telemetria assíncrona).

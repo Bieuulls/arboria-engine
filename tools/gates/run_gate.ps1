@@ -52,7 +52,7 @@ if (-not $SkipBuild) {
 $SceneMap = @{
     "00" = "scenes/test_arboria_native_demo.tscn"
     "01" = "scenes/test_arboria_gpu_scene_global.tscn"
-    "02" = "scenes/arboria_massive_world_demo.tscn"
+    "02" = "scenes/test_arboria_gate02_grouped_submission.tscn"
     "03" = "scenes/test_arboria_native_demo.tscn"
     "04" = "scenes/test_arboria_native_demo.tscn"
     "05" = "scenes/test_arboria_hiz_occlusion.tscn"
@@ -120,7 +120,9 @@ $ImageEvidence = @(
     "$RepoRoot\project\diag_arboria_hiz_occlusion.png",
     "$RepoRoot\project\diag_arboria_dag_integrity.png",
     "$RepoRoot\project\diag_arboria_pbr_side_by_side.png",
-    "$RepoRoot\project\diag_arboria_gpu_scene_global.png"
+    "$RepoRoot\project\diag_arboria_gpu_scene_global.png",
+    "$RepoRoot\project\diag_arboria_gate02_baseline.png",
+    "$RepoRoot\project\diag_arboria_gate02_grouped.png"
 )
 
 foreach ($img in $ImageEvidence) {
