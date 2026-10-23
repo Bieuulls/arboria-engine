@@ -4,7 +4,7 @@ config_version=5
 
 config/name="ARBORIA ENGINE — Virtual Geometry Viewer"
 config/description="Visualizador de Geometria Virtualizada (Cluster LOD) para Godot Engine"
-run/main_scene="res://scenes/main_viewer.tscn"
+run/main_scene="res://scenes/arboria_massive_world_demo.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 

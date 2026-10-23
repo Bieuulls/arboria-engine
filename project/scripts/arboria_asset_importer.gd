@@ -61,14 +61,21 @@ static func import_file(source_path: String, output_path: String = "") -> Dictio
 			metadata.surfaces.append({"node": "root", "surface_index": 0, "vertex_count": counts.v, "triangle_count": counts.triangles})
 	else:
 		var root: Node = null
-		var packed := ResourceLoader.load(source_path, "", ResourceLoader.CACHE_MODE_REPLACE)
-		if packed is PackedScene:
-			root = (packed as PackedScene).instantiate()
-		elif packed is Mesh:
-			root = MeshInstance3D.new()
-			(root as MeshInstance3D).mesh = packed
-		else:
-			return _failure("Godot could not import source as PackedScene or Mesh: " + source_path)
+		if ext in ["gltf", "glb"]:
+			var gltf_doc := GLTFDocument.new()
+			var gltf_state := GLTFState.new()
+			var err := gltf_doc.append_from_file(source_abs, gltf_state)
+			if err == OK:
+				root = gltf_doc.generate_scene(gltf_state)
+		if root == null:
+			var packed := ResourceLoader.load(source_path, "", ResourceLoader.CACHE_MODE_REPLACE)
+			if packed is PackedScene:
+				root = (packed as PackedScene).instantiate()
+			elif packed is Mesh:
+				root = MeshInstance3D.new()
+				(root as MeshInstance3D).mesh = packed
+			else:
+				return _failure("Godot could not import source as PackedScene or Mesh: " + source_path)
 
 		obj_path = output_abs + ".source.obj"
 		var obj_text := PackedStringArray(["# ARBORIA intermediate OBJ; generated from Godot-imported resources"])

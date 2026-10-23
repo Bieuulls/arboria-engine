@@ -122,6 +122,7 @@ func setup_ui() -> void:
 	model_option.add_item("Dense Scanned Rock (16,000 tris)", 0)
 	model_option.add_item("Pine Tree Trunk (35,000 tris)", 1)
 	model_option.add_item("Granite Boulder PBR (320 tris)", 2)
+	model_option.add_item("New Sponza Curtains (2,000,000 tris)", 3)
 	model_option.item_selected.connect(_on_model_selected)
 
 	lod_slider.value_changed.connect(_on_lod_slider_changed)
@@ -163,6 +164,10 @@ func load_selected_model(index: int) -> void:
 			vg_file = "res://assets/boulder_granite.vgmesh"
 			obj_file = "res://assets/boulder_granite.obj"
 			current_model_name = "Granite Boulder"
+		3:
+			vg_file = "res://assets/sponza_curtains.vgmesh"
+			obj_file = ""
+			current_model_name = "New Sponza Curtains"
 
 	current_vg_path = vg_file
 	print("Carregando .vgmesh no Renderizador Nativo Forward+: ", vg_file)
