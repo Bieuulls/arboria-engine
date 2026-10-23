@@ -152,17 +152,18 @@ func get_statistics() -> Dictionary:
 	var page_faults = 0
 	var evictions = 0
 
-	if native_core:
-		if native_core.has_method("memory_get_budget"):
-			vram_budget = native_core.memory_get_budget()
-		if native_core.has_method("memory_get_resident_bytes"):
-			vram_resident = native_core.memory_get_resident_bytes()
-		if native_core.has_method("memory_get_allocated_bytes"):
-			vram_allocated = native_core.memory_get_allocated_bytes()
-		if native_core.has_method("memory_get_page_faults"):
-			page_faults = native_core.memory_get_page_faults()
-		if native_core.has_method("memory_get_evictions"):
-			evictions = native_core.memory_get_evictions()
+	var pipeline_vram_bytes = 0
+	if global_visible_items_buf.is_valid(): pipeline_vram_bytes += 65536 * 8
+	if global_indirect_args_buf.is_valid(): pipeline_vram_bytes += 32
+	if global_scene_uniforms_buf.is_valid(): pipeline_vram_bytes += 256
+	if global_instances_buf.is_valid(): pipeline_vram_bytes += global_instances_capacity * 240
+	for m_res in _mesh_uniform_sets.keys():
+		pipeline_vram_bytes += (m_res.total_clusters * 96) + (m_res.total_vertices * 32) + (m_res.total_triangles * 4)
+
+	if vram_allocated == 0:
+		vram_allocated = pipeline_vram_bytes
+	if vram_resident == 0:
+		vram_resident = pipeline_vram_bytes
 
 	return {
 		"total_instances": stats_total_instances,
