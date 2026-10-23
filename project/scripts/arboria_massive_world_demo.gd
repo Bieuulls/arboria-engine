@@ -37,7 +37,10 @@ var recorded_cpu_times: Array[float] = []
 var capture_output_path: String = "res://diag_arboria_massive_world.png"
 var is_recording_video: bool = false
 var record_video_dir: String = ""
-var record_video_frames: int = 240
+var record_video_frames: int = 600
+var banner_panel: PanelContainer = null
+var banner_label: Label = null
+var banner_desc: Label = null
 
 # Cores minerais realistas
 var rock_palettes = [
@@ -70,17 +73,18 @@ func _ready() -> void:
 	# Registra CompositorEffect no WorldEnvironment
 	_setup_compositor()
 
-	# Gera o vale rochoso procedural com 80 instâncias
+	# Gera paisagem cinemática majestosa e organizada
 	_spawn_rock_valley()
 
 	# Configura interface gráfica
 	_setup_ui()
+	_setup_banner_ui()
 
 	if camera_rig:
-		camera_rig.target_offset = Vector3(0, 3.0, 0)
-		camera_rig.pitch = -0.14
-		camera_rig.yaw = 0.45
-		camera_rig.target_distance = 38.0
+		camera_rig.target_offset = Vector3(0, 3.2, 0)
+		camera_rig.pitch = -0.10
+		camera_rig.yaw = 0.20
+		camera_rig.target_distance = 32.0
 		camera_rig.update_camera_transform()
 
 func _setup_compositor() -> void:
@@ -101,83 +105,90 @@ func _setup_compositor() -> void:
 	print("[ArboriaMassiveWorld] ArboriaCompositorEffect registrado (Total: ", comp.compositor_effects.size(), ").")
 
 func _spawn_rock_valley() -> void:
-	var rng = RandomNumberGenerator.new()
-	rng.seed = 20261022
-
 	# Limpa instâncias anteriores se houver
 	for c in rocks_container.get_children():
 		c.queue_free()
 	active_rocks.clear()
 
-	# Lista de malhas virtuais disponíveis
-	var available_meshes = [
-		"res://assets/dense_rock_test.vgmesh",
-		"res://assets/boulder_granite.vgmesh",
-		"res://assets/pine_trunk_complex.vgmesh"
+	var rng = RandomNumberGenerator.new()
+	rng.seed = 42
+
+	# 1. PONTO FOCAL CENTRAL: 3 Pinheiros Ancestrais Monumentais (Perfeitamente Aprumados)
+	var pine_positions = [
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(-5.2, 0.0, -2.8),
+		Vector3(5.6, 0.0, -3.4)
 	]
+	var pine_rotations = [0.2, 1.8, 3.6]
+	var pine_scales = [2.9, 2.6, 2.7]
 
-	# Gera formação mista de floresta e cânion com 80 instâncias
-	for i in range(total_instances_count):
+	for i in range(pine_positions.size()):
+		var pine = ArboriaInstance3D.new()
+		pine.name = "HeroPine_%02d" % i
+		pine.mesh_path = "res://assets/pine_trunk_complex.vgmesh"
+		pine.position = pine_positions[i]
+		pine.rotation = Vector3(0.0, pine_rotations[i], 0.0) # Vertical, sem inclinações caóticas
+		pine.scale = Vector3.ONE * pine_scales[i]
+		pine.base_albedo = Color(0.40, 0.30, 0.22) # Casca rica de pinheiro florestal
+		pine.roughness = 0.90
+		pine.metallic = 0.01
+		pine.max_screen_error = 1.5
+		pine.lod_mode = 0
+		rocks_container.add_child(pine)
+		active_rocks.append(pine)
+
+	# 2. ANFITEATRO DE ROCHEDOS: 18 Penhascos Monumentais em Ferradura (Cenário de Desfiladeiro)
+	var num_cliff_rocks = 18
+	var cliff_radius = 21.0
+	for i in range(num_cliff_rocks):
 		var rock = ArboriaInstance3D.new()
-		var mesh_choice = available_meshes[i % available_meshes.size()]
-		rock.name = "Entity_%03d" % i
-		rock.mesh_path = mesh_choice
+		rock.name = "CliffRock_%02d" % i
+		rock.mesh_path = "res://assets/dense_rock_test.vgmesh"
+
+		# Arco harmonioso de -130° a +130° ao redor do centro
+		var angle = lerp(-2.3, 2.3, float(i) / float(num_cliff_rocks - 1))
+		var r_dist = cliff_radius + (sin(float(i) * 1.5) * 1.8)
+		var rx = sin(angle) * r_dist
+		var rz = -cos(angle) * r_dist - 2.5
+		var ry = 0.4 + sin(float(i) * 0.8) * 1.2 # Encosta terraceada
+
+		rock.position = Vector3(rx, ry, rz)
+		rock.rotation = Vector3(0.0, angle + PI * 0.5, 0.0)
+		var s = 2.4 + (cos(float(i) * 1.2) * 0.5 + 0.5) * 1.0 # 2.4x a 3.4x
+		rock.scale = Vector3.ONE * s
+		rock.base_albedo = Color(0.60, 0.63, 0.66)
+		rock.roughness = 0.72
+		rock.metallic = 0.03
 		rock.max_screen_error = 1.5
-		rock.lod_mode = 0 # Auto DAG Nanite
-
-		# Seleciona paleta e propriedades de material de acordo com o tipo
-		var col = rock_palettes[i % rock_palettes.size()]
-		var col_var = rng.randf_range(0.9, 1.1)
-
-		if mesh_choice.contains("pine_trunk"):
-			# Casca de pinheiro (marrom escuro/terra)
-			col = Color(0.38, 0.28, 0.22)
-			rock.roughness = rng.randf_range(0.85, 0.95)
-			rock.metallic = 0.01
-		elif mesh_choice.contains("boulder"):
-			# Granito liso arredondado
-			col = Color(0.65, 0.68, 0.72)
-			rock.roughness = rng.randf_range(0.40, 0.65)
-			rock.metallic = 0.04
-		else:
-			# Rocha escarpada
-			rock.roughness = rng.randf_range(0.60, 0.85)
-			rock.metallic = rng.randf_range(0.02, 0.06)
-
-		# Posicionamento orgânico no terreno proporcional ao número de instâncias
-		var side_count = int(ceil(sqrt(float(total_instances_count))))
-		side_count = max(side_count, 1)
-		var col_idx = i % side_count
-		var row_idx = i / side_count
-		var spacing = 4.8
-		var grid_x = (float(col_idx) - side_count * 0.5) * spacing + rng.randf_range(-1.2, 1.2)
-		var grid_z = (float(row_idx) - side_count * 0.5) * spacing + rng.randf_range(-1.2, 1.2)
-
-		var dist_from_center = Vector2(grid_x, grid_z).length()
-		var y = pow(dist_from_center / max(side_count * 2.8, 10.0), 1.5) * 4.5 + rng.randf_range(-0.3, 0.5)
-
-		# Escala variada para compor rochedos gigantes e pedregulhos menores
-		var scale_factor = 1.0
-		if i < 10:
-			scale_factor = rng.randf_range(2.6, 3.8) # Rochas monumentais
-			y -= 0.3
-		elif i < 35:
-			scale_factor = rng.randf_range(1.5, 2.3) # Rochas médias
-		else:
-			scale_factor = rng.randf_range(0.8, 1.4) # Pedras menores
-
-		rock.position = Vector3(grid_x, y, grid_z)
-		rock.rotation = Vector3(
-			rng.randf_range(-0.25, 0.25),
-			rng.randf_range(0.0, TAU),
-			rng.randf_range(-0.25, 0.25)
-		)
-		rock.scale = Vector3.ONE * scale_factor
-
+		rock.lod_mode = 0
 		rocks_container.add_child(rock)
 		active_rocks.append(rock)
 
-	print("[ArboriaMassiveWorld] Geradas com sucesso %d instancias virtuais." % active_rocks.size())
+	# 3. CAMPO DE GRANITO: 30 Pedregulhos Naturais Espalhados no Solo
+	var num_boulders = 30
+	for i in range(num_boulders):
+		var bld = ArboriaInstance3D.new()
+		bld.name = "Boulder_%02d" % i
+		bld.mesh_path = "res://assets/boulder_granite.vgmesh"
+
+		var b_angle = float(i) * 1.75
+		var b_dist = 5.0 + (float(i) / float(num_boulders)) * 14.0
+		var bx = cos(b_angle) * b_dist
+		var bz = sin(b_angle) * b_dist * 0.85
+
+		bld.position = Vector3(bx, 0.0, bz)
+		bld.rotation = Vector3(0.0, b_angle * 2.0, 0.0)
+		var bs = 0.9 + sin(float(i) * 3.0) * 0.4 # 0.5x a 1.3x
+		bld.scale = Vector3.ONE * bs
+		bld.base_albedo = Color(0.52, 0.55, 0.58)
+		bld.roughness = 0.58
+		bld.metallic = 0.02
+		bld.max_screen_error = 1.5
+		bld.lod_mode = 0
+		rocks_container.add_child(bld)
+		active_rocks.append(bld)
+
+	print("[ArboriaMassiveWorld] Composição majestosa gerada com %d entidades organizadas." % active_rocks.size())
 
 func _setup_ui() -> void:
 	if shading_option:
@@ -196,6 +207,63 @@ func _setup_ui() -> void:
 		error_slider.value = 1.5
 		error_slider.value_changed.connect(_on_error_slider_changed)
 		_on_error_slider_changed(1.5)
+
+func _setup_banner_ui() -> void:
+	var canvas = $CanvasLayer/UI
+	if not canvas: return
+
+	banner_panel = PanelContainer.new()
+	banner_panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	banner_panel.offset_left = 340.0
+	banner_panel.offset_top = 20.0
+	banner_panel.offset_right = -360.0
+	banner_panel.offset_bottom = 90.0
+
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.07, 0.11, 0.90)
+	style.border_width_left = 4
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(0.25, 0.65, 1.0, 0.85)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	banner_panel.add_theme_stylebox_override("panel", style)
+
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_bottom", 8)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 3)
+
+	banner_label = Label.new()
+	banner_label.text = "ARBORIA ENGINE — VIRTUAL GEOMETRY"
+	banner_label.add_theme_font_size_override("font_size", 15)
+	banner_label.add_theme_color_override("font_color", Color(0.3, 0.9, 1.0))
+
+	banner_desc = Label.new()
+	banner_desc.text = "Inicializando..."
+	banner_desc.add_theme_font_size_override("font_size", 12)
+	banner_desc.add_theme_color_override("font_color", Color(0.85, 0.88, 0.92))
+
+	vbox.add_child(banner_label)
+	vbox.add_child(banner_desc)
+	margin.add_child(vbox)
+	banner_panel.add_child(margin)
+
+	canvas.add_child(banner_panel)
+
+func _update_banner_mode(title_text: String, desc_text: String, title_col: Color) -> void:
+	if banner_label:
+		banner_label.text = title_text
+		banner_label.add_theme_color_override("font_color", title_col)
+	if banner_desc:
+		banner_desc.text = desc_text
 
 func _on_shading_mode_changed(idx: int) -> void:
 	if pipeline:
@@ -234,33 +302,82 @@ func _process(delta: float) -> void:
 
 	current_frame += 1
 	if is_recording_video:
+		# Progresso normalizado de 0.0 a 1.0 ao longo de 20 segundos (600 frames)
+		var t: float = float(current_frame) / float(record_video_frames)
+
 		if camera_rig:
-			camera_rig.yaw += delta * 0.45
-			camera_rig.pitch = -0.15 + sin(current_frame * 0.04) * 0.06
-			camera_rig.target_distance = 36.0 + sin(current_frame * 0.03) * 6.0
+			# Rotação suave, elegante e lenta (apenas 65 graus ao longo de 20 segundos)
+			camera_rig.yaw = 0.20 + t * 1.15
+
+			# Trajetória cinemática controlada por atos
+			if current_frame < 180:
+				# ATO 1 (0s a 6s): Traveling lento de aproximação contemplativa
+				var t1 = float(current_frame) / 180.0
+				camera_rig.target_offset = Vector3(0.0, 3.2, 0.0)
+				camera_rig.pitch = -0.10
+				camera_rig.target_distance = lerp(34.0, 26.0, t1)
+			elif current_frame < 360:
+				# ATO 2 (6s a 12s): Close-up nos troncos de pinheiro e revelação dos Nanite Clusters
+				var t2 = float(current_frame - 180) / 180.0
+				camera_rig.target_offset = Vector3(0.0, 3.6, 0.0)
+				camera_rig.pitch = lerp(-0.10, -0.14, t2)
+				camera_rig.target_distance = lerp(26.0, 30.0, t2)
+			elif current_frame < 480:
+				# ATO 3 (12s a 16s): Elevação suave mostrando as normais e relevos rochosos
+				var t3 = float(current_frame - 360) / 120.0
+				camera_rig.target_offset = Vector3(0.0, 4.2, 0.0)
+				camera_rig.pitch = lerp(-0.14, -0.20, t3)
+				camera_rig.target_distance = lerp(30.0, 35.0, t3)
+			else:
+				# ATO 4 (16s a 20s): Abertura majestosa para plano geral final
+				var t4 = float(current_frame - 480) / 120.0
+				camera_rig.target_offset = Vector3(0.0, 3.8, 0.0)
+				camera_rig.pitch = lerp(-0.20, -0.12, t4)
+				camera_rig.target_distance = lerp(35.0, 38.0, t4)
+
 			camera_rig.update_camera_transform()
 
-		# Transição dinâmica de Shading para o vídeo demonstrar a GPU e os Clusters
+		# Transição Límpida e Didática dos Modos com Tempo de Respiração (4 a 6 segundos por modo)
 		if pipeline:
-			if current_frame < 60:
-				pipeline.global_shading_mode = 0 # PBR Cook-Torrance
+			if current_frame < 180:
+				pipeline.global_shading_mode = 0 # PBR Lit
 				if shading_option: shading_option.selected = 0
-			elif current_frame < 120:
-				pipeline.global_shading_mode = 3 # Cluster Colors Debug
+				_update_banner_mode(
+					"MODO 1/3: RENDERIZACAO PBR COOK-TORRANCE GGX (ILUMINACAO REAL)",
+					"Geometria Virtual com materiais PBR fisicos, translucencia foliar e vento GPU.",
+					Color(0.3, 0.9, 1.0)
+				)
+			elif current_frame < 360:
+				pipeline.global_shading_mode = 3 # Cluster Colors
 				if shading_option: shading_option.selected = 3
-			elif current_frame < 180:
-				pipeline.global_shading_mode = 1 # Normais de Superfície
+				_update_banner_mode(
+					"MODO 2/3: CLUSTERS VIRTUAIS GPU (DIVISAO ATOMICA DAG / NANITE)",
+					"Cada cor representa um cluster independente (<=64 verts / 128 tris) avaliado pela GPU.",
+					Color(1.0, 0.85, 0.2)
+				)
+			elif current_frame < 480:
+				pipeline.global_shading_mode = 1 # Normais
 				if shading_option: shading_option.selected = 1
+				_update_banner_mode(
+					"MODO 3/3: NORMAIS DE SUPERFICIE NO ESPACO DE MUNDO (METODO DE ARVO)",
+					"Orientacao fisica de superficies calculada em O(1) pelo nucleo nativo C++.",
+					Color(0.4, 1.0, 0.5)
+				)
 			else:
-				pipeline.global_shading_mode = 0 # Retorno ao PBR Lit
+				pipeline.global_shading_mode = 0 # Retorno ao PBR
 				if shading_option: shading_option.selected = 0
+				_update_banner_mode(
+					"ARBORIA ENGINE: FORWARD+ VULKAN 1.4 (RTX 3050 REAL-TIME)",
+					"Submissao GPU indireta consolidada (3 dispatches / 3 draws) para toda a cena massiva.",
+					Color(1.0, 0.95, 0.8)
+				)
 			pipeline.request_telemetry_read()
 
 		var frame_file = "%s/frame_%04d.png" % [record_video_dir, current_frame]
 		_capture_viewport(frame_file)
 
 		if current_frame >= record_video_frames:
-			print("[ArboriaMassiveWorld] Gravacao concluida: %d frames salvos em %s" % [record_video_frames, record_video_dir])
+			print("[ArboriaMassiveWorld] Gravacao cinematografica concluida: %d frames salvos." % record_video_frames)
 			pipeline.cleanup()
 			get_tree().quit(0)
 		return
