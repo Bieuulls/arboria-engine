@@ -30,6 +30,11 @@ var raw_mesh_triangles: int = 15800
 var active_rocks: Array[ArboriaInstance3D] = []
 var current_frame: int = 0
 var is_interactive: bool = false
+var is_stress_benchmark: bool = false
+var bench_target_frames: int = 45
+var recorded_frame_times: Array[float] = []
+var recorded_cpu_times: Array[float] = []
+var capture_output_path: String = "res://diag_arboria_massive_world.png"
 
 # Cores minerais realistas
 var rock_palettes = [
@@ -45,6 +50,13 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_args():
 		if arg == "--interactive":
 			is_interactive = true
+		elif arg.begins_with("--instances="):
+			total_instances_count = int(arg.split("=")[1])
+		elif arg.begins_with("--bench-frames="):
+			bench_target_frames = int(arg.split("=")[1])
+			is_stress_benchmark = true
+		elif arg.begins_with("--capture-path="):
+			capture_output_path = arg.split("=")[1]
 	pipeline = ArboriaNativePipeline.get_or_create_shared()
 
 	# Registra CompositorEffect no WorldEnvironment
@@ -124,14 +136,17 @@ func _spawn_rock_valley() -> void:
 			rock.roughness = rng.randf_range(0.60, 0.85)
 			rock.metallic = rng.randf_range(0.02, 0.06)
 
-		# Posicionamento orgânico no terreno cobrindo todo o campo de visão
-		var col_idx = i % 10
-		var row_idx = i / 10
-		var grid_x = (float(col_idx) - 4.5) * 5.2 + rng.randf_range(-1.8, 1.8)
-		var grid_z = (float(row_idx) - 3.5) * 5.2 + rng.randf_range(-1.8, 1.8)
+		# Posicionamento orgânico no terreno proporcional ao número de instâncias
+		var side_count = int(ceil(sqrt(float(total_instances_count))))
+		side_count = max(side_count, 1)
+		var col_idx = i % side_count
+		var row_idx = i / side_count
+		var spacing = 4.8
+		var grid_x = (float(col_idx) - side_count * 0.5) * spacing + rng.randf_range(-1.2, 1.2)
+		var grid_z = (float(row_idx) - side_count * 0.5) * spacing + rng.randf_range(-1.2, 1.2)
 
 		var dist_from_center = Vector2(grid_x, grid_z).length()
-		var y = pow(dist_from_center / 28.0, 1.5) * 4.5 + rng.randf_range(-0.3, 0.5)
+		var y = pow(dist_from_center / max(side_count * 2.8, 10.0), 1.5) * 4.5 + rng.randf_range(-0.3, 0.5)
 
 		# Escala variada para compor rochedos gigantes e pedregulhos menores
 		var scale_factor = 1.0
@@ -211,23 +226,58 @@ func _process(delta: float) -> void:
 
 	current_frame += 1
 	if not is_interactive:
-		if current_frame == 20:
-			if pipeline: pipeline.request_telemetry_read()
-		elif current_frame == 45:
-			if pipeline:
-				pipeline.request_telemetry_read()
-				var stats = pipeline.get_statistics()
-				print("\n=================================================================")
-				print(" [RESULTADOS ETAPA 09: MASSIVE WORLD - 80 INSTÂNCIAS DENSAS]")
-				print("  - Instâncias Ativas: %d" % active_rocks.size())
-				print("  - Clusters Visíveis: %d" % stats.get("clusters_visible", 0))
-				print("  - Triângulos Desenhados: %d" % stats.get("triangles_drawn", 0))
-				print("  - Custo CPU Submissão: %.3f ms" % stats.get("cpu_submission_ms", 0.0))
-				print("=================================================================")
-				_capture_viewport("res://diag_arboria_massive_world.png")
-				print("[ETAPA 09 APROVADO] Mundo massivo com 80 instancias densas renderizado com sucesso no Forward+ Vulkan!")
-				pipeline.cleanup()
-				get_tree().quit(0)
+		if is_stress_benchmark:
+			if camera_rig:
+				camera_rig.yaw += delta * 0.35
+				camera_rig.update_camera_transform()
+			if current_frame > 300 and current_frame <= bench_target_frames:
+				recorded_frame_times.append(delta * 1000.0)
+				if pipeline:
+					recorded_cpu_times.append(pipeline.stats_cpu_submission_ms)
+			if current_frame == bench_target_frames:
+				if pipeline:
+					pipeline.request_telemetry_read()
+					var stats = pipeline.get_statistics()
+					recorded_frame_times.sort()
+					var n = recorded_frame_times.size()
+					var p50 = recorded_frame_times[int(n * 0.50)] if n > 0 else 0.0
+					var p95 = recorded_frame_times[int(n * 0.95)] if n > 0 else 0.0
+					var p99 = recorded_frame_times[int(n * 0.99)] if n > 0 else 0.0
+					var avg_cpu = 0.0
+					for ct in recorded_cpu_times: avg_cpu += ct
+					if recorded_cpu_times.size() > 0: avg_cpu /= recorded_cpu_times.size()
+
+					print("\n=================================================================")
+					print(" [STRESS BENCHMARK REAL: %d INSTÂNCIAS - 300 WARMUP / %d MEDIDOS]" % [active_rocks.size(), n])
+					print("  - Instâncias Ativas: %d" % active_rocks.size())
+					print("  - Clusters Visíveis: %d" % stats.get("clusters_visible", 0))
+					print("  - Triângulos Desenhados: %d" % stats.get("triangles_drawn", 0))
+					print("  - Clusters Avaliados: %d" % stats.get("clusters_evaluated", 0))
+					print("  - Frame Time p50: %.2f ms | p95: %.2f ms | p99: %.2f ms" % [p50, p95, p99])
+					print("  - Custo CPU Submissão Médio: %.3f ms" % avg_cpu)
+					print("  - Dispatches: %d | Draw Calls: %d" % [stats.get("dispatches", 0), stats.get("indirect_draws", 0)])
+					print("  - VRAM Residente Estimada: %.1f MB" % (float(stats.get("vram_resident_bytes", 0)) / (1024.0 * 1024.0)))
+					print("=================================================================")
+					_capture_viewport(capture_output_path)
+					pipeline.cleanup()
+					get_tree().quit(0)
+		else:
+			if current_frame == 20:
+				if pipeline: pipeline.request_telemetry_read()
+			elif current_frame == 45:
+				if pipeline:
+					pipeline.request_telemetry_read()
+					var stats = pipeline.get_statistics()
+					print("\n=================================================================")
+					print(" [RESULTADOS RAPIDOS: %d INSTÂNCIAS]" % active_rocks.size())
+					print("  - Instâncias Ativas: %d" % active_rocks.size())
+					print("  - Clusters Visíveis: %d" % stats.get("clusters_visible", 0))
+					print("  - Triângulos Desenhados: %d" % stats.get("triangles_drawn", 0))
+					print("  - Custo CPU Submissão: %.3f ms" % stats.get("cpu_submission_ms", 0.0))
+					print("=================================================================")
+					_capture_viewport(capture_output_path)
+					pipeline.cleanup()
+					get_tree().quit(0)
 
 func _capture_viewport(path: String) -> void:
 	var vp = get_viewport()

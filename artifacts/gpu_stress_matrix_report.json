@@ -1,0 +1,54 @@
+[
+  {
+    "instances": 1,
+    "clusters_visible": 59,
+    "triangles_drawn": 4946,
+    "clusters_evaluated": 367,
+    "frame_time_p50_ms": 16.67,
+    "frame_time_p95_ms": 16.67,
+    "frame_time_p99_ms": 16.67,
+    "cpu_submission_avg_ms": 0.054,
+    "dispatches": 1,
+    "draw_calls": 1,
+    "vram_resident_mb": 1.4
+  },
+  {
+    "instances": 80,
+    "clusters_visible": 720,
+    "triangles_drawn": 61535,
+    "clusters_evaluated": 31595,
+    "frame_time_p50_ms": 16.67,
+    "frame_time_p95_ms": 16.67,
+    "frame_time_p99_ms": 16.67,
+    "cpu_submission_avg_ms": 0.738,
+    "dispatches": 3,
+    "draw_calls": 3,
+    "vram_resident_mb": 3.2
+  },
+  {
+    "instances": 500,
+    "clusters_visible": 1027,
+    "triangles_drawn": 85766,
+    "clusters_evaluated": 199595,
+    "frame_time_p50_ms": 16.67,
+    "frame_time_p95_ms": 16.67,
+    "frame_time_p99_ms": 16.67,
+    "cpu_submission_avg_ms": 4.053,
+    "dispatches": 3,
+    "draw_calls": 3,
+    "vram_resident_mb": 3.3
+  },
+  {
+    "instances": 2000,
+    "clusters_visible": 1212,
+    "triangles_drawn": 96498,
+    "clusters_evaluated": 799595,
+    "frame_time_p50_ms": 37.5,
+    "frame_time_p95_ms": 44.31,
+    "frame_time_p99_ms": 49.93,
+    "cpu_submission_avg_ms": 19.087,
+    "dispatches": 3,
+    "draw_calls": 3,
+    "vram_resident_mb": 3.6
+  }
+]
