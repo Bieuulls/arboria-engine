@@ -85,6 +85,8 @@ var _aabb: AABB = AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2))
 var _mesh_data: Dictionary = {}
 var _is_registered: bool = false
 
+var _shadow_proxy_mesh: BoxMesh = null
+
 func _ready() -> void:
 	set_notify_transform(true)
 	if mesh_path != "":
@@ -94,6 +96,8 @@ func _ready() -> void:
 func _enter_tree() -> void:
 	set_notify_transform(true)
 	_register_to_pipeline()
+	if _aabb.size.length_squared() > 0.001:
+		_setup_shadow_proxy()
 
 func _exit_tree() -> void:
 	_unregister_from_pipeline()
@@ -121,8 +125,20 @@ func _load_mesh_if_needed() -> void:
 			var bmin = _mesh_data["bbox_min"]
 			var bmax = _mesh_data["bbox_max"]
 			_aabb = AABB(bmin, bmax - bmin)
-			set_base(RID())
+			_setup_shadow_proxy()
 		emit_signal("mesh_loaded", mesh_path)
+
+func _setup_shadow_proxy() -> void:
+	if _aabb.size.length_squared() < 0.001:
+		set_base(RID())
+		return
+	if not _shadow_proxy_mesh:
+		_shadow_proxy_mesh = BoxMesh.new()
+	_shadow_proxy_mesh.size = _aabb.size
+	set_base(_shadow_proxy_mesh.get_rid())
+	var inst_rid = get_instance()
+	if inst_rid.is_valid():
+		RenderingServer.instance_geometry_set_cast_shadows_setting(inst_rid, RenderingServer.SHADOW_CASTING_SETTING_SHADOWS_ONLY)
 
 func _get_aabb() -> AABB:
 	return _aabb

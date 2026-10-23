@@ -79,15 +79,9 @@ func setup_native_pipeline() -> void:
 	native_instance.name = "NativeVirtualMeshInstance"
 	add_child(native_instance)
 
-	# Registra o CompositorEffect no WorldEnvironment
+	# Registra o CompositorEffect no WorldEnvironment (Depth Prepass + Main Opaque)
 	if world_env:
-		if not world_env.compositor:
-			world_env.compositor = Compositor.new()
-		compositor_effect = ArboriaCompositorEffect.new()
-		compositor_effect.active = true
-		var effs = world_env.compositor.compositor_effects.duplicate()
-		effs.append(compositor_effect)
-		world_env.compositor.compositor_effects = effs
+		ArboriaCompositorEffect.attach_to_environment(world_env)
 		if orbit_cam and orbit_cam.has_node("Camera3D"):
 			orbit_cam.get_node("Camera3D").compositor = world_env.compositor
 

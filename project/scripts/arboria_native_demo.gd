@@ -44,16 +44,8 @@ func _exit_tree() -> void:
 
 func _setup_compositor() -> void:
 	var env: WorldEnvironment = $WorldEnvironment
-	if not env.compositor:
-		env.compositor = Compositor.new()
-
-	compositor_effect = ArboriaCompositorEffect.new()
-	compositor_effect.active = true
-	var effects = env.compositor.compositor_effects.duplicate()
-	effects.append(compositor_effect)
-	env.compositor.compositor_effects = effects
-
-	if camera:
+	ArboriaCompositorEffect.attach_to_environment(env)
+	if camera and env.compositor:
 		camera.compositor = env.compositor
 	print("[ArboriaNativeDemo] ArboriaCompositorEffect registrado no WorldEnvironment e Camera3D (Total: ", env.compositor.compositor_effects.size(), ").")
 

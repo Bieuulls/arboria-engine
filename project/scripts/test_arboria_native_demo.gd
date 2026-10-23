@@ -130,8 +130,8 @@ func _process(_delta: float) -> void:
 		for y in range(height):
 			for x in range(width):
 				var c = img.get_pixel(x, y)
-				# Cubo convencional (vermelho brilhante)
-				if c.r > 0.65 and c.g < 0.35 and c.b < 0.35:
+				# Cubo convencional (vermelho em sombra / iluminação Forward+)
+				if c.r > 0.12 and c.r > c.g * 1.8 and c.r > c.b * 1.8:
 					cube_pixels += 1
 				# Céu / background
 				elif abs(c.r - 0.12) < 0.04 and abs(c.g - 0.14) < 0.04 and abs(c.b - 0.18) < 0.04:
@@ -161,7 +161,7 @@ func _process(_delta: float) -> void:
 		var rock_left_sample = img.get_pixel(370, 391)
 		var rock_right_sample = img.get_pixel(650, 391)
 
-		var is_cube_center_red = (cube_center_sample.r > 0.65 and cube_center_sample.g < 0.35)
+		var is_cube_center_red = (cube_center_sample.r > 0.12 and cube_center_sample.r > cube_center_sample.g * 1.8)
 		var is_rock_left_visible = not (abs(rock_left_sample.r - 0.12) < 0.04 and abs(rock_left_sample.b - 0.18) < 0.04)
 		var is_rock_right_visible = not (abs(rock_right_sample.r - 0.12) < 0.04 and abs(rock_right_sample.b - 0.18) < 0.04)
 

@@ -71,7 +71,9 @@ var compute_shader_rid: RID
 var compute_pipeline: RID
 var raster_shader_rid: RID
 var raster_pipeline: RID
+var depth_prepass_pipeline: RID
 var raster_fb_format: int = -1
+var _last_cull_frame: int = -1
 
 # Framebuffer Cache
 var cached_fb: RID
@@ -263,7 +265,7 @@ func _compile_raster_shader() -> void:
 	raster_shader_rid = rd.shader_create_from_spirv(spirv)
 
 func setup_raster_pipeline(color_fmt: int, depth_fmt: int) -> bool:
-	if raster_pipeline.is_valid() and raster_fb_format != -1:
+	if raster_pipeline.is_valid() and depth_prepass_pipeline.is_valid() and raster_fb_format != -1:
 		return true
 
 	var color_att = RDAttachmentFormat.new()
@@ -299,7 +301,28 @@ func setup_raster_pipeline(color_fmt: int, depth_fmt: int) -> bool:
 		depth_state,
 		blend
 	)
-	return raster_pipeline.is_valid()
+
+	# Depth Prepass Pipeline: grava exclusivamente profundidade no Depth Buffer antes do opaque do Godot
+	var depth_blend = RDPipelineColorBlendState.new()
+	var depth_att_blend = RDPipelineColorBlendStateAttachment.new()
+	depth_att_blend.write_r = false
+	depth_att_blend.write_g = false
+	depth_att_blend.write_b = false
+	depth_att_blend.write_a = false
+	depth_blend.attachments.append(depth_att_blend)
+
+	depth_prepass_pipeline = rd.render_pipeline_create(
+		raster_shader_rid,
+		raster_fb_format,
+		-1,
+		RenderingDevice.RENDER_PRIMITIVE_TRIANGLES,
+		raster_state,
+		RDPipelineMultisampleState.new(),
+		depth_state,
+		depth_blend
+	)
+
+	return raster_pipeline.is_valid() and depth_prepass_pipeline.is_valid()
 
 func get_or_load_mesh(path: String) -> Dictionary:
 	if _mesh_cache.has(path):
@@ -668,8 +691,15 @@ func extract_frustum_planes(m: Projection) -> Array[Plane]:
 			planes.append(Plane(Vector3.UP, 0.0))
 	return planes
 
-## Ponto de entrada de renderização chamado pelo CompositorEffect (POST_OPAQUE)
+## Ponto de entrada chamado pelo CompositorEffect no estágio PRE_OPAQUE (Depth Prepass com Reversed-Z)
+func render_depth_prepass(p_render_data: RenderData) -> void:
+	_render_scene_instances_internal(p_render_data, true)
+
+## Ponto de entrada chamado pelo CompositorEffect no estágio POST_OPAQUE (Renderização Principal e Sombras)
 func render_scene_instances(p_render_data: RenderData) -> void:
+	_render_scene_instances_internal(p_render_data, false)
+
+func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: bool) -> void:
 	if not is_initialized or _registered_instances.is_empty():
 		return
 
@@ -897,12 +927,14 @@ func render_scene_instances(p_render_data: RenderData) -> void:
 		raster_sets.append(inst_gpu.raster_uniform_set)
 		counter_bufs.append(inst_gpu.counter_buf)
 
+	var active_pipeline = depth_prepass_pipeline if is_prepass else raster_pipeline
+
 	if native_core and native_core.has_method("render_scene_batch"):
 		native_core.render_scene_batch(
 			rd,
 			cached_fb,
 			compute_pipeline,
-			raster_pipeline,
+			active_pipeline,
 			compute_sets,
 			groups_x,
 			raster_sets,
