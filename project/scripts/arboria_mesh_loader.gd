@@ -329,3 +329,90 @@ static func build_wireframe_mesh(vg_data: Dictionary, target_lod: int, isolate_c
 	var mesh = ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
 	return mesh
+
+static var _shape_cache: Dictionary = {}
+
+static func get_cached_convex_shape(file_path: String, vg_data: Dictionary = {}) -> ConvexPolygonShape3D:
+	var key = file_path + ":convex"
+	if _shape_cache.has(key):
+		return _shape_cache[key]
+	
+	var data = vg_data
+	if not (data.has("vertices") and data["vertices"] is PackedVector3Array):
+		data = load_from_file(file_path)
+		
+	if data.is_empty() or not data.has("vertices"):
+		return null
+		
+	var shape = ConvexPolygonShape3D.new()
+	var verts: PackedVector3Array = data["vertices"]
+	if verts.size() > 512:
+		var stride = maxi(1, verts.size() / 256)
+		var sampled = PackedVector3Array()
+		for i in range(0, verts.size(), stride):
+			sampled.append(verts[i])
+		shape.points = sampled
+	else:
+		shape.points = verts
+		
+	_shape_cache[key] = shape
+	return shape
+
+static func get_cached_concave_shape(file_path: String, vg_data: Dictionary = {}, target_lod: int = 0) -> ConcavePolygonShape3D:
+	var key = "%s:concave:%d" % [file_path, target_lod]
+	if _shape_cache.has(key):
+		return _shape_cache[key]
+		
+	var data = vg_data
+	if not (data.has("clusters") and data.has("vertices") and data["vertices"] is PackedVector3Array and data["clusters"] is Array):
+		data = load_from_file(file_path)
+		
+	if data.is_empty() or not data.has("clusters") or not data.has("vertices"):
+		return null
+		
+	var clusters = data["clusters"]
+	var vertices: PackedVector3Array = data["vertices"]
+	var tri_bytes: PackedByteArray = data["triangle_bytes"]
+	
+	var faces = PackedVector3Array()
+	for c in clusters:
+		if c["lod_level"] != target_lod:
+			continue
+		var v_start = c["vertex_offset"]
+		var t_start = c["triangle_offset"]
+		var t_count = c["triangle_count"]
+		for ti in range(t_count):
+			var idx0 = v_start + tri_bytes[t_start + ti * 3 + 0]
+			var idx1 = v_start + tri_bytes[t_start + ti * 3 + 1]
+			var idx2 = v_start + tri_bytes[t_start + ti * 3 + 2]
+			faces.append(vertices[idx0])
+			faces.append(vertices[idx1])
+			faces.append(vertices[idx2])
+			
+	if faces.is_empty():
+		return null
+		
+	var shape = ConcavePolygonShape3D.new()
+	shape.set_faces(faces)
+	_shape_cache[key] = shape
+	return shape
+
+static func get_cached_box_shape(file_path: String, vg_data: Dictionary = {}) -> BoxShape3D:
+	var key = file_path + ":box"
+	if _shape_cache.has(key):
+		return _shape_cache[key]
+		
+	var data = vg_data
+	if not data.has("bbox_min") or not data.has("bbox_max"):
+		data = load_from_file(file_path)
+		
+	if data.is_empty() or not data.has("bbox_min"):
+		return null
+		
+	var bmin: Vector3 = data["bbox_min"]
+	var bmax: Vector3 = data["bbox_max"]
+	var size = (bmax - bmin).abs()
+	var shape = BoxShape3D.new()
+	shape.size = size
+	_shape_cache[key] = shape
+	return shape

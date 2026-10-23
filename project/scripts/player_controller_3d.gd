@@ -95,3 +95,15 @@ func _physics_process(delta: float) -> void:
 
 	# 4. Move e desliza com snap ao solo
 	move_and_slide()
+
+	# 5. Interacao e empurrao de RigidBody3D no Jolt Physics
+	for i in range(get_slide_collision_count()):
+		var col = get_slide_collision(i)
+		var collider = col.get_collider()
+		if collider is RigidBody3D:
+			var push_dir = -col.get_normal()
+			push_dir.y = 0.0 # Empurrão predominantemente horizontal
+			if push_dir.length_squared() > 0.001:
+				push_dir = push_dir.normalized()
+				var push_force = current_speed * 1.5
+				collider.apply_central_impulse(push_dir * push_force * delta * 60.0)

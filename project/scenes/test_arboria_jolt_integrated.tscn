@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://joltmaster06"]
+
+[ext_resource type="Script" path="res://scripts/test_arboria_jolt_integrated.gd" id="1_script"]
+
+[node name="TestArboriaJoltIntegrated" type="Node3D"]
+script = ExtResource("1_script")

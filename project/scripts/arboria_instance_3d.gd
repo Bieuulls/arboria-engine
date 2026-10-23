@@ -96,18 +96,107 @@ signal transform_updated()
 		emission_energy = value
 		notify_pipeline_update()
 
+@export_group("Physics & Collision (Jolt)")
+@export_enum("None", "Static Concave", "Static Convex", "Static Box", "Rigid Convex", "Rigid Box") var collision_mode: int = 0:
+	set(value):
+		collision_mode = value
+		if is_inside_tree():
+			_update_physics_collision()
+
+@export_flags_3d_physics var collision_layer: int = 1:
+	set(value):
+		collision_layer = value
+		if _physics_body:
+			_physics_body.collision_layer = value
+
+@export_flags_3d_physics var collision_mask: int = 1:
+	set(value):
+		collision_mask = value
+		if _physics_body:
+			_physics_body.collision_mask = value
+
+@export var mass: float = 1.0:
+	set(value):
+		mass = value
+		if _physics_body and _physics_body is RigidBody3D:
+			_physics_body.mass = value
+
 var _pipeline: RefCounted = null
 var _aabb: AABB = AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2))
 var _mesh_data: Dictionary = {}
 var _is_registered: bool = false
-
 var _shadow_proxy_mesh: BoxMesh = null
+var _physics_body: CollisionObject3D = null
+var _collision_shape_node: CollisionShape3D = null
 
 func _ready() -> void:
 	set_notify_transform(true)
 	if mesh_path != "":
 		_load_mesh_if_needed()
 	_register_to_pipeline()
+	_update_physics_collision()
+
+func _update_physics_collision() -> void:
+	if collision_mode == 0:
+		if _physics_body:
+			_physics_body.queue_free()
+			_physics_body = null
+			_collision_shape_node = null
+		return
+
+	if _mesh_data.is_empty():
+		return
+
+	# Seleciona o shape apropriado do cache
+	var shape: Shape3D = null
+	if collision_mode == 1: # Static Concave
+		shape = ArboriaMeshLoader.get_cached_concave_shape(mesh_path, _mesh_data, 0)
+	elif collision_mode == 2 or collision_mode == 4: # Static Convex ou Rigid Convex
+		shape = ArboriaMeshLoader.get_cached_convex_shape(mesh_path, _mesh_data)
+	elif collision_mode == 3 or collision_mode == 5: # Static Box ou Rigid Box
+		shape = ArboriaMeshLoader.get_cached_box_shape(mesh_path, _mesh_data)
+
+	if not shape:
+		return
+
+	var is_rigid = (collision_mode == 4 or collision_mode == 5)
+	
+	# Se o pai ja for um CollisionObject3D (ex: o usuário colocou ArboriaInstance3D dentro de um RigidBody3D),
+	# apenas garante que há um CollisionShape3D no pai com o shape correspondente.
+	var parent = get_parent()
+	if parent is CollisionObject3D:
+		if not _collision_shape_node or _collision_shape_node.get_parent() != parent:
+			_collision_shape_node = CollisionShape3D.new()
+			_collision_shape_node.name = name + "_CollisionShape"
+			parent.add_child(_collision_shape_node)
+		_collision_shape_node.shape = shape
+		return
+
+	# Caso contrário, instancia o corpo como filho
+	if is_rigid:
+		if not (_physics_body is RigidBody3D):
+			if _physics_body: _physics_body.queue_free()
+			var rb = RigidBody3D.new()
+			rb.name = name + "_RigidBody"
+			_physics_body = rb
+			add_child(_physics_body)
+			_collision_shape_node = CollisionShape3D.new()
+			_physics_body.add_child(_collision_shape_node)
+		(_physics_body as RigidBody3D).mass = mass
+	else:
+		if not (_physics_body is StaticBody3D):
+			if _physics_body: _physics_body.queue_free()
+			var sb = StaticBody3D.new()
+			sb.name = name + "_StaticBody"
+			_physics_body = sb
+			add_child(_physics_body)
+			_collision_shape_node = CollisionShape3D.new()
+			_physics_body.add_child(_collision_shape_node)
+
+	_physics_body.collision_layer = collision_layer
+	_physics_body.collision_mask = collision_mask
+	if _collision_shape_node:
+		_collision_shape_node.shape = shape
 
 func _enter_tree() -> void:
 	set_notify_transform(true)
@@ -120,6 +209,12 @@ func _exit_tree() -> void:
 	set_base(RID())
 	_shadow_proxy_mesh = null
 	_pipeline = null
+	if _physics_body:
+		_physics_body.queue_free()
+		_physics_body = null
+	if _collision_shape_node and _collision_shape_node.get_parent() != self:
+		_collision_shape_node.queue_free()
+		_collision_shape_node = null
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSFORM_CHANGED:
@@ -131,6 +226,7 @@ func _notification(what: int) -> void:
 func _on_mesh_path_changed() -> void:
 	if is_inside_tree():
 		_load_mesh_if_needed()
+		_update_physics_collision()
 		notify_pipeline_update()
 
 func _load_mesh_if_needed() -> void:
