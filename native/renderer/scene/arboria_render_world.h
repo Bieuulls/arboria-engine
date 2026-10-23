@@ -47,6 +47,15 @@ public:
     size_t get_registered_mesh_count() const;
     size_t get_active_instance_count() const;
 
+    // Gerenciamento de Memória VRAM e Streaming
+    void memory_set_budget(size_t bytes);
+    size_t memory_get_budget() const;
+    size_t memory_get_resident_bytes() const;
+    size_t memory_get_allocated_bytes() const;
+    uint32_t memory_get_page_faults() const;
+    uint32_t memory_get_evictions() const;
+    void streaming_update(const float cam_pos[3], uint64_t current_frame);
+
 private:
     ArboriaRenderWorld() = default;
     ~ArboriaRenderWorld() = default;

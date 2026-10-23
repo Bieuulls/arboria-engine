@@ -484,6 +484,49 @@ static void call_render_scene_global(void *method_userdata, GDExtensionClassInst
     if (Arboria::ABI::from_bool) Arboria::ABI::from_bool(r_return, &ok);
 }
 
+static void call_memory_set_budget(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    if (p_argument_count >= 1 && Arboria::ABI::to_int) {
+        int64_t b = 0;
+        Arboria::ABI::to_int(&b, const_cast<GDExtensionVariantPtr>(p_args[0]));
+        Arboria::ArboriaRenderWorld::instance().memory_set_budget(static_cast<size_t>(b));
+    }
+}
+
+static void call_memory_get_budget(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    int64_t b = static_cast<int64_t>(Arboria::ArboriaRenderWorld::instance().memory_get_budget());
+    if (Arboria::ABI::from_int) Arboria::ABI::from_int(r_return, &b);
+}
+
+static void call_memory_get_resident_bytes(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    int64_t b = static_cast<int64_t>(Arboria::ArboriaRenderWorld::instance().memory_get_resident_bytes());
+    if (Arboria::ABI::from_int) Arboria::ABI::from_int(r_return, &b);
+}
+
+static void call_memory_get_allocated_bytes(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    int64_t b = static_cast<int64_t>(Arboria::ArboriaRenderWorld::instance().memory_get_allocated_bytes());
+    if (Arboria::ABI::from_int) Arboria::ABI::from_int(r_return, &b);
+}
+
+static void call_memory_get_page_faults(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    int64_t pf = static_cast<int64_t>(Arboria::ArboriaRenderWorld::instance().memory_get_page_faults());
+    if (Arboria::ABI::from_int) Arboria::ABI::from_int(r_return, &pf);
+}
+
+static void call_memory_get_evictions(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    int64_t ev = static_cast<int64_t>(Arboria::ArboriaRenderWorld::instance().memory_get_evictions());
+    if (Arboria::ABI::from_int) Arboria::ABI::from_int(r_return, &ev);
+}
+
+static void call_streaming_update(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    if (p_argument_count >= 2 && Arboria::ABI::to_vector3 && Arboria::ABI::to_int) {
+        float pos[3] = {0, 0, 0};
+        Arboria::ABI::to_vector3(pos, const_cast<GDExtensionVariantPtr>(p_args[0]));
+        int64_t frame = 0;
+        Arboria::ABI::to_int(&frame, const_cast<GDExtensionVariantPtr>(p_args[1]));
+        Arboria::ArboriaRenderWorld::instance().streaming_update(pos, static_cast<uint64_t>(frame));
+    }
+}
+
 // ============================================================================
 // INICIALIZAÇÃO DA EXTENSÃO NO GODOT
 // ============================================================================
@@ -655,7 +698,20 @@ static void arboria_gdextension_initialize(void* userdata, GDExtensionInitializa
                     };
                     register_method(lib, cname, "render_scene_global", call_render_scene_global, GDEXTENSION_VARIANT_TYPE_BOOL, true, 9, args_global, names_global);
 
-                    std::cout << "[Arboria GDExtension] Metodos de 'ArboriaNativeCore' registrados com sucesso no ClassDB (GPU Scene Global + API Tipada + Suporte Legado)." << std::endl;
+                    GDExtensionVariantType arg_budget[] = { GDEXTENSION_VARIANT_TYPE_INT };
+                    const char* name_budget[] = { "bytes" };
+                    register_method(lib, cname, "memory_set_budget", call_memory_set_budget, GDEXTENSION_VARIANT_TYPE_NIL, false, 1, arg_budget, name_budget);
+                    register_method(lib, cname, "memory_get_budget", call_memory_get_budget, GDEXTENSION_VARIANT_TYPE_INT, true, 0, nullptr, nullptr);
+                    register_method(lib, cname, "memory_get_resident_bytes", call_memory_get_resident_bytes, GDEXTENSION_VARIANT_TYPE_INT, true, 0, nullptr, nullptr);
+                    register_method(lib, cname, "memory_get_allocated_bytes", call_memory_get_allocated_bytes, GDEXTENSION_VARIANT_TYPE_INT, true, 0, nullptr, nullptr);
+                    register_method(lib, cname, "memory_get_page_faults", call_memory_get_page_faults, GDEXTENSION_VARIANT_TYPE_INT, true, 0, nullptr, nullptr);
+                    register_method(lib, cname, "memory_get_evictions", call_memory_get_evictions, GDEXTENSION_VARIANT_TYPE_INT, true, 0, nullptr, nullptr);
+
+                    GDExtensionVariantType args_streaming[] = { GDEXTENSION_VARIANT_TYPE_VECTOR3, GDEXTENSION_VARIANT_TYPE_INT };
+                    const char* names_streaming[] = { "camera_pos", "frame" };
+                    register_method(lib, cname, "streaming_update", call_streaming_update, GDEXTENSION_VARIANT_TYPE_NIL, false, 2, args_streaming, names_streaming);
+
+                    std::cout << "[Arboria GDExtension] Metodos de 'ArboriaNativeCore' registrados com sucesso no ClassDB (GPU Scene Global + API Tipada + Streaming/Memoria)." << std::endl;
                 }
             }
         }

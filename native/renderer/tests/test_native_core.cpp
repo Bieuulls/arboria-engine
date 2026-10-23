@@ -13,6 +13,8 @@
 #include "../scene/arboria_material_table.h"
 #include "../scene/arboria_visibility_manager.h"
 #include "../scene/arboria_indirect_command_manager.h"
+#include "../gpu/arboria_memory_manager.h"
+#include "../scene/arboria_streaming_manager.h"
 
 #include <iostream>
 #include <cassert>
@@ -351,6 +353,82 @@ int main(int argc, char** argv) {
                       << res.total_triangles_drawn << " triangulos no corte DAG." << std::endl;
         }
         std::cout << "[TESTE 18] Continuidade do Corte DAG e Monotonicidade de Erro - OK" << std::endl;
+    }
+
+    // TESTE 19: Gestão de Orçamento de VRAM e Paginação de Geometria
+    {
+        Arboria::ArboriaGPUMemoryManager::instance().initialize(1024 * 1024); // 1 MB de budget para teste
+        assert(Arboria::ArboriaGPUMemoryManager::instance().get_budget() == 1024 * 1024);
+
+        Arboria::Handle dummy_mesh = Arboria::Handle::from_u64(999);
+        uint32_t p0 = Arboria::ArboriaGPUMemoryManager::instance().register_page(dummy_mesh, 0, 64, 0, 64 * 96, true);
+        uint32_t p1 = Arboria::ArboriaGPUMemoryManager::instance().register_page(dummy_mesh, 64, 64, 1, 64 * 96, false);
+        uint32_t p2 = Arboria::ArboriaGPUMemoryManager::instance().register_page(dummy_mesh, 128, 64, 2, 64 * 96, false);
+
+        // Página 0 é raiz: sempre residente
+        assert(Arboria::ArboriaGPUMemoryManager::instance().is_page_resident(p0));
+        assert(!Arboria::ArboriaGPUMemoryManager::instance().is_page_resident(p1));
+        assert(!Arboria::ArboriaGPUMemoryManager::instance().is_page_resident(p2));
+
+        // Carrega página 1 na GPU
+        assert(Arboria::ArboriaGPUMemoryManager::instance().make_page_resident(p1, 10));
+        assert(Arboria::ArboriaGPUMemoryManager::instance().is_page_resident(p1));
+
+        auto stats = Arboria::ArboriaGPUMemoryManager::instance().get_statistics();
+        assert(stats.total_pages == 3);
+        assert(stats.resident_pages == 2);
+        assert(stats.resident_bytes <= stats.budget_bytes);
+        std::cout << "[TESTE 19] Gestao de Orcamento VRAM e Paginacao de Geometria - OK" << std::endl;
+    }
+
+    // TESTE 20: Priorização de Streaming por Distância e Eviction LRU Sob Pressão de Memória
+    {
+        // Inicializa com orçamento restrito para forçar eviction (apenas 12 KB)
+        Arboria::ArboriaGPUMemoryManager::instance().initialize(12 * 1024);
+
+        Arboria::Handle mesh_test = Arboria::Handle::from_u64(1001);
+        uint32_t root_p = Arboria::ArboriaGPUMemoryManager::instance().register_page(mesh_test, 0, 64, 0, 6 * 1024, true);
+        uint32_t detail_p1 = Arboria::ArboriaGPUMemoryManager::instance().register_page(mesh_test, 64, 64, 1, 5 * 1024, false);
+        uint32_t detail_p2 = Arboria::ArboriaGPUMemoryManager::instance().register_page(mesh_test, 128, 64, 2, 5 * 1024, false);
+
+        // Torna detail_p1 residente no frame 1
+        assert(Arboria::ArboriaGPUMemoryManager::instance().make_page_resident(detail_p1, 1));
+        assert(Arboria::ArboriaGPUMemoryManager::instance().is_page_resident(detail_p1));
+
+        // Torna detail_p2 residente no frame 5. Como root_p (6 KB) + detail_p1 (5 KB) + detail_p2 (5 KB) = 16 KB > 12 KB,
+        // detail_p1 (acessado no frame 1) deve sofrer eviction LRU!
+        assert(Arboria::ArboriaGPUMemoryManager::instance().make_page_resident(detail_p2, 5));
+        assert(Arboria::ArboriaGPUMemoryManager::instance().is_page_resident(detail_p2));
+        assert(!Arboria::ArboriaGPUMemoryManager::instance().is_page_resident(detail_p1)); // EVICTED!
+        assert(Arboria::ArboriaGPUMemoryManager::instance().is_page_resident(root_p));     // Raiz NUNCA é evicted!
+
+        auto stats = Arboria::ArboriaGPUMemoryManager::instance().get_statistics();
+        assert(stats.evictions_count > 0);
+        assert(stats.resident_bytes <= stats.budget_bytes);
+        std::cout << "[TESTE 20] Priorizacao de Streaming e Eviction LRU Sob Pressao de VRAM - OK" << std::endl;
+    }
+
+    // TESTE 21: Fallback Garantido para Páginas Raiz Residentes durante Page Faults
+    {
+        Arboria::ArboriaStreamingManager::instance().initialize(64 * 1024 * 1024);
+        Arboria::Handle h_mesh(2002, 1);
+        assert(Arboria::ArboriaStreamingManager::instance().register_mesh_streaming(h_mesh, 256, 5.0f));
+
+        // Cluster 0 pertence à página 0 (raiz): sempre residente
+        assert(Arboria::ArboriaStreamingManager::instance().is_cluster_resident(h_mesh, 0));
+
+        // Cluster 200 pertence a página de detalhe ainda não carregada: gera page fault controlado
+        assert(!Arboria::ArboriaStreamingManager::instance().is_cluster_resident(h_mesh, 200));
+
+        // Consulta de fallback: garante que o renderer recebe um cluster válido da página raiz residente
+        uint32_t fb_cluster = Arboria::ArboriaStreamingManager::instance().get_fallback_cluster(h_mesh, 200);
+        assert(fb_cluster < 64); // Mapeado para o intervalo seguro da raiz
+        assert(Arboria::ArboriaStreamingManager::instance().is_cluster_resident(h_mesh, fb_cluster));
+
+        auto tel = Arboria::ArboriaStreamingManager::instance().get_telemetry();
+        assert(tel.total_page_faults > 0);
+        assert(tel.under_budget);
+        std::cout << "[TESTE 21] Fallback Seguro de Clusters para Pagina Raiz Durante Page Faults - OK" << std::endl;
     }
 
     // TESTE 16: Limpeza e Finalização do ArboriaRenderWorld

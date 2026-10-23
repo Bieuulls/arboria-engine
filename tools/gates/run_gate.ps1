@@ -57,7 +57,7 @@ $SceneMap = @{
     "04" = "scenes/test_arboria_native_demo.tscn"
     "05" = "scenes/test_arboria_hiz_occlusion.tscn"
     "06" = "scenes/test_arboria_dag_integrity.tscn"
-    "07" = "scenes/test_arboria_pbr_side_by_side.tscn"
+    "07" = "scenes/test_arboria_vram_streaming.tscn"
     "08" = "scenes/test_arboria_native_demo.tscn"
     "09" = "scenes/arboria_massive_world_demo.tscn"
     "10" = "scenes/test_arboria_native_demo.tscn"
@@ -122,7 +122,8 @@ $ImageEvidence = @(
     "$RepoRoot\project\diag_arboria_pbr_side_by_side.png",
     "$RepoRoot\project\diag_arboria_gpu_scene_global.png",
     "$RepoRoot\project\diag_arboria_gate02_baseline.png",
-    "$RepoRoot\project\diag_arboria_gate02_grouped.png"
+    "$RepoRoot\project\diag_arboria_gate02_grouped.png",
+    "$RepoRoot\project\diag_arboria_vram_streaming.png"
 )
 
 foreach ($img in $ImageEvidence) {

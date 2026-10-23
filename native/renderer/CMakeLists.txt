@@ -22,6 +22,8 @@ set(ARBORIA_SOURCES
     scene/arboria_indirect_command_manager.cpp
     scene/arboria_gpu_scene.cpp
     scene/arboria_render_world.cpp
+    gpu/arboria_memory_manager.cpp
+    scene/arboria_streaming_manager.cpp
 )
 
 set(ARBORIA_HEADERS
@@ -34,6 +36,7 @@ set(ARBORIA_HEADERS
     gpu/arboria_buffer_manager.h
     gpu/arboria_compute_dispatch.h
     gpu/arboria_indirect_renderer.h
+    gpu/arboria_memory_manager.h
     integration/arboria_abi.h
     integration/arboria_scene_bridge.h
     integration/arboria_render_pass.h
@@ -45,6 +48,7 @@ set(ARBORIA_HEADERS
     scene/arboria_indirect_command_manager.h
     scene/arboria_gpu_scene.h
     scene/arboria_render_world.h
+    scene/arboria_streaming_manager.h
 )
 
 # Compilar Shared Library (DLL)

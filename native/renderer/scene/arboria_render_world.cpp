@@ -1,4 +1,6 @@
 #include "arboria_render_world.h"
+#include "arboria_streaming_manager.h"
+#include "../gpu/arboria_memory_manager.h"
 #include <iostream>
 
 namespace Arboria {
@@ -83,6 +85,34 @@ size_t ArboriaRenderWorld::get_registered_mesh_count() const {
 
 size_t ArboriaRenderWorld::get_active_instance_count() const {
     return ArboriaInstanceRegistry::instance().get_instance_count();
+}
+
+void ArboriaRenderWorld::memory_set_budget(size_t bytes) {
+    ArboriaStreamingManager::instance().set_vram_budget(bytes);
+}
+
+size_t ArboriaRenderWorld::memory_get_budget() const {
+    return ArboriaGPUMemoryManager::instance().get_budget();
+}
+
+size_t ArboriaRenderWorld::memory_get_resident_bytes() const {
+    return ArboriaGPUMemoryManager::instance().get_statistics().resident_bytes;
+}
+
+size_t ArboriaRenderWorld::memory_get_allocated_bytes() const {
+    return ArboriaGPUMemoryManager::instance().get_statistics().allocated_bytes;
+}
+
+uint32_t ArboriaRenderWorld::memory_get_page_faults() const {
+    return ArboriaGPUMemoryManager::instance().get_statistics().page_faults;
+}
+
+uint32_t ArboriaRenderWorld::memory_get_evictions() const {
+    return ArboriaGPUMemoryManager::instance().get_statistics().evictions_count;
+}
+
+void ArboriaRenderWorld::streaming_update(const float cam_pos[3], uint64_t current_frame) {
+    ArboriaStreamingManager::instance().update(cam_pos, current_frame);
 }
 
 } // namespace Arboria

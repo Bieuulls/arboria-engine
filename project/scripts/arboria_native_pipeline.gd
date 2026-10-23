@@ -133,6 +133,24 @@ var _telemetry_interval: int = 15
 var telemetry_dirty: bool = false
 
 func get_statistics() -> Dictionary:
+	var vram_budget = 0
+	var vram_resident = 0
+	var vram_allocated = 0
+	var page_faults = 0
+	var evictions = 0
+
+	if native_core:
+		if native_core.has_method("memory_get_budget"):
+			vram_budget = native_core.memory_get_budget()
+		if native_core.has_method("memory_get_resident_bytes"):
+			vram_resident = native_core.memory_get_resident_bytes()
+		if native_core.has_method("memory_get_allocated_bytes"):
+			vram_allocated = native_core.memory_get_allocated_bytes()
+		if native_core.has_method("memory_get_page_faults"):
+			page_faults = native_core.memory_get_page_faults()
+		if native_core.has_method("memory_get_evictions"):
+			evictions = native_core.memory_get_evictions()
+
 	return {
 		"total_instances": stats_total_instances,
 		"dispatches": stats_dispatches,
@@ -143,7 +161,13 @@ func get_statistics() -> Dictionary:
 		"cpu_submission_ms": stats_cpu_submission_ms,
 		"hiz_enabled": enable_hiz,
 		"hiz_size": hiz_size,
-		"hiz_mips": hiz_mip_count
+		"hiz_mips": hiz_mip_count,
+		"vram_budget_bytes": vram_budget,
+		"vram_resident_bytes": vram_resident,
+		"vram_allocated_bytes": vram_allocated,
+		"page_faults": page_faults,
+		"evictions": evictions,
+		"under_budget": (vram_resident <= vram_budget) if vram_budget > 0 else true
 	}
 
 static func get_active_instance() -> RefCounted:
@@ -1361,7 +1385,8 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 
 	_telemetry_frame_counter += 1
 
-	var should_read_gpu = (not enable_async_telemetry) or telemetry_dirty or (_telemetry_frame_counter % _telemetry_interval == 0)
+	# Telemetria assíncrona desacoplada: zero chamadas síncronas periódicas a buffer_get_data no caminho de render
+	var should_read_gpu = (not enable_async_telemetry) or telemetry_dirty
 	if should_read_gpu:
 		telemetry_dirty = false
 		var vis_acc = 0
@@ -1692,8 +1717,13 @@ func _render_scene_global_internal(
 	stats_indirect_draws = 1
 	stats_clusters_evaluated = total_work_items
 
+	if native_core and native_core.has_method("streaming_update"):
+		native_core.streaming_update(cam_pos_world, _telemetry_frame_counter)
+
 	_telemetry_frame_counter += 1
-	var should_read_gpu = (not enable_async_telemetry) or telemetry_dirty or (_telemetry_frame_counter % _telemetry_interval == 0)
+
+	# Telemetria assíncrona desacoplada: zero chamadas síncronas periódicas a buffer_get_data no caminho de render
+	var should_read_gpu = (not enable_async_telemetry) or telemetry_dirty
 	if should_read_gpu:
 		telemetry_dirty = false
 		var cnt_data = rd.buffer_get_data(global_indirect_args_buf)
