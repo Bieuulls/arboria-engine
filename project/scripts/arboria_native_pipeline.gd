@@ -1609,17 +1609,15 @@ func _render_scene_global_internal(
 			inst_bytes.encode_float(base_off + 136, w_c.z)
 			inst_bytes.encode_float(base_off + 140, w_r)
 
-			var w_min = Vector3(1e30, 1e30, 1e30)
-			var w_max = Vector3(-1e30, -1e30, -1e30)
-			for c_i in range(8):
-				var corner = Vector3(
-					m_res.bbox_max.x if (c_i & 1) else m_res.bbox_min.x,
-					m_res.bbox_max.y if (c_i & 2) else m_res.bbox_min.y,
-					m_res.bbox_max.z if (c_i & 4) else m_res.bbox_min.z
-				)
-				var wc = model_xform * corner
-				w_min = w_min.min(wc)
-				w_max = w_max.max(wc)
+			# 2. AABB no espaço de mundo via Método de Jim Arvo (O(1) sem branches ou 8 transformações)
+			var local_ext = (m_res.bbox_max - m_res.bbox_min) * 0.5
+			var w_ext = Vector3(
+				abs(b.x.x) * local_ext.x + abs(b.y.x) * local_ext.y + abs(b.z.x) * local_ext.z,
+				abs(b.x.y) * local_ext.x + abs(b.y.y) * local_ext.y + abs(b.z.y) * local_ext.z,
+				abs(b.x.z) * local_ext.x + abs(b.y.z) * local_ext.y + abs(b.z.z) * local_ext.z
+			)
+			var w_min = w_c - w_ext
+			var w_max = w_c + w_ext
 
 			var max_err = inst.max_screen_error if "max_screen_error" in inst else 1.5
 

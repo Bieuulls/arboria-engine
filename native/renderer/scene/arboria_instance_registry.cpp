@@ -156,29 +156,37 @@ void ArboriaInstanceRegistry::compute_world_bounds(
     float max_scale = std::max({ sx, sy, sz });
     out_world_radius = local_radius * max_scale;
 
-    // 2. AABB no espaço de mundo transformando os 8 vértices do AABB local
-    out_world_min[0] = 1e30f;  out_world_min[1] = 1e30f;  out_world_min[2] = 1e30f;
-    out_world_max[0] = -1e30f; out_world_max[1] = -1e30f; out_world_max[2] = -1e30f;
+    // 2. AABB no espaço de mundo via Método de Jim Arvo (Graphics Gems I) - O(1) puro sem branches
+    float c_loc[3] = {
+        0.5f * (local_min[0] + local_max[0]),
+        0.5f * (local_min[1] + local_max[1]),
+        0.5f * (local_min[2] + local_max[2])
+    };
+    float e_loc[3] = {
+        0.5f * (local_max[0] - local_min[0]),
+        0.5f * (local_max[1] - local_min[1]),
+        0.5f * (local_max[2] - local_min[2])
+    };
 
-    for (int i = 0; i < 8; ++i) {
-        float corner[3] = {
-            (i & 1) ? local_max[0] : local_min[0],
-            (i & 2) ? local_max[1] : local_min[1],
-            (i & 4) ? local_max[2] : local_min[2]
-        };
+    float c_world[3] = {
+        m[0] * c_loc[0] + m[4] * c_loc[1] + m[8]  * c_loc[2] + m[12],
+        m[1] * c_loc[0] + m[5] * c_loc[1] + m[9]  * c_loc[2] + m[13],
+        m[2] * c_loc[0] + m[6] * c_loc[1] + m[10] * c_loc[2] + m[14]
+    };
 
-        float wx = m[0] * corner[0] + m[4] * corner[1] + m[8]  * corner[2] + m[12];
-        float wy = m[1] * corner[0] + m[5] * corner[1] + m[9]  * corner[2] + m[13];
-        float wz = m[2] * corner[0] + m[6] * corner[1] + m[10] * corner[2] + m[14];
+    float e_world[3] = {
+        std::abs(m[0]) * e_loc[0] + std::abs(m[4]) * e_loc[1] + std::abs(m[8])  * e_loc[2],
+        std::abs(m[1]) * e_loc[0] + std::abs(m[5]) * e_loc[1] + std::abs(m[9])  * e_loc[2],
+        std::abs(m[2]) * e_loc[0] + std::abs(m[6]) * e_loc[1] + std::abs(m[10]) * e_loc[2]
+    };
 
-        out_world_min[0] = std::min(out_world_min[0], wx);
-        out_world_min[1] = std::min(out_world_min[1], wy);
-        out_world_min[2] = std::min(out_world_min[2], wz);
+    out_world_min[0] = c_world[0] - e_world[0];
+    out_world_min[1] = c_world[1] - e_world[1];
+    out_world_min[2] = c_world[2] - e_world[2];
 
-        out_world_max[0] = std::max(out_world_max[0], wx);
-        out_world_max[1] = std::max(out_world_max[1], wy);
-        out_world_max[2] = std::max(out_world_max[2], wz);
-    }
+    out_world_max[0] = c_world[0] + e_world[0];
+    out_world_max[1] = c_world[1] + e_world[1];
+    out_world_max[2] = c_world[2] + e_world[2];
 }
 
 size_t ArboriaInstanceRegistry::build_gpu_instance_buffer(std::vector<GPUInstanceData>& out_buffer) const {

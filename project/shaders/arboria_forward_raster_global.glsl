@@ -280,15 +280,22 @@ void main() {
     vec3 F = F_Schlick(VoH, f0);
 
     vec3 specular_brdf = (D * G) * F;
-    vec3 kd = (vec3(1.0) - F) * (1.0 - metallic);
+    vec3 k_dielectric = (vec3(1.0) - F) * (1.0 - metallic);
+
+    // Conservação de Energia Master: Partição estrita entre Reflexão Difusa e Transmissão Foliar
+    const float transmission_ratio = 0.30; // 30% transmitido pelo mesófilo foliar, 70% difuso refletido
+    vec3 kd = k_dielectric * (1.0 - transmission_ratio);
+    vec3 kt = k_dielectric * transmission_ratio;
+
     vec3 diffuse_brdf = kd * (albedo / PI);
-
     vec3 direct_light = (diffuse_brdf + specular_brdf) * vec3(1.2) * (NoL * PI);
-    vec3 ambient_light = albedo * vec3(0.18, 0.20, 0.25) * (1.0 - metallic);
 
-    // Subsurface Scattering / Translucência Foliar (Backlight Transmission)
+    // Subsurface Scattering / Translucência Foliar Conservativa (Two-Sided Thin Slab)
     float back_light = clamp(dot(-N, L), 0.0, 1.0);
-    vec3 sss_light = albedo * vec3(1.15, 1.10, 0.75) * (back_light * 0.35 * (1.0 - metallic));
+    vec3 foliage_filter = vec3(1.15, 1.10, 0.75); // Deslocamento de cor pela clorofila
+    vec3 sss_light = kt * ((albedo * foliage_filter) / PI) * vec3(1.2) * (back_light * PI);
+
+    vec3 ambient_light = albedo * vec3(0.18, 0.20, 0.25) * (1.0 - metallic);
 
     vec3 final_rgb = direct_light + ambient_light + sss_light;
     out_color = vec4(final_rgb, 1.0);
