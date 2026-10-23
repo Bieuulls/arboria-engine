@@ -35,6 +35,9 @@ var bench_target_frames: int = 45
 var recorded_frame_times: Array[float] = []
 var recorded_cpu_times: Array[float] = []
 var capture_output_path: String = "res://diag_arboria_massive_world.png"
+var is_recording_video: bool = false
+var record_video_dir: String = ""
+var record_video_frames: int = 240
 
 # Cores minerais realistas
 var rock_palettes = [
@@ -57,6 +60,11 @@ func _ready() -> void:
 			is_stress_benchmark = true
 		elif arg.begins_with("--capture-path="):
 			capture_output_path = arg.split("=")[1]
+		elif arg.begins_with("--record-video-dir="):
+			record_video_dir = arg.split("=")[1]
+			is_recording_video = true
+		elif arg.begins_with("--record-video-frames="):
+			record_video_frames = int(arg.split("=")[1])
 	pipeline = ArboriaNativePipeline.get_or_create_shared()
 
 	# Registra CompositorEffect no WorldEnvironment
@@ -225,6 +233,38 @@ func _process(delta: float) -> void:
 			reduction_label.text = "Reducao Geometria: %.1f%%" % max(0.0, red_pct)
 
 	current_frame += 1
+	if is_recording_video:
+		if camera_rig:
+			camera_rig.yaw += delta * 0.45
+			camera_rig.pitch = -0.15 + sin(current_frame * 0.04) * 0.06
+			camera_rig.target_distance = 36.0 + sin(current_frame * 0.03) * 6.0
+			camera_rig.update_camera_transform()
+
+		# Transição dinâmica de Shading para o vídeo demonstrar a GPU e os Clusters
+		if pipeline:
+			if current_frame < 60:
+				pipeline.global_shading_mode = 0 # PBR Cook-Torrance
+				if shading_option: shading_option.selected = 0
+			elif current_frame < 120:
+				pipeline.global_shading_mode = 3 # Cluster Colors Debug
+				if shading_option: shading_option.selected = 3
+			elif current_frame < 180:
+				pipeline.global_shading_mode = 1 # Normais de Superfície
+				if shading_option: shading_option.selected = 1
+			else:
+				pipeline.global_shading_mode = 0 # Retorno ao PBR Lit
+				if shading_option: shading_option.selected = 0
+			pipeline.request_telemetry_read()
+
+		var frame_file = "%s/frame_%04d.png" % [record_video_dir, current_frame]
+		_capture_viewport(frame_file)
+
+		if current_frame >= record_video_frames:
+			print("[ArboriaMassiveWorld] Gravacao concluida: %d frames salvos em %s" % [record_video_frames, record_video_dir])
+			pipeline.cleanup()
+			get_tree().quit(0)
+		return
+
 	if not is_interactive:
 		if is_stress_benchmark:
 			if camera_rig:
