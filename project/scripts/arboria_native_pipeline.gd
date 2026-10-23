@@ -45,6 +45,18 @@ class InstanceGPUData:
 	var bound_hiz_tex: RID
 	var is_ready: bool = false
 
+	# ALVO 4: Dirty Caching de Transformação e Matrizes para Objetos Estáticos
+	var cached_transform: Transform3D = Transform3D()
+	var cached_visible: bool = true
+	var cached_albedo: Color = Color(-1, -1, -1, -1)
+	var cached_roughness: float = -1.0
+	var cached_metallic: float = -1.0
+	var cached_specular: float = -1.0
+	var cached_lod_mode: float = -1.0
+	var cached_forced_lod: float = -1.0
+	var cached_inst_bytes: PackedByteArray = PackedByteArray()
+	var is_transform_cached: bool = false
+
 var rd: RenderingDevice
 var is_initialized: bool = false
 var native_core: RefCounted = null
@@ -1497,9 +1509,33 @@ func _render_scene_global_internal(
 		for i in range(batch_size):
 			var task = batch_tasks[i]
 			var inst: Node3D = task["inst"]
+			var inst_gpu: InstanceGPUData = task.get("gpu_data", null)
 			var base_off = i * 240
 
 			var model_xform: Transform3D = inst.global_transform
+			var vis: bool = inst.visible
+			var alb: Color = inst.base_albedo if "base_albedo" in inst else Color(0.8, 0.82, 0.85)
+			var rgh: float = inst.roughness if "roughness" in inst else 0.5
+			var mtl: float = inst.metallic if "metallic" in inst else 0.0
+			var spc: float = inst.specular if "specular" in inst else 0.5
+			var lod_mode: float = float(inst.lod_mode if "lod_mode" in inst else 0)
+			var forced_lod: float = float(inst.forced_lod if "forced_lod" in inst else 0)
+
+			var is_dirty: bool = true
+			if inst_gpu and inst_gpu.is_transform_cached:
+				if inst_gpu.cached_transform == model_xform and inst_gpu.cached_visible == vis and inst_gpu.cached_albedo == alb and inst_gpu.cached_roughness == rgh and inst_gpu.cached_metallic == mtl and inst_gpu.cached_specular == spc and inst_gpu.cached_lod_mode == lod_mode and inst_gpu.cached_forced_lod == forced_lod:
+					is_dirty = false
+
+			if not is_dirty:
+				# ALVO 4: Cópia rápida O(1) de bloco pré-calculado para instâncias estáticas (Zero recálculos na CPU)
+				var c_bytes: PackedByteArray = inst_gpu.cached_inst_bytes
+				for off_64 in range(0, 240, 8):
+					inst_bytes.encode_u64(base_off + off_64, c_bytes.decode_u64(off_64))
+				inst_bytes.encode_u32(base_off + 208, i)
+				inst_bytes.encode_u32(base_off + 228, m_res.total_clusters)
+				continue
+
+			# Cálculo completo apenas para instâncias modificadas (dirty)
 			var b = model_xform.basis
 			var model_proj = Projection(model_xform)
 
@@ -1569,8 +1605,6 @@ func _render_scene_global_internal(
 				w_max = w_max.max(wc)
 
 			var max_err = inst.max_screen_error if "max_screen_error" in inst else 1.5
-			var lod_mode = float(inst.lod_mode if "lod_mode" in inst else 0)
-			var forced_lod = float(inst.forced_lod if "forced_lod" in inst else 0)
 
 			inst_bytes.encode_float(base_off + 144, w_min.x)
 			inst_bytes.encode_float(base_off + 148, w_min.y)
@@ -1582,22 +1616,18 @@ func _render_scene_global_internal(
 			inst_bytes.encode_float(base_off + 168, w_max.z)
 			inst_bytes.encode_float(base_off + 172, lod_mode)
 
-			var alb = inst.base_albedo if "base_albedo" in inst else Color(0.8, 0.82, 0.85)
-			var rgh = inst.roughness if "roughness" in inst else 0.5
 			inst_bytes.encode_float(base_off + 176, alb.r)
 			inst_bytes.encode_float(base_off + 180, alb.g)
 			inst_bytes.encode_float(base_off + 184, alb.b)
 			inst_bytes.encode_float(base_off + 188, rgh)
 
-			var mtl = inst.metallic if "metallic" in inst else 0.0
-			var spc = inst.specular if "specular" in inst else 0.5
 			inst_bytes.encode_float(base_off + 192, mtl)
 			inst_bytes.encode_float(base_off + 196, spc)
 			inst_bytes.encode_float(base_off + 200, 0.0)
 			inst_bytes.encode_float(base_off + 204, forced_lod)
 
 			var is_mirrored = (det < 0.0)
-			var vis_flag = (1 if inst.visible else 0) | (2 if (not "cast_shadow" in inst or inst.cast_shadow) else 0) | (4 if is_mirrored else 0)
+			var vis_flag = (1 if vis else 0) | (2 if (not "cast_shadow" in inst or inst.cast_shadow) else 0) | (4 if is_mirrored else 0)
 			inst_bytes.encode_u32(base_off + 208, i)
 			inst_bytes.encode_u32(base_off + 212, 0)
 			inst_bytes.encode_u32(base_off + 216, vis_flag)
@@ -1607,6 +1637,18 @@ func _render_scene_global_internal(
 			inst_bytes.encode_u32(base_off + 228, m_res.total_clusters)
 			inst_bytes.encode_u32(base_off + 232, 0)
 			inst_bytes.encode_u32(base_off + 236, 0)
+
+			if inst_gpu:
+				inst_gpu.cached_transform = model_xform
+				inst_gpu.cached_visible = vis
+				inst_gpu.cached_albedo = alb
+				inst_gpu.cached_roughness = rgh
+				inst_gpu.cached_metallic = mtl
+				inst_gpu.cached_specular = spc
+				inst_gpu.cached_lod_mode = lod_mode
+				inst_gpu.cached_forced_lod = forced_lod
+				inst_gpu.cached_inst_bytes = inst_bytes.slice(base_off, base_off + 240)
+				inst_gpu.is_transform_cached = true
 
 		rd.buffer_update(global_instances_buf, 0, inst_bytes.size(), inst_bytes)
 
