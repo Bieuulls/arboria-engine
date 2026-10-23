@@ -1761,29 +1761,25 @@ func _render_scene_global_internal(
 		total_dispatches += 1
 		total_draws += 1
 
-		if (not enable_async_telemetry) or telemetry_dirty:
-			var cnt_data = rd.buffer_get_data(global_indirect_args_buf)
-			if cnt_data.size() >= 32:
-				frame_vis_clusters += cnt_data.decode_u32(4)
-				frame_triangles += cnt_data.decode_u32(16)
-
 	var t1_submit = Time.get_ticks_usec()
 	stats_cpu_submission_ms = (t1_submit - t0_submit) / 1000.0
 
-	# 4. Atualização de Telemetria Consolidada
+	# 4. Atualização de Telemetria Consolidada e Assíncrona (ALVO 5 - Zero stalls GPU no caminho de submissão)
 	stats_total_instances = active_tasks.size()
 	stats_dispatches = total_dispatches
 	stats_indirect_draws = total_draws
 	stats_clusters_evaluated = total_scene_clusters
 
-	if (not enable_async_telemetry) or telemetry_dirty:
-		telemetry_dirty = false
-		stats_visible_clusters = frame_vis_clusters
-		stats_triangles_drawn = frame_triangles
-		if _telemetry_frame_counter % 60 == 0:
-			print("[ARBORIA GPU SCENE MULTIMALHA] Instâncias: %d, Malhas: %d, Clusters: %d, Triângulos: %d, Dispatches: %d, Draws: %d" % [
-				stats_total_instances, tasks_by_mesh.size(), stats_visible_clusters, stats_triangles_drawn, stats_dispatches, stats_indirect_draws
-			])
+	var should_sample_telemetry = (not enable_async_telemetry) or (_telemetry_frame_counter % _telemetry_interval == 0)
+	if should_sample_telemetry and global_indirect_args_buf.is_valid():
+		var cnt_data = rd.buffer_get_data(global_indirect_args_buf)
+		if cnt_data.size() >= 32:
+			stats_visible_clusters = cnt_data.decode_u32(4)
+			stats_triangles_drawn = cnt_data.decode_u32(16)
+			if _telemetry_frame_counter % 60 == 0:
+				print("[ARBORIA GPU SCENE MULTIMALHA] Instâncias: %d, Malhas: %d, Clusters: %d, Triângulos: %d, Dispatches: %d, Draws: %d, CPU Submit: %.3f ms" % [
+					stats_total_instances, tasks_by_mesh.size(), stats_visible_clusters, stats_triangles_drawn, stats_dispatches, stats_indirect_draws, stats_cpu_submission_ms
+				])
 
 	if native_core and native_core.has_method("streaming_update"):
 		native_core.streaming_update(cam_pos_world, _telemetry_frame_counter)

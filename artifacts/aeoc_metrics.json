@@ -2,8 +2,8 @@
   "gpu_p95_ms": 0.71,
   "frame_p95_ms": 2.78,
   "vram_mb": 167.3,
-  "visible_clusters": 1946.0,
+  "visible_clusters": 716.0,
   "visual_error": 0.0,
-  "cpu_submission_ms": 1.854,
-  "triangles_drawn": 142196.0
+  "cpu_submission_ms": 0.685,
+  "triangles_drawn": 64293.0
 }
