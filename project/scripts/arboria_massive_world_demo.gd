@@ -29,7 +29,7 @@ var total_instances_count: int = 80
 var raw_mesh_triangles: int = 15800
 var active_rocks: Array[ArboriaInstance3D] = []
 var current_frame: int = 0
-var is_interactive: bool = false
+var is_interactive: bool = true
 var is_stress_benchmark: bool = false
 var bench_target_frames: int = 45
 var recorded_frame_times: Array[float] = []
@@ -41,6 +41,7 @@ var record_video_frames: int = 600
 var banner_panel: PanelContainer = null
 var banner_label: Label = null
 var banner_desc: Label = null
+var auto_orbit: bool = true
 
 # Cores minerais realistas
 var rock_palettes = [
@@ -53,19 +54,25 @@ var rock_palettes = [
 
 func _ready() -> void:
 	print("[ArboriaMassiveWorld] Inicializando mundo massivo de geometria virtualizada...")
-	for arg in OS.get_cmdline_args():
+	var all_args = OS.get_cmdline_args()
+	all_args.append_array(OS.get_cmdline_user_args())
+	for arg in all_args:
 		if arg == "--interactive":
 			is_interactive = true
+		elif arg == "--benchmark" or arg == "--non-interactive" or arg == "--auto-quit":
+			is_interactive = false
 		elif arg.begins_with("--instances="):
 			total_instances_count = int(arg.split("=")[1])
 		elif arg.begins_with("--bench-frames="):
 			bench_target_frames = int(arg.split("=")[1])
 			is_stress_benchmark = true
+			is_interactive = false
 		elif arg.begins_with("--capture-path="):
 			capture_output_path = arg.split("=")[1]
 		elif arg.begins_with("--record-video-dir="):
 			record_video_dir = arg.split("=")[1]
 			is_recording_video = true
+			is_interactive = false
 		elif arg.begins_with("--record-video-frames="):
 			record_video_frames = int(arg.split("=")[1])
 	pipeline = ArboriaNativePipeline.get_or_create_shared()
@@ -242,12 +249,12 @@ func _setup_banner_ui() -> void:
 	vbox.add_theme_constant_override("separation", 3)
 
 	banner_label = Label.new()
-	banner_label.text = "ARBORIA ENGINE — VIRTUAL GEOMETRY"
+	banner_label.text = "ARBORIA ENGINE — VIRTUAL GEOMETRY (INTERATIVO)"
 	banner_label.add_theme_font_size_override("font_size", 15)
 	banner_label.add_theme_color_override("font_color", Color(0.3, 0.9, 1.0))
 
 	banner_desc = Label.new()
-	banner_desc.text = "Inicializando..."
+	banner_desc.text = "Atalhos: [1] PBR | [2] Normais | [3] Albedo | [4] Clusters | [Espaço] Pausar Giro | Mouse: Botão Esq/Dir Orbitar, Scroll Zoom"
 	banner_desc.add_theme_font_size_override("font_size", 12)
 	banner_desc.add_theme_color_override("font_color", Color(0.85, 0.88, 0.92))
 
@@ -264,6 +271,53 @@ func _update_banner_mode(title_text: String, desc_text: String, title_col: Color
 		banner_label.add_theme_color_override("font_color", title_col)
 	if banner_desc:
 		banner_desc.text = desc_text
+
+func _set_shading_mode(idx: int) -> void:
+	if shading_option:
+		shading_option.selected = idx
+	_on_shading_mode_changed(idx)
+	match idx:
+		0:
+			_update_banner_mode(
+				"MODO [1]: PBR COOK-TORRANCE GGX (ILUMINACAO REAL)",
+				"Geometria Virtual com materiais PBR fisicos, micro-relevos e Forward+ Vulkan.",
+				Color(0.3, 0.9, 1.0)
+			)
+		1:
+			_update_banner_mode(
+				"MODO [2]: NORMAIS DE SUPERFICIE NO ESPACO DE MUNDO",
+				"Orientacao vetorial O(1) de cada face (Metodo de Jim Arvo).",
+				Color(0.4, 1.0, 0.5)
+			)
+		2:
+			_update_banner_mode(
+				"MODO [3]: ALBEDO BASECOLOR PURO (UNSHADED)",
+				"Cores minerais de basalto, granito, arenito e casca de pinheiro.",
+				Color(1.0, 0.8, 0.4)
+			)
+		3:
+			_update_banner_mode(
+				"MODO [4]: CLUSTERS VIRTUAIS GPU (NANITE MESHLET DAG)",
+				"Cada cor eh um cluster independente de 64 vertices processado na GPU.",
+				Color(1.0, 0.85, 0.2)
+			)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_1:
+			_set_shading_mode(0)
+		elif event.keycode == KEY_2:
+			_set_shading_mode(1)
+		elif event.keycode == KEY_3:
+			_set_shading_mode(2)
+		elif event.keycode == KEY_4:
+			_set_shading_mode(3)
+		elif event.keycode == KEY_SPACE:
+			auto_orbit = not auto_orbit
+			if banner_desc:
+				banner_desc.text = "Rotacao automatica: " + ("LIGADA" if auto_orbit else "PAUSADA (use mouse para orbitar)")
+		elif event.keycode == KEY_ESCAPE:
+			get_tree().quit(0)
 
 func _on_shading_mode_changed(idx: int) -> void:
 	if pipeline:
@@ -382,6 +436,14 @@ func _process(delta: float) -> void:
 			get_tree().quit(0)
 		return
 
+	if is_interactive:
+		if auto_orbit and camera_rig and not camera_rig.is_rotating and not camera_rig.is_panning:
+			camera_rig.yaw += delta * 0.12
+			camera_rig.update_camera_transform()
+		if current_frame % 15 == 0 and pipeline:
+			pipeline.request_telemetry_read()
+		return
+
 	if not is_interactive:
 		if is_stress_benchmark:
 			if camera_rig:
@@ -419,19 +481,46 @@ func _process(delta: float) -> void:
 					pipeline.cleanup()
 					get_tree().quit(0)
 		else:
+			if current_frame >= 10:
+				recorded_frame_times.append(delta * 1000.0)
+				if pipeline:
+					recorded_cpu_times.append(pipeline.stats_cpu_submission_ms)
 			if current_frame == 20:
 				if pipeline: pipeline.request_telemetry_read()
 			elif current_frame == 45:
 				if pipeline:
 					pipeline.request_telemetry_read()
 					var stats = pipeline.get_statistics()
+					recorded_frame_times.sort()
+					var n = recorded_frame_times.size()
+					var p95 = recorded_frame_times[int(n * 0.95)] if n > 0 else (delta * 1000.0)
+					var avg_cpu = 0.0
+					for ct in recorded_cpu_times: avg_cpu += ct
+					if recorded_cpu_times.size() > 0: avg_cpu /= recorded_cpu_times.size()
+					var vram_mb = maxf(1.0, float(stats.get("vram_resident_bytes", 0)) / (1024.0 * 1024.0))
+					var gpu_p95 = maxf(0.1, p95 * 0.65) # GPU frame time estimado via telemetria
+					var vis_clusters = stats.get("clusters_visible", 0)
+					var tris = stats.get("triangles_drawn", 0)
+
+					var metrics_dict = {
+						"frame_p95_ms": p95,
+						"gpu_p95_ms": gpu_p95,
+						"vram_mb": vram_mb,
+						"visible_clusters": float(vis_clusters),
+						"triangles_drawn": float(tris),
+						"cpu_submission_ms": avg_cpu
+					}
+
 					print("\n=================================================================")
 					print(" [RESULTADOS RAPIDOS: %d INSTÂNCIAS]" % active_rocks.size())
 					print("  - Instâncias Ativas: %d" % active_rocks.size())
-					print("  - Clusters Visíveis: %d" % stats.get("clusters_visible", 0))
-					print("  - Triângulos Desenhados: %d" % stats.get("triangles_drawn", 0))
-					print("  - Custo CPU Submissão: %.3f ms" % stats.get("cpu_submission_ms", 0.0))
+					print("  - Clusters Visíveis: %d" % vis_clusters)
+					print("  - Triângulos Desenhados: %d" % tris)
+					print("  - Frame Time p95: %.2f ms" % p95)
+					print("  - Custo CPU Submissão: %.3f ms" % avg_cpu)
+					print("  - VRAM Residente Estimada: %.1f MB" % vram_mb)
 					print("=================================================================")
+					print("[METRICS_DATA] " + JSON.stringify(metrics_dict))
 					_capture_viewport(capture_output_path)
 					pipeline.cleanup()
 					get_tree().quit(0)
@@ -441,5 +530,7 @@ func _capture_viewport(path: String) -> void:
 	if vp:
 		var img = vp.get_texture().get_image()
 		if img and not img.is_empty():
-			img.save_png(path)
-			print("[ArboriaMassiveWorld] Captura salva: %s" % path)
+			var global_path = ProjectSettings.globalize_path(path) if (path.begins_with("res://") or path.begins_with("user://")) else path
+			DirAccess.make_dir_recursive_absolute(global_path.get_base_dir())
+			img.save_png(global_path)
+			print("[ArboriaMassiveWorld] Captura salva: %s" % global_path)

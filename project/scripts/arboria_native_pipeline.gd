@@ -333,8 +333,14 @@ func _compile_hiz_shader() -> void:
 func _free_hiz_resources() -> void:
 	if not rd:
 		return
-	hiz_mip0_uniform_set = RID()
+	if hiz_mip0_uniform_set.is_valid():
+		if rd.uniform_set_is_valid(hiz_mip0_uniform_set):
+			rd.free_rid(hiz_mip0_uniform_set)
+		hiz_mip0_uniform_set = RID()
 	hiz_cached_depth_tex = RID()
+	for us in hiz_mip_uniform_sets:
+		if us.is_valid() and rd.uniform_set_is_valid(us):
+			rd.free_rid(us)
 	hiz_mip_uniform_sets.clear()
 	for v in hiz_mip_views:
 		if v.is_valid():
@@ -400,6 +406,9 @@ func _ensure_hiz_texture(vp_size: Vector2i) -> bool:
 		hiz_mip_views.append(mv)
 
 	# Pre-cria e armazena em cache os uniform sets para os níveis de mip 1..N-1
+	for us in hiz_mip_uniform_sets:
+		if us.is_valid() and rd.uniform_set_is_valid(us):
+			rd.free_rid(us)
 	hiz_mip_uniform_sets.clear()
 	for m in range(1, mips):
 		var um0 = RDUniform.new()
@@ -617,6 +626,7 @@ func _ensure_global_buffers(num_instances: int) -> bool:
 			rd.free_rid(global_instances_buf)
 		global_instances_capacity = required_cap
 		global_instances_buf = rd.storage_buffer_create(global_instances_capacity * 240)
+		_invalidate_all_mesh_uniform_sets()
 		global_compute_uniform_set = RID()
 		global_raster_uniform_set = RID()
 
@@ -1025,6 +1035,14 @@ func _free_instance_gpu_data(data: InstanceGPUData) -> void:
 		elif native_core.has_method("scene_destroy_instance"):
 			native_core.scene_destroy_instance(data.c_instance_id)
 		data.c_instance_id = 0
+	if data.compute_uniform_set.is_valid():
+		if rd.uniform_set_is_valid(data.compute_uniform_set):
+			rd.free_rid(data.compute_uniform_set)
+		data.compute_uniform_set = RID()
+	if data.raster_uniform_set.is_valid():
+		if rd.uniform_set_is_valid(data.raster_uniform_set):
+			rd.free_rid(data.raster_uniform_set)
+		data.raster_uniform_set = RID()
 	if data.out_visible_buf.is_valid(): rd.free_rid(data.out_visible_buf)
 	if data.counter_buf.is_valid(): rd.free_rid(data.counter_buf)
 	if data.camera_ubo_buf.is_valid(): rd.free_rid(data.camera_ubo_buf)
@@ -1421,6 +1439,21 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 		if _telemetry_frame_counter % 60 == 0:
 			print("[ARBORIA GPU TELEMETRIA NÃO-BLOQUEANTE] Instancias: ", stats_total_instances, " Clusters: ", stats_visible_clusters, " Triangulos: ", stats_triangles_drawn)
 
+func _invalidate_all_mesh_uniform_sets() -> void:
+	if not rd:
+		_mesh_uniform_sets.clear()
+		return
+	for m_res in _mesh_uniform_sets:
+		var c = _mesh_uniform_sets[m_res]
+		if c is Dictionary:
+			if c.has("compute") and c["compute"].is_valid():
+				if rd.uniform_set_is_valid(c["compute"]):
+					rd.free_rid(c["compute"])
+			if c.has("raster") and c["raster"].is_valid():
+				if rd.uniform_set_is_valid(c["raster"]):
+					rd.free_rid(c["raster"])
+	_mesh_uniform_sets.clear()
+
 func _render_scene_global_internal(
 	p_render_data: RenderData,
 	active_tasks: Array[Dictionary],
@@ -1682,7 +1715,28 @@ func _render_scene_global_internal(
 
 		# Uniform Sets específicos para este MeshGPUResource
 		var m_cache = _mesh_uniform_sets.get(m_res, null)
-		if m_cache == null or m_cache.get("hiz_tex", RID()) != target_hiz_tex or m_cache.get("clusters_buf", RID()) != m_res.in_clusters_buf:
+		var is_cache_valid = false
+		if m_cache is Dictionary:
+			var c_set: RID = m_cache.get("compute", RID())
+			var r_set: RID = m_cache.get("raster", RID())
+			if c_set.is_valid() and r_set.is_valid() and rd.uniform_set_is_valid(c_set) and rd.uniform_set_is_valid(r_set):
+				if m_cache.get("hiz_tex", RID()) == target_hiz_tex \
+					and m_cache.get("clusters_buf", RID()) == m_res.in_clusters_buf \
+					and m_cache.get("instances_buf", RID()) == global_instances_buf \
+					and m_cache.get("scene_uniforms_buf", RID()) == global_scene_uniforms_buf \
+					and m_cache.get("visible_items_buf", RID()) == global_visible_items_buf \
+					and m_cache.get("indirect_args_buf", RID()) == global_indirect_args_buf \
+					and m_cache.get("vertices_buf", RID()) == m_res.in_vertices_buf \
+					and m_cache.get("triangles_buf", RID()) == m_res.in_triangles_buf:
+					is_cache_valid = true
+
+		if not is_cache_valid:
+			if m_cache is Dictionary:
+				if m_cache.has("compute") and m_cache["compute"].is_valid() and rd.uniform_set_is_valid(m_cache["compute"]):
+					rd.free_rid(m_cache["compute"])
+				if m_cache.has("raster") and m_cache["raster"].is_valid() and rd.uniform_set_is_valid(m_cache["raster"]):
+					rd.free_rid(m_cache["raster"])
+
 			var cu0 = RDUniform.new()
 			cu0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
 			cu0.binding = 0
@@ -1751,12 +1805,26 @@ func _render_scene_global_internal(
 				"compute": comp_set,
 				"raster": rast_set,
 				"hiz_tex": target_hiz_tex,
-				"clusters_buf": m_res.in_clusters_buf
+				"clusters_buf": m_res.in_clusters_buf,
+				"instances_buf": global_instances_buf,
+				"scene_uniforms_buf": global_scene_uniforms_buf,
+				"visible_items_buf": global_visible_items_buf,
+				"indirect_args_buf": global_indirect_args_buf,
+				"vertices_buf": m_res.in_vertices_buf,
+				"triangles_buf": m_res.in_triangles_buf
 			}
 			_mesh_uniform_sets[m_res] = m_cache
 
 		var comp_uniform_set: RID = m_cache["compute"]
 		var rast_uniform_set: RID = m_cache["raster"]
+
+		# Validação estrita de integridade antes do dispatch e draw
+		if not comp_uniform_set.is_valid() or not rd.uniform_set_is_valid(comp_uniform_set):
+			push_error("[ArboriaNativePipeline] comp_uniform_set inválido para submissão compute!")
+			continue
+		if not rast_uniform_set.is_valid() or not rd.uniform_set_is_valid(rast_uniform_set):
+			push_error("[ArboriaNativePipeline] rast_uniform_set inválido para submissão draw indireto!")
+			continue
 
 		# Dispatch Compute
 		var cl = rd.compute_list_begin()
@@ -1779,14 +1847,15 @@ func _render_scene_global_internal(
 	var t1_submit = Time.get_ticks_usec()
 	stats_cpu_submission_ms = (t1_submit - t0_submit) / 1000.0
 
-	# 4. Atualização de Telemetria Consolidada e Assíncrona (ALVO 5 - Zero stalls GPU no caminho de submissão)
+	# 4. Atualização de Telemetria Consolidada e Desacoplada (Zero stalls GPU recorrentes no frame)
 	stats_total_instances = active_tasks.size()
 	stats_dispatches = total_dispatches
 	stats_indirect_draws = total_draws
 	stats_clusters_evaluated = total_scene_clusters
 
-	var should_sample_telemetry = (not enable_async_telemetry) or (_telemetry_frame_counter % _telemetry_interval == 0)
-	if should_sample_telemetry and global_indirect_args_buf.is_valid():
+	# Leitura síncrona SOMENTE quando explicitamente solicitada (telemetry_dirty == true)
+	if telemetry_dirty and global_indirect_args_buf.is_valid():
+		telemetry_dirty = false
 		var cnt_data = rd.buffer_get_data(global_indirect_args_buf)
 		if cnt_data.size() >= 32:
 			stats_visible_clusters = cnt_data.decode_u32(4)
@@ -1804,6 +1873,16 @@ func _render_scene_global_internal(
 func cleanup() -> void:
 	if not rd:
 		return
+
+	_invalidate_all_mesh_uniform_sets()
+	if global_compute_uniform_set.is_valid():
+		if rd.uniform_set_is_valid(global_compute_uniform_set):
+			rd.free_rid(global_compute_uniform_set)
+		global_compute_uniform_set = RID()
+	if global_raster_uniform_set.is_valid():
+		if rd.uniform_set_is_valid(global_raster_uniform_set):
+			rd.free_rid(global_raster_uniform_set)
+		global_raster_uniform_set = RID()
 
 	if global_visible_items_buf.is_valid():
 		rd.free_rid(global_visible_items_buf)

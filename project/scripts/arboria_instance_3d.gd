@@ -117,6 +117,9 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
 	_unregister_from_pipeline()
+	set_base(RID())
+	_shadow_proxy_mesh = null
+	_pipeline = null
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSFORM_CHANGED:

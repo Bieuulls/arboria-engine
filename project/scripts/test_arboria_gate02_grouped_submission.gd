@@ -276,6 +276,11 @@ func _evaluate_final_results() -> void:
 	print("  - Zero corrupção de índices, matrizes ou buffers                ")
 	print("=================================================================")
 
+	if instance_container:
+		for child in instance_container.get_children():
+			child.queue_free()
+		instance_container.queue_free()
+
 	var pipeline = ArboriaNativePipeline.get_or_create_shared()
 	if pipeline:
 		pipeline.cleanup()

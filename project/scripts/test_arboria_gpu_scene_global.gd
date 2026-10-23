@@ -175,6 +175,10 @@ func _print_final_report() -> void:
 	print("[SUCESSO] Submissões constantes O(1): Exatamente 1 Dispatch e 1 Draw Indireto de 1 a 2.000 instâncias!")
 	print("[SUCESSO] Geometria compartilhada comprovada, sem vazamento ou corrupção.")
 	print("=================================================================")
+	if instance_container:
+		for child in instance_container.get_children():
+			child.queue_free()
+		instance_container.queue_free()
 	var pipeline = ArboriaNativePipeline.get_or_create_shared()
 	if pipeline:
 		pipeline.cleanup()
