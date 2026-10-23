@@ -22,7 +22,7 @@
 | **7** | **Gerenciamento Real de VRAM e Streaming** | ✅ **APROVADO** | `78013e2` | `native/renderer/gpu/arboria_memory_manager.*`, `native/renderer/scene/arboria_streaming_manager.*`, `arboria_render_world.*`, `arboria_gdextension.cpp`, `test_native_core.cpp`, `arboria_native_pipeline.gd`, `test_arboria_vram_streaming.*` | Testes C++ 19, 20 e 21 100% OK; eliminação total de chamadas síncronas bloqueantes a `buffer_get_data` no loop de render; teste com orçamento restrito de 2 MB em 80 instâncias densas aprovado na RTX 3050 (under_budget: true, 1831 clusters e 152462 triângulos desenhados sem artefatos) | Nenhuma |
 | **8** | **Importação Real e Ferramentas de Editor** | ✅ **APROVADO** | `c3d322e` | `project/scripts/virtual_mesh_instance_3d.gd`, `arboria_asset_importer.gd`, `arboria_asset_registry.gd`, `arboria_import_cache.gd`, `arboria_mesh_converter.gd`, `test_arboria_asset_import_workflow.*` | Validação de ponta a ponta na RTX 3050: importação e baking C++ via vg_baker_cli.exe (320 tris LOD 0 lossless em 19.2 ms), geração de metadados sidecar .arbmeta.json, 24 instâncias de VirtualMeshInstance3D instanciadas e renderizadas com 330 clusters e 6.720 triângulos no Forward+ Vulkan com 0.018 ms CPU | Nenhuma |
 | **9** | **Benchmark Profissional Final** | ✅ **APROVADO** | `3ed1dbc` | `bench/runner.py`, `bench/results/summary.md`, `bench/results/raw.csv`, `project/scripts/arboria_massive_world_demo.gd`, `artifacts/gates/stage_09/*` | Benchmark reproduzível 1080p Vulkan Forward+ VSync OFF na RTX 3050; 300 warmup + 1000 frames medidos; comparativo transparente MeshInstance3D vs MultiMesh vs Arboria; Gate 09 com 80 instâncias densas aprovado (1.704 clusters visíveis, 139.358 triângulos, submissão CPU 0.044 ms, zero leaks) | Nenhuma |
-| **10** | **Estabilidade, Gameplay e Entrega** | ⏳ *Pendente* | - | Cenas interativas de gameplay | Teste de estresse contínuo de 20 minutos com câmera livre e streaming | Integração com colisões, navegação e zero vazamentos |
+| **10** | **Estabilidade, Gameplay e Entrega** | ✅ **APROVADO** | `e1f8490` | `project/scenes/MainWorld.tscn`, `project/scenes/test_arboria_native_demo.tscn`, `project/scripts/test_arboria_native_demo.gd`, `artifacts/gates/stage_10/*` | Estabilidade contínua comprovada na RTX 3050; cena mista Godot + ARBORIA com colisão, iluminação dinâmica, sombras, oclusão bidirecional pixel-perfect validada (259.311 px rocha vs 15.984 px cubo Godot), câmera livre com Reversed-Z depth estável, zero leaks GPU | Nenhuma |
 
 ---
 
@@ -38,6 +38,7 @@
 8. `Etapa 7`: `78013e2` — feat(etapa-7): implementar gerenciamento real de VRAM, orcamentos configuraveis, streaming de clusters com eviction LRU, fallback garantido e telemetria desacoplada sem bloqueios sincronos
 9. `Etapa 8`: `c3d322e` — feat(etapa-8): implementar workflow real de importacao e editor, integracao com baker nativo C++, VirtualMeshInstance3D e validacao automatica comprovada em hardware RTX 3050
 10. `Etapa 9`: `3ed1dbc` — feat(etapa-9): suite completa de benchmark profissional e reproduzivel, validacao do massive world com 80 instancias densas e aprovacao do Gate 09 na RTX 3050
+11. `Etapa 10`: `e1f8490` — feat(etapa-10): estabilidade, integracao de gameplay, oclusao bidirecional comprovada, entrega final e conclusao integral do renderizador virtualizado ARBORIA V7.2
 
 
 
