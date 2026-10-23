@@ -7,6 +7,9 @@ const BAKER_CANDIDATES := ["res://../bin/vg_baker_cli.exe", "res://bin/vg_baker_
 const CACHE_DIR := "user://arboria_import_cache"
 const REGISTRY_PATH := "user://arboria_asset_registry.json"
 
+static func import_asset(source_path: String, output_path: String = "", _options: Dictionary = {}) -> Dictionary:
+	return import_file(source_path, output_path)
+
 static func import_file(source_path: String, output_path: String = "") -> Dictionary:
 	var source_abs := ProjectSettings.globalize_path(source_path) if source_path.begins_with("res://") or source_path.begins_with("user://") else source_path
 	if not FileAccess.file_exists(source_abs):
@@ -33,32 +36,56 @@ static func import_file(source_path: String, output_path: String = "") -> Dictio
 			if DirAccess.copy_absolute(cache_file, output_abs) == OK and DirAccess.copy_absolute(cache_meta, sidecar_abs) == OK:
 				_register(source_abs, output_abs, source_hash, "cache")
 				return {"success": true, "output_path": output_abs, "cached": true}
-	var root: Node
-	var packed := ResourceLoader.load(source_path, "", ResourceLoader.CACHE_MODE_REPLACE)
-	if packed is PackedScene:
-		root = (packed as PackedScene).instantiate()
-	elif packed is Mesh:
-		root = MeshInstance3D.new()
-		(root as MeshInstance3D).mesh = packed
-	else:
-		return _failure("Godot could not import source as PackedScene or Mesh: " + source_path)
-	var obj_path := output_abs + ".source.obj"
+
+	var obj_path := ""
 	var metadata := {"schema": 1, "source": source_abs, "source_sha256": source_hash, "surfaces": [], "nodes": [], "warnings": [], "unsupported": []}
-	var obj_text := PackedStringArray(["# ARBORIA intermediate OBJ; generated from Godot-imported resources"])
 	var counts := {"v": 0, "vt": 0, "vn": 0, "triangles": 0, "surfaces": 0}
-	_collect_node(root, Transform3D.IDENTITY, obj_text, metadata, counts)
-	if root != null:
-		root.free()
-	if counts.triangles == 0:
-		return _failure("No triangle surfaces were found in the imported asset")
-	var validation := ArboriaGeometryValidator.validate_obj_text(obj_text)
-	if not validation.valid:
-		return _failure("Geometry validation failed: " + "; ".join(validation.errors))
-	var obj_file := FileAccess.open(obj_path, FileAccess.WRITE)
-	if obj_file == null:
-		return _failure("Cannot write temporary OBJ: " + obj_path)
-	obj_file.store_string("\n".join(obj_text) + "\n")
-	obj_file.close()
+
+	if ext == "obj":
+		# Direct OBJ processing: eliminates dependency on Godot editor import database
+		obj_path = source_abs
+		var f := FileAccess.open(source_abs, FileAccess.READ)
+		if f != null:
+			while not f.eof_reached():
+				var line := f.get_line().strip_edges()
+				if line.begins_with("v "):
+					counts.v += 1
+				elif line.begins_with("vt "):
+					counts.vt += 1
+				elif line.begins_with("vn "):
+					counts.vn += 1
+				elif line.begins_with("f "):
+					counts.triangles += 1
+			f.close()
+			counts.surfaces = 1
+			metadata.surfaces.append({"node": "root", "surface_index": 0, "vertex_count": counts.v, "triangle_count": counts.triangles})
+	else:
+		var root: Node = null
+		var packed := ResourceLoader.load(source_path, "", ResourceLoader.CACHE_MODE_REPLACE)
+		if packed is PackedScene:
+			root = (packed as PackedScene).instantiate()
+		elif packed is Mesh:
+			root = MeshInstance3D.new()
+			(root as MeshInstance3D).mesh = packed
+		else:
+			return _failure("Godot could not import source as PackedScene or Mesh: " + source_path)
+
+		obj_path = output_abs + ".source.obj"
+		var obj_text := PackedStringArray(["# ARBORIA intermediate OBJ; generated from Godot-imported resources"])
+		_collect_node(root, Transform3D.IDENTITY, obj_text, metadata, counts)
+		if root != null:
+			root.free()
+		if counts.triangles == 0:
+			return _failure("No triangle surfaces were found in the imported asset")
+		var validation := ArboriaGeometryValidator.validate_obj_text(obj_text)
+		if not validation.valid:
+			return _failure("Geometry validation failed: " + "; ".join(validation.errors))
+		var obj_file := FileAccess.open(obj_path, FileAccess.WRITE)
+		if obj_file == null:
+			return _failure("Cannot write temporary OBJ: " + obj_path)
+		obj_file.store_string("\n".join(obj_text) + "\n")
+		obj_file.close()
+
 	var bake_output: Array = []
 	var exit_code := OS.execute(baker, [obj_path, output_abs, "--verify"], bake_output, true)
 	var log := "\n".join(PackedStringArray(bake_output))
@@ -98,9 +125,9 @@ static func _collect_node(node: Node, parent_transform: Transform3D, obj: Packed
 			if mi.get_surface_override_material(si) != null:
 				material = mi.get_surface_override_material(si)
 			var material_data := _material_json(material)
-			var vertex_base := counts.v
-			var uv_base := counts.v
-			var normal_base := counts.v
+			var vertex_base: int = int(counts.v)
+			var uv_base: int = int(counts.v)
+			var normal_base: int = int(counts.v)
 			for vi in range(vertices.size()):
 				var pos := local * vertices[vi]
 				obj.append("v %.9g %.9g %.9g" % [pos.x, pos.y, pos.z]); counts.v += 1
@@ -113,10 +140,14 @@ static func _collect_node(node: Node, parent_transform: Transform3D, obj: Packed
 			var tri_count := 0
 			if not indices.is_empty():
 				for ti in range(0, indices.size() - 2, 3):
-					var a := indices[ti]; var b := indices[ti + 1]; var c := indices[ti + 2]
+					var a: int = indices[ti]
+					var b: int = indices[ti + 1]
+					var c: int = indices[ti + 2]
 					if a < 0 or b < 0 or c < 0 or a >= vertices.size() or b >= vertices.size() or c >= vertices.size():
-					metadata.warnings.append("Invalid index encountered in %s surface %d" % [node.name, si]); continue
-					obj.append("f %d/%d/%d %d/%d/%d %d/%d/%d" % [vertex_base+a+1,uv_base+a+1,normal_base+a+1,vertex_base+b+1,uv_base+b+1,normal_base+b+1,vertex_base+c+1,uv_base+c+1,normal_base+c+1]); tri_count += 1
+						metadata.warnings.append("Invalid index encountered in %s surface %d" % [node.name, si])
+						continue
+					obj.append("f %d/%d/%d %d/%d/%d %d/%d/%d" % [vertex_base+a+1,uv_base+a+1,normal_base+a+1,vertex_base+b+1,uv_base+b+1,normal_base+b+1,vertex_base+c+1,uv_base+c+1,normal_base+c+1])
+					tri_count += 1
 			else:
 				for ti in range(0, vertices.size() - 2, 3):
 					obj.append("f %d/%d/%d %d/%d/%d %d/%d/%d" % [vertex_base+ti+1,uv_base+ti+1,normal_base+ti+1,vertex_base+ti+2,uv_base+ti+2,normal_base+ti+2,vertex_base+ti+3,uv_base+ti+3,normal_base+ti+3]); tri_count += 1
@@ -145,10 +176,10 @@ static func _transform_json(t: Transform3D) -> Dictionary:
 
 static func _find_baker() -> String:
 	for p in BAKER_CANDIDATES:
-		var abs := ProjectSettings.globalize_path(p)
-		if FileAccess.file_exists(abs): return abs
-	var root := ProjectSettings.globalize_path("res://")
-	for p in [root.path_join("../bin/vg_baker_cli.exe"), root.path_join("../bin/arboria_baker_cli.exe")]:
+		var abs_path := ProjectSettings.globalize_path(p).simplify_path()
+		if FileAccess.file_exists(abs_path): return abs_path
+	var root := ProjectSettings.globalize_path("res://").simplify_path()
+	for p in [root.path_join("../bin/vg_baker_cli.exe").simplify_path(), root.path_join("../bin/arboria_baker_cli.exe").simplify_path(), "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/bin/vg_baker_cli.exe"]:
 		if FileAccess.file_exists(p): return p
 	return ""
 
