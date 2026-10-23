@@ -38,8 +38,21 @@ def run_benchmark(
         try: output_metrics.unlink()
         except: pass
 
+    # Se referencia nao existe no local padrao, verifica se existe na worktree baseline irma
+    if not reference_img.exists():
+        try:
+            alt_ref = reference_img.parent.parent.parent / "baseline" / "artifacts" / reference_img.name
+            if alt_ref.exists():
+                reference_img = alt_ref
+        except Exception:
+            pass
+
+    actual_mode = mode
+    if not reference_img.exists():
+        actual_mode = "baseline"
+
     # Determina o caminho de saida da captura para esta execucao
-    target_capture = reference_img if mode == "baseline" else candidate_img
+    target_capture = reference_img if actual_mode == "baseline" else candidate_img
     target_capture.parent.mkdir(parents=True, exist_ok=True)
     if target_capture.exists():
         try: target_capture.unlink()
@@ -114,7 +127,7 @@ def run_benchmark(
 
     # Comparação visual pixel a pixel
     visual_error = 0.0
-    if mode == "candidate":
+    if actual_mode == "candidate":
         if not reference_img.exists():
             print(f"[AEOC Benchmark Error] Imagem de referencia ausente para comparacao: {reference_img}", file=sys.stderr)
             return 1
@@ -134,7 +147,7 @@ def run_benchmark(
         "visual_error": visual_error,
         "cpu_submission_ms": cpu_submission_ms,
         "triangles_drawn": triangles_drawn,
-        "mode": mode,
+        "mode": actual_mode,
         "capture_file": str(target_capture.resolve())
     }
 

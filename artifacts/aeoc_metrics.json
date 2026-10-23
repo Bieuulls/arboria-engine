@@ -1,11 +1,11 @@
 {
-  "gpu_p95_ms": 11.0539,
-  "frame_p95_ms": 17.006,
+  "gpu_p95_ms": 11.01035,
+  "frame_p95_ms": 16.939,
   "vram_mb": 3.23972320556641,
-  "visible_clusters": 314.0,
-  "visual_error": 0.007767897263071895,
-  "cpu_submission_ms": 0.472055555555556,
-  "triangles_drawn": 6773.0,
+  "visible_clusters": 185.0,
+  "visual_error": 0.07978916887935732,
+  "cpu_submission_ms": 0.484,
+  "triangles_drawn": 3847.0,
   "mode": "candidate",
   "capture_file": "D:\\ARBORIA_ENGINE\\ARBORIA_ENGINE_OFFICIAL\\artifacts\\candidate_test.png"
 }
