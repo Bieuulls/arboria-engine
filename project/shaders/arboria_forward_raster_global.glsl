@@ -62,7 +62,9 @@ layout(set = 0, binding = 3, std140) uniform GlobalSceneUniforms {
     vec4 camera_pos_fov;
     vec4 viewport_params;
     uvec4 count_params;
-    uvec4 render_params;
+    uvec4 render_params;        // x = shading_mode, y = enable_hiz, z = max_visible_items, w = wind_enabled
+    vec4 wind_params;           // x = time, y = strength, z = freq, w = gust
+    vec4 wind_direction;        // xyz = dir_norm, w = unused
 } ubo;
 
 // 4: Buffer de instâncias globais
@@ -124,6 +126,20 @@ void main() {
     vec4 world_p = inst.model_matrix * vec4(pos_u.xyz, 1.0);
     vec3 world_n = normalize(mat3(inst.normal_matrix) * norm_v.xyz);
 
+    // Deslocamento de Vento Físico / Procedural na GPU
+    if (ubo.render_params.w != 0u) {
+        float h = max(0.0, pos_u.y);
+        float time_val = ubo.wind_params.x;
+        float strength = ubo.wind_params.y;
+        float freq = ubo.wind_params.z;
+        float gust = ubo.wind_params.w;
+
+        float phase = time_val * freq + dot(world_p.xyz, vec3(0.12, 0.05, 0.09));
+        float wave = sin(phase) + cos(phase * 0.7) * gust;
+        vec3 wind_disp = ubo.wind_direction.xyz * (wave * strength * (h * h * 0.02));
+        world_p.xyz += wind_disp;
+    }
+
     gl_Position = ubo.view_proj * world_p;
     v_world_pos = world_p.xyz;
     v_world_normal = world_n;
@@ -171,7 +187,9 @@ layout(set = 0, binding = 3, std140) uniform GlobalSceneUniforms {
     vec4 camera_pos_fov;
     vec4 viewport_params;
     uvec4 count_params;
-    uvec4 render_params;
+    uvec4 render_params;        // x = shading_mode, y = enable_hiz, z = max_visible_items, w = wind_enabled
+    vec4 wind_params;           // x = time, y = strength, z = freq, w = gust
+    vec4 wind_direction;        // xyz = dir_norm, w = unused
 } ubo;
 
 layout(set = 0, binding = 4, std430) readonly buffer InInstances {
@@ -268,6 +286,10 @@ void main() {
     vec3 direct_light = (diffuse_brdf + specular_brdf) * vec3(1.2) * (NoL * PI);
     vec3 ambient_light = albedo * vec3(0.18, 0.20, 0.25) * (1.0 - metallic);
 
-    vec3 final_rgb = direct_light + ambient_light;
+    // Subsurface Scattering / Translucência Foliar (Backlight Transmission)
+    float back_light = clamp(dot(-N, L), 0.0, 1.0);
+    vec3 sss_light = albedo * vec3(1.15, 1.10, 0.75) * (back_light * 0.35 * (1.0 - metallic));
+
+    vec3 final_rgb = direct_light + ambient_light + sss_light;
     out_color = vec4(final_rgb, 1.0);
 }

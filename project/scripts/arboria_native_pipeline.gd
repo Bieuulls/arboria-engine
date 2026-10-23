@@ -131,6 +131,11 @@ var cached_fb_depth: RID
 var global_shading_mode: int = 0 # 0 = PBR, 1 = Normal, 2 = Unshaded, 3 = Cluster Colors
 var enable_frustum_culling: bool = true
 var enable_cone_culling: bool = true
+var enable_wind: bool = true
+var wind_strength: float = 0.8
+var wind_frequency: float = 1.2
+var wind_gust: float = 0.5
+var wind_direction: Vector3 = Vector3(1.0, 0.0, 0.5).normalized()
 
 # Telemetria desacoplada e assíncrona da GPU (elimina stalls no Render Loop)
 var stats_total_instances: int = 0
@@ -1473,6 +1478,17 @@ func _render_scene_global_internal(
 	ubo_base.encode_float(184, 1.5)
 	ubo_base.encode_float(188, 0.0)
 
+	# Wind Animation Uniforms (offsets 224..255)
+	var wind_time: float = Time.get_ticks_msec() / 1000.0
+	ubo_base.encode_float(224, wind_time)
+	ubo_base.encode_float(228, wind_strength)
+	ubo_base.encode_float(232, wind_frequency)
+	ubo_base.encode_float(236, wind_gust)
+	ubo_base.encode_float(240, wind_direction.x)
+	ubo_base.encode_float(244, wind_direction.y)
+	ubo_base.encode_float(248, wind_direction.z)
+	ubo_base.encode_float(252, 0.0)
+
 	var target_hiz_tex = hiz_texture if (enable_hiz and hiz_texture.is_valid()) else default_white_tex
 	var target_hiz_sampler = hiz_sampler if (enable_hiz and hiz_sampler.is_valid()) else default_sampler
 	var active_pipe = global_depth_prepass_pipeline if is_prepass else global_raster_pipeline
@@ -1500,7 +1516,7 @@ func _render_scene_global_internal(
 		ubo_data.encode_u32(208, global_shading_mode)
 		ubo_data.encode_u32(212, 1 if (enable_hiz and hiz_texture.is_valid()) else 0)
 		ubo_data.encode_u32(216, 65536)
-		ubo_data.encode_u32(220, 0)
+		ubo_data.encode_u32(220, 1 if enable_wind else 0)
 		rd.buffer_update(global_scene_uniforms_buf, 0, ubo_data.size(), ubo_data)
 
 		# Empacota instâncias do lote (GPUInstanceData - 240 bytes cada)

@@ -58,7 +58,9 @@ struct alignas(16) GlobalSceneUniforms {
     uint32_t shading_mode;          // offset 208: 0 = neutral, 1 = normal, 2 = lit, 3 = cluster debug
     uint32_t enable_hiz;            // offset 212: 0 ou 1
     uint32_t max_visible_items;     // offset 216: capacidade máxima do buffer de visibilidade
-    uint32_t pad[9];                // offset 220..255: alinhamento 256 bytes (std140 friendly)
+    uint32_t wind_enabled;          // offset 220: 1 se animacao de vento GPU estiver ativa
+    float wind_params[4];           // offset 224..239: x = time, y = strength, z = freq, w = gust
+    float wind_direction[4];        // offset 240..255: xyz = dir_norm, w = unused
 };
 
 #pragma pack(pop)

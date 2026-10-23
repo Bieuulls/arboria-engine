@@ -70,7 +70,9 @@ layout(set = 0, binding = 3, std140) uniform GlobalSceneUniforms {
     vec4 camera_pos_fov;        // xyz = camera_pos mundo, w = fov_factor
     vec4 viewport_params;       // x = width, y = height, z = default_max_err, w = default_lod_mode
     uvec4 count_params;         // x = total_instances, y = total_work_items, z = frustum_enable, w = cone_enable
-    uvec4 render_params;        // x = shading_mode, y = enable_hiz, z = max_visible_items, w = pad
+    uvec4 render_params;        // x = shading_mode, y = enable_hiz, z = max_visible_items, w = wind_enabled
+    vec4 wind_params;           // x = time, y = strength, z = freq, w = gust
+    vec4 wind_direction;        // xyz = dir_norm, w = unused
 } ubo;
 
 // 4: Buffer de instâncias globais ativas na cena
