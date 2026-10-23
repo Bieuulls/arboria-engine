@@ -5,6 +5,24 @@ class_name ArboriaMeshLoader
 static func load_from_file(file_path: String) -> Dictionary:
 	var file = FileAccess.open(file_path, FileAccess.READ)
 	if not file:
+		if file_path.begins_with("res://assets/"):
+			var fname = file_path.trim_prefix("res://assets/")
+			var search_names = [fname]
+			if fname == "dense_rock_test.vgmesh" or fname == "dense_rock_verified.vgmesh":
+				search_names.append("dense_rock.vgmesh")
+			for sn in search_names:
+				var candidate_paths = [
+					"res://../assets/" + sn,
+					ProjectSettings.globalize_path("res://../assets/" + sn),
+					ProjectSettings.globalize_path("res://assets/" + sn)
+				]
+				for cp in candidate_paths:
+					file = FileAccess.open(cp, FileAccess.READ)
+					if file:
+						break
+				if file:
+					break
+	if not file:
 		push_error("Falha ao abrir arquivo: " + file_path)
 		return {}
 
