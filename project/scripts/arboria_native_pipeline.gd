@@ -268,13 +268,8 @@ func _compile_hiz_shader() -> void:
 func _free_hiz_resources() -> void:
 	if not rd:
 		return
-	if hiz_mip0_uniform_set.is_valid():
-		rd.free_rid(hiz_mip0_uniform_set)
-		hiz_mip0_uniform_set = RID()
+	hiz_mip0_uniform_set = RID()
 	hiz_cached_depth_tex = RID()
-	for us in hiz_mip_uniform_sets:
-		if us.is_valid():
-			rd.free_rid(us)
 	hiz_mip_uniform_sets.clear()
 	for v in hiz_mip_views:
 		if v.is_valid():
