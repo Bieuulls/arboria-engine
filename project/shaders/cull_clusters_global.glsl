@@ -129,6 +129,47 @@ bool ARB_GPU_EvaluateDAGCut(
     return parent_needed && child_satisfied;
 }
 
+// [ARB_MATH_05] Teste de Oclusão Hi-Z Hierárquico em Reversed-Z (Vulkan 1.4)
+bool ARB_GPU_TestHiZOcclusion(vec3 center, float radius) {
+    vec4 clip_center = ubo.view_proj * vec4(center, 1.0);
+    if (clip_center.w <= 0.0) return true; // Near clip guard
+
+    vec2 vp = ubo.viewport_params.xy;
+    float proj_radius = (radius / clip_center.w) * (vp.y * 0.5 * ubo.camera_pos_fov.w);
+    vec2 ndc = clip_center.xy / clip_center.w;
+    vec2 screen_pos = (ndc * 0.5 + 0.5) * vp;
+
+    vec2 bbox_min = clamp(screen_pos - vec2(proj_radius), vec2(0.0), vp);
+    vec2 bbox_max = clamp(screen_pos + vec2(proj_radius), vec2(0.0), vp);
+    vec2 bbox_size = bbox_max - bbox_min;
+
+    float max_dim = max(bbox_size.x, bbox_size.y);
+    if (max_dim < 1.0) return true; // Conservador para micropolígonos
+
+    float mip = clamp(ceil(log2(max_dim)), 0.0, 10.0);
+    vec2 uv_min = bbox_min / vp;
+    vec2 uv_max = bbox_max / vp;
+
+    float d0 = textureLod(hiz_depth_pyramid, uv_min, mip).r;
+    float d1 = textureLod(hiz_depth_pyramid, vec2(uv_max.x, uv_min.y), mip).r;
+    float d2 = textureLod(hiz_depth_pyramid, vec2(uv_min.x, uv_max.y), mip).r;
+    float d3 = textureLod(hiz_depth_pyramid, uv_max, mip).r;
+
+    float ocl_furthest_z = min(min(d0, d1), min(d2, d3));
+
+    // Ponto mais próximo da câmera na esfera do cluster
+    vec3 c_to_cam = ubo.camera_pos_fov.xyz - center;
+    float dist = length(c_to_cam);
+    vec3 closest_pt = center + (c_to_cam / max(dist, 0.001)) * min(radius, dist * 0.9);
+    vec4 clip_closest = ubo.view_proj * vec4(closest_pt, 1.0);
+    if (clip_closest.w <= 0.0) return true;
+    float cluster_closest_z = clamp(clip_closest.z / clip_closest.w, 0.0, 1.0);
+
+    // Em Reversed-Z: se o ponto mais próximo do cluster for menor que a profundidade do oclusor,
+    // o cluster está totalmente oculto
+    return (cluster_closest_z >= ocl_furthest_z);
+}
+
 void main() {
     uint g_idx = gl_GlobalInvocationID.x;
     if (g_idx >= ubo.count_params.y) return; // Fora do total_work_items
@@ -198,7 +239,14 @@ void main() {
         }
     }
 
-    // 4. DAG LOD Selection
+    // 4. Hi-Z Occlusion Culling (Descarte de Geometria Oculta por Reversed-Z)
+    if (ubo.render_params.y != 0u) {
+        if (!ARB_GPU_TestHiZOcclusion(world_center, world_radius)) {
+            return;
+        }
+    }
+
+    // 5. DAG LOD Selection
     bool is_selected = false;
     uint lod_mode = uint(inst.aabb_max.w);
     float max_screen_err = inst.aabb_min.w;

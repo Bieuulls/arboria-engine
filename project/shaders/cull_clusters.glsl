@@ -135,11 +135,18 @@ bool ARB_GPU_TestHiZOcclusion(vec3 center, float radius) {
     float d3 = textureLod(hiz_depth_pyramid, uv_max, mip).r;
 
     float ocl_furthest_z = min(min(d0, d1), min(d2, d3));
-    float cluster_ndc_z = clip_center.z / clip_center.w;
 
-    // Em Reversed-Z: se o Z do cluster for menor que a profundidade oclusora mais distante,
-    // o cluster está atrás e é ocluído
-    return (cluster_ndc_z >= ocl_furthest_z);
+    // Ponto mais próximo da câmera na esfera do cluster
+    vec3 c_to_cam = ubo.camera_pos_fov.xyz - center;
+    float dist = length(c_to_cam);
+    vec3 closest_pt = center + (c_to_cam / max(dist, 0.001)) * min(radius, dist * 0.9);
+    vec4 clip_closest = ubo.view_proj * vec4(closest_pt, 1.0);
+    if (clip_closest.w <= 0.0) return true;
+    float cluster_closest_z = clamp(clip_closest.z / clip_closest.w, 0.0, 1.0);
+
+    // Em Reversed-Z: se o ponto mais próximo do cluster for menor que a profundidade oclusora,
+    // o cluster está totalmente atrás e é ocluído
+    return (cluster_closest_z >= ocl_furthest_z);
 }
 
 void main() {
@@ -166,8 +173,8 @@ void main() {
         }
     }
 
-    // 3. Hi-Z Occlusion Culling (Descarte de Geometria Oculta)
-    if (ubo.render_params.w != 0u) {
+    // 3. Hi-Z Occlusion Culling (Descarte de Geometria Oculta por Reversed-Z)
+    if (ubo.render_params.y != 0u) {
         if (!ARB_GPU_TestHiZOcclusion(center, radius)) {
             return;
         }

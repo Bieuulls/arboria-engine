@@ -42,11 +42,26 @@ class InstanceGPUData:
 	var inst_albedo_tex: RID
 	var inst_normal_tex: RID
 	var inst_orm_tex: RID
+	var bound_hiz_tex: RID
 	var is_ready: bool = false
 
 var rd: RenderingDevice
 var is_initialized: bool = false
 var native_core: RefCounted = null
+
+# Hi-Z Occlusion Pyramid (Vulkan 1.4 / Reversed-Z)
+var enable_hiz: bool = true
+var hiz_shader_rid: RID
+var hiz_pipeline: RID
+var hiz_texture: RID
+var hiz_scratch_texture: RID
+var hiz_size: Vector2i = Vector2i.ZERO
+var hiz_mip_count: int = 0
+var hiz_mip_views: Array[RID] = []
+var hiz_sampler: RID
+var hiz_mip0_uniform_set: RID
+var hiz_cached_depth_tex: RID
+var hiz_mip_uniform_sets: Array[RID] = []
 
 # Texturas PBR padrão e Sampler
 var default_white_tex: RID
@@ -104,7 +119,10 @@ func get_statistics() -> Dictionary:
 		"indirect_draws": stats_indirect_draws,
 		"clusters_evaluated": stats_clusters_evaluated,
 		"clusters_visible": stats_visible_clusters,
-		"triangles_drawn": stats_triangles_drawn
+		"triangles_drawn": stats_triangles_drawn,
+		"hiz_enabled": enable_hiz,
+		"hiz_size": hiz_size,
+		"hiz_mips": hiz_mip_count
 	}
 
 static func get_active_instance() -> RefCounted:
@@ -214,6 +232,206 @@ func _get_or_create_rd_texture(tex: Texture2D) -> RID:
 func _setup_shaders() -> void:
 	_compile_compute_shader()
 	_compile_raster_shader()
+	_compile_hiz_shader()
+
+func _compile_hiz_shader() -> void:
+	var f = FileAccess.open("res://shaders/hiz_downsample.glsl", FileAccess.READ)
+	if not f:
+		push_error("[ArboriaNativePipeline] Falha ao abrir res://shaders/hiz_downsample.glsl")
+		return
+	var glsl_code = f.get_as_text()
+	f.close()
+
+	if glsl_code.begins_with("#[compute]"):
+		glsl_code = glsl_code.substr(glsl_code.find("\n") + 1)
+
+	var src = RDShaderSource.new()
+	src.language = RenderingDevice.SHADER_LANGUAGE_GLSL
+	src.source_compute = glsl_code
+	var spirv = rd.shader_compile_spirv_from_source(src)
+	if spirv.compile_error_compute != "":
+		push_error("[ArboriaNativePipeline] Erro de compilacao do Hi-Z Shader: " + spirv.compile_error_compute)
+		return
+	hiz_shader_rid = rd.shader_create_from_spirv(spirv)
+	if hiz_shader_rid.is_valid():
+		hiz_pipeline = rd.compute_pipeline_create(hiz_shader_rid)
+		print("[ArboriaNativePipeline] Hi-Z Compute Pipeline compilado com sucesso.")
+
+	var ss = RDSamplerState.new()
+	ss.min_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	ss.mag_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	ss.mip_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	ss.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
+	ss.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
+	hiz_sampler = rd.sampler_create(ss)
+
+func _free_hiz_resources() -> void:
+	if not rd:
+		return
+	if hiz_mip0_uniform_set.is_valid():
+		rd.free_rid(hiz_mip0_uniform_set)
+		hiz_mip0_uniform_set = RID()
+	hiz_cached_depth_tex = RID()
+	for us in hiz_mip_uniform_sets:
+		if us.is_valid():
+			rd.free_rid(us)
+	hiz_mip_uniform_sets.clear()
+	for v in hiz_mip_views:
+		if v.is_valid():
+			rd.free_rid(v)
+	hiz_mip_views.clear()
+	if hiz_scratch_texture.is_valid():
+		rd.free_rid(hiz_scratch_texture)
+		hiz_scratch_texture = RID()
+	if hiz_texture.is_valid():
+		rd.free_rid(hiz_texture)
+		hiz_texture = RID()
+	hiz_size = Vector2i.ZERO
+	hiz_mip_count = 0
+
+func _ensure_hiz_texture(vp_size: Vector2i) -> bool:
+	var w = nearest_po2(max(64, vp_size.x))
+	var h = nearest_po2(max(64, vp_size.y))
+	if hiz_texture.is_valid() and hiz_scratch_texture.is_valid() and hiz_size == Vector2i(w, h):
+		return true
+
+	_free_hiz_resources()
+
+	var max_dim = max(w, h)
+	var mips = int(floor(log(max_dim) / log(2))) + 1
+
+	var tf = RDTextureFormat.new()
+	tf.format = RenderingDevice.DATA_FORMAT_R32_SFLOAT
+	tf.width = w
+	tf.height = h
+	tf.depth = 1
+	tf.array_layers = 1
+	tf.mipmaps = mips
+	tf.texture_type = RenderingDevice.TEXTURE_TYPE_2D
+	tf.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT | RenderingDevice.TEXTURE_USAGE_CAN_COPY_TO_BIT | RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+
+	hiz_texture = rd.texture_create(tf, RDTextureView.new())
+	if not hiz_texture.is_valid():
+		push_error("[ArboriaNativePipeline] Falha ao criar textura Hi-Z: %dx%d" % [w, h])
+		return false
+
+	var tf_scratch = RDTextureFormat.new()
+	tf_scratch.format = RenderingDevice.DATA_FORMAT_R32_SFLOAT
+	tf_scratch.width = w
+	tf_scratch.height = h
+	tf_scratch.depth = 1
+	tf_scratch.array_layers = 1
+	tf_scratch.mipmaps = 1
+	tf_scratch.texture_type = RenderingDevice.TEXTURE_TYPE_2D
+	tf_scratch.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT | RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT | RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+	hiz_scratch_texture = rd.texture_create(tf_scratch, RDTextureView.new())
+	if not hiz_scratch_texture.is_valid():
+		push_error("[ArboriaNativePipeline] Falha ao criar scratch Hi-Z")
+		_free_hiz_resources()
+		return false
+
+	hiz_size = Vector2i(w, h)
+	hiz_mip_count = mips
+	hiz_mip_views.clear()
+
+	for m in range(mips):
+		var tv = RDTextureView.new()
+		var mv = rd.texture_create_shared_from_slice(tv, hiz_texture, 0, m, 1, RenderingDevice.TEXTURE_SLICE_2D)
+		hiz_mip_views.append(mv)
+
+	# Pre-cria e armazena em cache os uniform sets para os níveis de mip 1..N-1
+	hiz_mip_uniform_sets.clear()
+	for m in range(1, mips):
+		var um0 = RDUniform.new()
+		um0.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+		um0.binding = 0
+		um0.add_id(hiz_sampler)
+		um0.add_id(hiz_mip_views[m - 1])
+
+		var um1 = RDUniform.new()
+		um1.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+		um1.binding = 1
+		um1.add_id(hiz_scratch_texture)
+
+		var us_m = rd.uniform_set_create([um0, um1], hiz_shader_rid, 0)
+		hiz_mip_uniform_sets.append(us_m)
+
+	print("[ArboriaNativePipeline] Hi-Z Pyramid Texture alocada: %dx%d (%d niveis mip) com Scratch Buffer dedicado." % [w, h, mips])
+	return true
+
+func _build_hiz_pyramid(depth_tex: RID, vp_size: Vector2i) -> void:
+	if not enable_hiz or not hiz_pipeline.is_valid() or not depth_tex.is_valid():
+		return
+	if not _ensure_hiz_texture(vp_size):
+		return
+
+	# Reutiliza ou atualiza o UniformSet do Mip 0 se depth_tex mudar
+	if depth_tex != hiz_cached_depth_tex or not hiz_mip0_uniform_set.is_valid():
+		if hiz_mip0_uniform_set.is_valid():
+			rd.free_rid(hiz_mip0_uniform_set)
+		var u0 = RDUniform.new()
+		u0.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+		u0.binding = 0
+		u0.add_id(default_sampler)
+		u0.add_id(depth_tex)
+
+		var u1 = RDUniform.new()
+		u1.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+		u1.binding = 1
+		u1.add_id(hiz_scratch_texture)
+
+		hiz_mip0_uniform_set = rd.uniform_set_create([u0, u1], hiz_shader_rid, 0)
+		hiz_cached_depth_tex = depth_tex
+
+	# Nivel 0: Downsample conservador do hardware depth_tex para o scratch buffer
+	var cl0 = rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(cl0, hiz_pipeline)
+	rd.compute_list_bind_uniform_set(cl0, hiz_mip0_uniform_set, 0)
+
+	var pc0 = PackedByteArray()
+	pc0.resize(20)
+	pc0.encode_float(0, float(hiz_size.x))
+	pc0.encode_float(4, float(hiz_size.y))
+	pc0.encode_float(8, 1.0 / float(vp_size.x))
+	pc0.encode_float(12, 1.0 / float(vp_size.y))
+	pc0.encode_s32(16, 0)
+	rd.compute_list_set_push_constant(cl0, pc0, pc0.size())
+
+	var gx0 = int(ceil(float(hiz_size.x) / 16.0))
+	var gy0 = int(ceil(float(hiz_size.y) / 16.0))
+	rd.compute_list_dispatch(cl0, gx0, gy0, 1)
+	rd.compute_list_end()
+
+	# Copia o Mip 0 do scratch para a textura da pirâmide Hi-Z
+	rd.texture_copy(hiz_scratch_texture, hiz_texture, Vector3.ZERO, Vector3.ZERO, Vector3(hiz_size.x, hiz_size.y, 1), 0, 0, 0, 0)
+
+	# Niveis 1..N-1: Reducao conservadora recursiva (min dos 4 texels anteriores)
+	for m in range(1, hiz_mip_count):
+		var dst_w = max(1, hiz_size.x >> m)
+		var dst_h = max(1, hiz_size.y >> m)
+		var src_w = max(1, hiz_size.x >> (m - 1))
+		var src_h = max(1, hiz_size.y >> (m - 1))
+
+		var cl_m = rd.compute_list_begin()
+		rd.compute_list_bind_compute_pipeline(cl_m, hiz_pipeline)
+		rd.compute_list_bind_uniform_set(cl_m, hiz_mip_uniform_sets[m - 1], 0)
+
+		var pcm = PackedByteArray()
+		pcm.resize(20)
+		pcm.encode_float(0, float(dst_w))
+		pcm.encode_float(4, float(dst_h))
+		pcm.encode_float(8, 1.0 / float(src_w))
+		pcm.encode_float(12, 1.0 / float(src_h))
+		pcm.encode_s32(16, 0) # amostragem do mip 0 da fatia hiz_mip_views[m - 1]
+		rd.compute_list_set_push_constant(cl_m, pcm, pcm.size())
+
+		var gxm = int(ceil(float(dst_w) / 16.0))
+		var gym = int(ceil(float(dst_h) / 16.0))
+		rd.compute_list_dispatch(cl_m, gxm, gym, 1)
+		rd.compute_list_end()
+
+		# Copia para o mip m da textura Hi-Z
+		rd.texture_copy(hiz_scratch_texture, hiz_texture, Vector3.ZERO, Vector3.ZERO, Vector3(dst_w, dst_h, 1), 0, m, 0, 0)
 
 func _compile_compute_shader() -> void:
 	var f = FileAccess.open("res://shaders/cull_clusters.glsl", FileAccess.READ)
@@ -666,6 +884,50 @@ func unregister_instance(inst: Node3D) -> void:
 func mark_instance_dirty(_inst: Node3D) -> void:
 	pass
 
+func _update_instance_compute_uniform_set(data: InstanceGPUData, mesh_res: MeshGPUResource) -> void:
+	var target_hiz_tex = hiz_texture if (enable_hiz and hiz_texture.is_valid()) else default_white_tex
+	if data.bound_hiz_tex == target_hiz_tex and data.compute_uniform_set.is_valid():
+		return
+
+	if data.compute_uniform_set.is_valid():
+		rd.free_rid(data.compute_uniform_set)
+
+	var target_hiz_sampler = hiz_sampler if (enable_hiz and hiz_sampler.is_valid()) else default_sampler
+
+	var cu0 = RDUniform.new()
+	cu0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	cu0.binding = 0
+	cu0.add_id(mesh_res.in_clusters_buf)
+
+	var cu1 = RDUniform.new()
+	cu1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	cu1.binding = 1
+	cu1.add_id(data.out_visible_buf)
+
+	var cu2 = RDUniform.new()
+	cu2.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	cu2.binding = 2
+	cu2.add_id(data.counter_buf)
+
+	var cu3 = RDUniform.new()
+	cu3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+	cu3.binding = 3
+	cu3.add_id(data.camera_ubo_buf)
+
+	var cu4 = RDUniform.new()
+	cu4.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	cu4.binding = 4
+	cu4.add_id(mesh_res.selection_texture_rid)
+
+	var cu5 = RDUniform.new()
+	cu5.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+	cu5.binding = 5
+	cu5.add_id(target_hiz_sampler)
+	cu5.add_id(target_hiz_tex)
+
+	data.compute_uniform_set = rd.uniform_set_create([cu0, cu1, cu2, cu3, cu4, cu5], compute_shader_rid, 0)
+	data.bound_hiz_tex = target_hiz_tex
+
 func extract_frustum_planes(m: Projection) -> Array[Plane]:
 	var planes: Array[Plane] = []
 	var r0 = Vector4(m[0][0], m[1][0], m[2][0], m[3][0])
@@ -794,10 +1056,17 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 		light_energy = main_light.light_energy
 		light_color = main_light.light_color
 
+	# Geração da pirâmide Hi-Z para descarte de oclusão (apenas no passe principal opaco, após prepass e opacos Godot)
+	if not is_prepass and enable_hiz and depth_tex.is_valid():
+		_build_hiz_pyramid(depth_tex, Vector2i(vp_size))
+
 	for task in active_tasks:
 		var inst = task["inst"]
 		var mesh_res: MeshGPUResource = task["mesh_res"]
 		var inst_gpu: InstanceGPUData = task["gpu_data"]
+
+		# Atualiza uniform set de compute com Hi-Z
+		_update_instance_compute_uniform_set(inst_gpu, mesh_res)
 
 		var model_xform: Transform3D = inst.global_transform
 		var cam_pos_local: Vector3 = model_xform.affine_inverse() * cam_pos_world
@@ -850,13 +1119,13 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 		u_cam.encode_float(188, float(inst.lod_mode))
 
 		u_cam.encode_u32(192, mesh_res.total_clusters)
-		u_cam.encode_u32(196, inst.lod_mode)
-		u_cam.encode_u32(200, inst.forced_lod)
-		u_cam.encode_u32(204, 0)
+		u_cam.encode_u32(196, inst.forced_lod)
+		u_cam.encode_u32(200, 1 if enable_frustum_culling else 0)
+		u_cam.encode_u32(204, 1 if enable_cone_culling else 0)
 
 		u_cam.encode_u32(208, global_shading_mode)
-		u_cam.encode_u32(212, 1 if enable_frustum_culling else 0)
-		u_cam.encode_u32(216, 1 if enable_cone_culling else 0)
+		u_cam.encode_u32(212, 1 if (enable_hiz and hiz_texture.is_valid()) else 0)
+		u_cam.encode_u32(216, 0)
 		u_cam.encode_u32(220, 0)
 
 		rd.buffer_update(inst_gpu.camera_ubo_buf, 0, u_cam.size(), u_cam)
@@ -1033,9 +1302,22 @@ func cleanup() -> void:
 	if raster_pipeline.is_valid():
 		rd.free_rid(raster_pipeline)
 		raster_pipeline = RID()
+	if depth_prepass_pipeline.is_valid():
+		rd.free_rid(depth_prepass_pipeline)
+		depth_prepass_pipeline = RID()
 	if raster_shader_rid.is_valid():
 		rd.free_rid(raster_shader_rid)
 		raster_shader_rid = RID()
+	if hiz_pipeline.is_valid():
+		rd.free_rid(hiz_pipeline)
+		hiz_pipeline = RID()
+	if hiz_shader_rid.is_valid():
+		rd.free_rid(hiz_shader_rid)
+		hiz_shader_rid = RID()
+	if hiz_sampler.is_valid():
+		rd.free_rid(hiz_sampler)
+		hiz_sampler = RID()
+	_free_hiz_resources()
 
 	native_core = null
 	_shared_instance = null
