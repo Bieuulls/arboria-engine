@@ -31,6 +31,15 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
+$ProjectBin = "$RepoRoot\project\bin"
+if (-not (Test-Path $ProjectBin)) {
+    New-Item -ItemType Directory -Path $ProjectBin -Force | Out-Null
+}
+$BuiltDll = "$BuildDir\libarboria_native.dll"
+if (Test-Path $BuiltDll) {
+    Copy-Item $BuiltDll "$ProjectBin\libarboria_native.dll" -Force
+}
+
 Write-Host "[3/3] Executando testes unitarios do nucleo nativo..." -ForegroundColor Yellow
 $TestExe = "$BuildDir\test_native_core.exe"
 $TestMesh = "$RepoRoot\assets\dense_rock.vgmesh"

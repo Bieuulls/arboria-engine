@@ -100,16 +100,11 @@ func _setup_compositor() -> void:
 
 	var comp = world_env.compositor
 	var eff_cls = load("res://scripts/arboria_compositor_effect.gd")
-	if eff_cls:
-		var eff = eff_cls.new()
-		eff.active = true
-		var effects = comp.compositor_effects.duplicate()
-		effects.append(eff)
-		comp.compositor_effects = effects
-
-	if camera:
-		camera.compositor = comp
-	print("[ArboriaMassiveWorld] ArboriaCompositorEffect registrado (Total: ", comp.compositor_effects.size(), ").")
+	if eff_cls and eff_cls.has_method("attach_to_environment"):
+		eff_cls.attach_to_environment(world_env)
+	if camera and world_env.compositor:
+		camera.compositor = world_env.compositor
+	print("[ArboriaMassiveWorld] ArboriaCompositorEffect registrado.")
 
 func _spawn_rock_valley() -> void:
 	# Limpa instâncias anteriores se houver
