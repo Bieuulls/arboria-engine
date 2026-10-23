@@ -160,7 +160,7 @@ SceneCullResult ArboriaGPUScene::simulate_cull_scene(const GlobalSceneUniforms& 
 
         result.visible_instances++;
 
-        const RegisteredMeshInfo* mesh_info = ArboriaMeshRegistry::instance().get_mesh_info(Handle::from_u64(inst.mesh_id));
+        const RegisteredMeshInfo* mesh_info = ArboriaMeshRegistry::instance().get_mesh_info_by_index(inst.mesh_id);
         if (!mesh_info || !mesh_info->resource) continue;
 
         const auto& clusters = mesh_info->resource->get_gpu_clusters();

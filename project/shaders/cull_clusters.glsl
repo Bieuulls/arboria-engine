@@ -198,17 +198,19 @@ void main() {
     if (is_selected) {
         // Incrementa atomicamente o contador de instâncias do VkDrawIndirectCommand
         uint slot = atomicAdd(instance_count, 1u);
-        visible_cluster_ids[slot] = g_idx;
-        atomicAdd(total_triangles_drawn, c.data_offsets.w);
+        if (slot < ubo.count_params.x) {
+            visible_cluster_ids[slot] = g_idx;
+            atomicAdd(total_triangles_drawn, c.data_offsets.w);
 
-        // Escreve na textura 2D para amostragem sem latência pelo Vertex Shader
-        ivec2 tex_coord = ivec2(int(slot % 2048u), int(slot / 2048u));
-        vec4 pixel_data = vec4(
-            float(g_idx),               // x = ID do cluster global
-            float(c.data_offsets.y),    // y = vertex_count
-            float(c.data_offsets.w),    // z = triangle_count
-            float(c.cluster_info.y)     // w = lod_level
-        );
-        imageStore(out_selection_image, tex_coord, pixel_data);
+            // Escreve na textura 2D para amostragem sem latência pelo Vertex Shader
+            ivec2 tex_coord = ivec2(int(slot % 2048u), int(slot / 2048u));
+            vec4 pixel_data = vec4(
+                float(g_idx),               // x = ID do cluster global
+                float(c.data_offsets.y),    // y = vertex_count
+                float(c.data_offsets.w),    // z = triangle_count
+                float(c.cluster_info.y)     // w = lod_level
+            );
+            imageStore(out_selection_image, tex_coord, pixel_data);
+        }
     }
 }

@@ -190,6 +190,9 @@ void main() {
     // 3. Normal Cone Backface Culling
     if (ubo.count_params.w != 0u) {
         vec3 world_cone_axis = normalize(mat3(inst.normal_matrix) * c.cone_axis_cutoff.xyz);
+        if ((inst.visibility_flags & 4u) != 0u) {
+            world_cone_axis = -world_cone_axis;
+        }
         if (!ARB_GPU_TestConeCull(world_center, world_radius, world_cone_axis, c.cone_axis_cutoff.w)) {
             return;
         }

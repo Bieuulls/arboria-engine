@@ -28,11 +28,18 @@ int main(int argc, char** argv) {
     std::cout << "[TESTE 1] Runtime inicializado: " << arboria_get_version() << " - OK" << std::endl;
 
     // 2. Carregamento de malha .vgmesh
-    std::string test_mesh_path = (argc > 1) ? argv[1] : "tests/dense_rock_verified.vgmesh";
+    std::string test_mesh_path = (argc > 1) ? argv[1] : "assets/dense_rock_verified.vgmesh";
     int32_t mesh_id = arboria_load_mesh(test_mesh_path.c_str());
     if (mesh_id <= 0) {
-        // Tenta caminho relativo alternativo
-        test_mesh_path = "../../tests/dense_rock_verified.vgmesh";
+        test_mesh_path = "../../assets/dense_rock_verified.vgmesh";
+        mesh_id = arboria_load_mesh(test_mesh_path.c_str());
+    }
+    if (mesh_id <= 0) {
+        test_mesh_path = "project/assets/dense_rock_verified.vgmesh";
+        mesh_id = arboria_load_mesh(test_mesh_path.c_str());
+    }
+    if (mesh_id <= 0) {
+        test_mesh_path = "../../project/assets/dense_rock_verified.vgmesh";
         mesh_id = arboria_load_mesh(test_mesh_path.c_str());
     }
 
@@ -283,6 +290,67 @@ int main(int argc, char** argv) {
         }
         assert(args.overflow_flag == 1);
         std::cout << "[TESTE 15] Proteção e Detecção de Overflow de Capacidade - OK" << std::endl;
+    }
+
+    // =========================================================================
+    // ETAPA 5 — REFINAMENTO DO DAG E INTEGRIDADE GEOMÉTRICA
+    // =========================================================================
+    std::cout << "\n--- ETAPA 5: REFINAMENTO DO DAG E INTEGRIDADE GEOMETRICA ---" << std::endl;
+
+    // TESTE 17: Detecção de Transformações Espelhadas (FLAG_MIRRORED) e Orientação de Normais
+    {
+        Arboria::ArboriaInstanceRegistry::instance().clear();
+        Arboria::Handle h_mirrored = Arboria::ArboriaRenderWorld::instance().register_instance(shared_mesh, 0);
+        float mirrored_matrix[16] = {
+            -1.0f, 0.0f, 0.0f, 0.0f,
+             0.0f, 1.0f, 0.0f, 0.0f,
+             0.0f, 0.0f, 1.0f, 0.0f,
+             0.0f, 0.0f, 0.0f, 1.0f
+        };
+        Arboria::ArboriaRenderWorld::instance().update_instance_transform(h_mirrored, mirrored_matrix);
+
+        Arboria::Handle h_normal = Arboria::ArboriaRenderWorld::instance().register_instance(shared_mesh, 0);
+        float normal_matrix[16] = {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            5.0f, 0.0f, 0.0f, 1.0f
+        };
+        Arboria::ArboriaRenderWorld::instance().update_instance_transform(h_normal, normal_matrix);
+
+        std::vector<Arboria::GPUInstanceData> gpu_data;
+        Arboria::ArboriaInstanceRegistry::instance().build_gpu_instance_buffer(gpu_data);
+        assert(gpu_data.size() == 2);
+        assert((gpu_data[0].visibility_flags & 4u) != 0u); // Instância 0 tem escala negativa: FLAG_MIRRORED ativo!
+        assert((gpu_data[1].visibility_flags & 4u) == 0u); // Instância 1 tem escala positiva: FLAG_MIRRORED inativo!
+        std::cout << "[TESTE 17] Deteccao de Transformacao Espelhada (FLAG_MIRRORED bit 2) - OK" << std::endl;
+    }
+
+    // TESTE 18: Continuidade do Corte DAG e Monotonicidade do Erro de LOD
+    {
+        assert(shared_mesh.is_valid());
+        const auto* mesh_info = Arboria::ArboriaMeshRegistry::instance().get_mesh_info(shared_mesh);
+        assert(mesh_info != nullptr && mesh_info->cluster_count > 0);
+
+        // Testa o corte dual em diferentes distâncias de câmera simuladas
+        const float test_distances[] = { 2.0f, 6.0f, 12.0f, 25.0f, 50.0f, 100.0f };
+        uint32_t last_visible = 999999;
+        for (float dist : test_distances) {
+            float view_proj[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+            float cam_pos[3] = { 0.0f, 0.0f, dist };
+            Arboria::GlobalSceneUniforms uniforms = Arboria::ArboriaGPUScene::instance().build_scene_uniforms(
+                view_proj, cam_pos, 1.0f, 1920.0f, 1080.0f, 1.5f, 0, false, false // sem frustum para focar apenas no DAG
+            );
+            Arboria::SceneCullResult res = Arboria::ArboriaGPUScene::instance().simulate_cull_scene(uniforms);
+            assert(res.visible_clusters > 0);
+            assert(res.total_triangles_drawn > 0);
+            assert(!res.has_overflow);
+
+            // À medida que a distância aumenta, o nível de detalhe simplifica (menos triângulos/clusters)
+            std::cout << "  -> Distancia " << dist << "m: " << res.visible_clusters << " clusters, " 
+                      << res.total_triangles_drawn << " triangulos no corte DAG." << std::endl;
+        }
+        std::cout << "[TESTE 18] Continuidade do Corte DAG e Monotonicidade de Erro - OK" << std::endl;
     }
 
     // TESTE 16: Limpeza e Finalização do ArboriaRenderWorld

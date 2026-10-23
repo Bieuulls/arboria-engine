@@ -260,7 +260,13 @@ size_t ArboriaInstanceRegistry::build_gpu_instance_buffer(std::vector<GPUInstanc
 
         gpu.instance_id = static_cast<uint32_t>(out_buffer.size()); // Índice linear no SSBO
         gpu.mesh_id = rec.mesh_handle.index;
-        gpu.visibility_flags = (rec.visible ? 1u : 0u) | (rec.shadow_caster ? 2u : 0u);
+
+        float det = rec.model_matrix[0] * (rec.model_matrix[5] * rec.model_matrix[10] - rec.model_matrix[6] * rec.model_matrix[9])
+                  - rec.model_matrix[1] * (rec.model_matrix[4] * rec.model_matrix[10] - rec.model_matrix[6] * rec.model_matrix[8])
+                  + rec.model_matrix[2] * (rec.model_matrix[4] * rec.model_matrix[9]  - rec.model_matrix[5] * rec.model_matrix[8]);
+        bool is_mirrored = (det < 0.0f);
+
+        gpu.visibility_flags = (rec.visible ? 1u : 0u) | (rec.shadow_caster ? 2u : 0u) | (is_mirrored ? 4u : 0u);
         gpu.resource_generation = rec.handle.generation;
         gpu.cluster_offset = mesh_info->cluster_offset;
         gpu.cluster_count = mesh_info->cluster_count;

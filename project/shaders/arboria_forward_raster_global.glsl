@@ -215,7 +215,9 @@ vec3 F_Schlick(float VoH, vec3 f0) {
 void main() {
     GPUInstanceData inst = instances[v_instance_id];
     vec3 N = normalize(v_world_normal);
-    if (!gl_FrontFacing) {
+    bool is_mirrored = (inst.visibility_flags & 4u) != 0u;
+    bool front = is_mirrored ? !gl_FrontFacing : gl_FrontFacing;
+    if (!front) {
         N = -N;
     }
 

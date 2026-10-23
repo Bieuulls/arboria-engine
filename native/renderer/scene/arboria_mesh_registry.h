@@ -42,6 +42,7 @@ public:
 
     // Obtém informações da malha
     const RegisteredMeshInfo* get_mesh_info(Handle handle) const;
+    const RegisteredMeshInfo* get_mesh_info_by_index(uint32_t index) const;
     std::shared_ptr<VGMeshResource> get_mesh_resource(Handle handle) const;
 
     // Estatísticas globais acumuladas de geometria compartilhada

@@ -1,0 +1,42 @@
+[gd_scene load_steps=5 format=3 uid="uid://b7v8k1m3p4x05"]
+
+[ext_resource type="Script" path="res://scripts/test_arboria_dag_integrity.gd" id="1_test"]
+[ext_resource type="Script" path="res://scripts/arboria_instance_3d.gd" id="2_arboria"]
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.12, 0.14, 0.18, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.2, 0.22, 0.26, 1)
+
+[sub_resource type="Compositor" id="Compositor_main"]
+
+[node name="TestArboriaDAGIntegrity" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+compositor = SubResource("Compositor_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 5, 10, 5)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 6)
+current = true
+fov = 60.0
+
+[node name="MirroredRockMesh" type="VisualInstance3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 0, 0)
+script = ExtResource("2_arboria")
+mesh_path = "res://assets/dense_rock_test.vgmesh"
+max_screen_error = 1.5
+base_albedo = Color(0.75, 0.78, 0.82, 1)
+
+[node name="NormalRockMesh" type="VisualInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0, 0)
+script = ExtResource("2_arboria")
+mesh_path = "res://assets/dense_rock_test.vgmesh"
+max_screen_error = 1.5
+base_albedo = Color(0.85, 0.8, 0.7, 1)

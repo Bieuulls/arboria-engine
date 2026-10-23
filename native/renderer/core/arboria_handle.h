@@ -96,6 +96,18 @@ public:
         return &m_slots[h.index - 1].data;
     }
 
+    T* get_by_index(uint32_t idx) {
+        if (idx == 0 || idx > m_slots.size()) return nullptr;
+        Slot& slot = m_slots[idx - 1];
+        return slot.active ? &slot.data : nullptr;
+    }
+
+    const T* get_by_index(uint32_t idx) const {
+        if (idx == 0 || idx > m_slots.size()) return nullptr;
+        const Slot& slot = m_slots[idx - 1];
+        return slot.active ? &slot.data : nullptr;
+    }
+
     size_t active_count() const {
         return m_slots.size() - m_free_list.size();
     }

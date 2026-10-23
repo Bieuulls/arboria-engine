@@ -85,6 +85,11 @@ const RegisteredMeshInfo* ArboriaMeshRegistry::get_mesh_info(Handle handle) cons
     return m_mesh_pool.get(handle);
 }
 
+const RegisteredMeshInfo* ArboriaMeshRegistry::get_mesh_info_by_index(uint32_t index) const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_mesh_pool.get_by_index(index);
+}
+
 std::shared_ptr<VGMeshResource> ArboriaMeshRegistry::get_mesh_resource(Handle handle) const {
     std::lock_guard<std::mutex> lock(m_mutex);
     const RegisteredMeshInfo* info = m_mesh_pool.get(handle);
