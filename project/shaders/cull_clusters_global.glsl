@@ -182,26 +182,12 @@ void main() {
     uint total_inst = ubo.count_params.x;
     if (total_inst == 0) return;
 
-    // Mapeamento O(1) quando as instâncias compartilham a mesma malha (típico em lotes)
-    uint curr_acc = 0;
-    bool found = false;
-    uint c_count0 = instances[0].cluster_count;
-    if (c_count0 > 0u && ubo.count_params.y == total_inst * c_count0) {
-        inst_idx = g_idx / c_count0;
-        curr_acc = inst_idx * c_count0;
-        found = (inst_idx < total_inst);
-    } else {
-        for (uint i = 0; i < total_inst; ++i) {
-            uint c_count = instances[i].cluster_count;
-            if (g_idx >= curr_acc && g_idx < curr_acc + c_count) {
-                inst_idx = i;
-                found = true;
-                break;
-            }
-            curr_acc += c_count;
-        }
-    }
-    if (!found) return;
+    // Mapeamento O(1) puro por lote homogêneo de malha (elimina busca linear e divergência de threads)
+    uint c_count = instances[0].cluster_count;
+    if (c_count == 0u) return;
+
+    inst_idx = g_idx / c_count;
+    if (inst_idx >= total_inst) return;
 
     GPUInstanceData inst = instances[inst_idx];
     if ((inst.visibility_flags & 1u) == 0u) return;
@@ -213,7 +199,7 @@ void main() {
         }
     }
 
-    uint local_cluster_idx = g_idx - curr_acc;
+    uint local_cluster_idx = g_idx % c_count;
     uint global_cluster_idx = inst.cluster_offset + local_cluster_idx;
     GPUCluster c = clusters[global_cluster_idx];
 
