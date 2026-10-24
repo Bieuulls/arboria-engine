@@ -528,6 +528,97 @@ static void call_streaming_update(void *method_userdata, GDExtensionClassInstanc
 }
 
 // ============================================================================
+// GEOMETRIA MUTÁVEL VIRTUALIZADA (OPERAÇÃO MUTABLE GEOMETRY)
+// ============================================================================
+
+static void call_mutable_apply_depression(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    int64_t modified = 0;
+    if (p_argument_count >= 5 && Arboria::ABI::to_int && Arboria::ABI::to_vector3 && Arboria::ABI::to_float && Arboria::ABI::to_bool) {
+        int64_t inst_id = 0;
+        Arboria::ABI::to_int(&inst_id, const_cast<GDExtensionVariantPtr>(p_args[0]));
+        float center[3] = {0, 0, 0};
+        Arboria::ABI::to_vector3(center, const_cast<GDExtensionVariantPtr>(p_args[1]));
+        double radius = 0.5;
+        Arboria::ABI::to_float(&radius, const_cast<GDExtensionVariantPtr>(p_args[2]));
+        double depth = 0.1;
+        Arboria::ABI::to_float(&depth, const_cast<GDExtensionVariantPtr>(p_args[3]));
+        uint8_t subdivide = 1;
+        Arboria::ABI::to_bool(&subdivide, const_cast<GDExtensionVariantPtr>(p_args[4]));
+
+        Arboria::Handle h = Arboria::Handle::from_u64(static_cast<uint64_t>(inst_id));
+        modified = Arboria::ArboriaRenderWorld::instance().apply_depression(
+            h, center, static_cast<float>(radius), static_cast<float>(depth), subdivide != 0
+        );
+    }
+    if (Arboria::ABI::from_int) Arboria::ABI::from_int(r_return, &modified);
+}
+
+static void call_mutable_rebuild_dag(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    int64_t count = 0;
+    if (p_argument_count >= 1 && Arboria::ABI::to_int) {
+        int64_t inst_id = 0;
+        Arboria::ABI::to_int(&inst_id, const_cast<GDExtensionVariantPtr>(p_args[0]));
+        Arboria::Handle h = Arboria::Handle::from_u64(static_cast<uint64_t>(inst_id));
+        auto stats = Arboria::ArboriaRenderWorld::instance().rebuild_dag_incremental(h);
+        count = stats.modified_lod0_clusters;
+    }
+    if (Arboria::ABI::from_int) Arboria::ABI::from_int(r_return, &count);
+}
+
+static void call_mutable_export_obj(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    uint8_t ok = 0;
+    if (p_argument_count >= 2 && Arboria::ABI::to_int && Arboria::ABI::to_string) {
+        int64_t inst_id = 0;
+        Arboria::ABI::to_int(&inst_id, const_cast<GDExtensionVariantPtr>(p_args[0]));
+        Arboria::Handle h = Arboria::Handle::from_u64(static_cast<uint64_t>(inst_id));
+        Arboria::String s_raw;
+        Arboria::ABI::to_string(s_raw.ptr(), const_cast<GDExtensionVariantPtr>(p_args[1]));
+        std::string filepath = s_raw.to_utf8();
+        ok = Arboria::ArboriaRenderWorld::instance().export_instance_to_obj(h, filepath) ? 1 : 0;
+    }
+    if (Arboria::ABI::from_bool) Arboria::ABI::from_bool(r_return, &ok);
+}
+
+static void call_mutable_save(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    uint8_t ok = 0;
+    if (p_argument_count >= 2 && Arboria::ABI::to_int && Arboria::ABI::to_string) {
+        int64_t inst_id = 0;
+        Arboria::ABI::to_int(&inst_id, const_cast<GDExtensionVariantPtr>(p_args[0]));
+        Arboria::Handle h = Arboria::Handle::from_u64(static_cast<uint64_t>(inst_id));
+        Arboria::String s_raw;
+        Arboria::ABI::to_string(s_raw.ptr(), const_cast<GDExtensionVariantPtr>(p_args[1]));
+        std::string filepath = s_raw.to_utf8();
+        ok = Arboria::ArboriaRenderWorld::instance().save_mutable_overlay(h, filepath) ? 1 : 0;
+    }
+    if (Arboria::ABI::from_bool) Arboria::ABI::from_bool(r_return, &ok);
+}
+
+static void call_mutable_load(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    uint8_t ok = 0;
+    if (p_argument_count >= 2 && Arboria::ABI::to_int && Arboria::ABI::to_string) {
+        int64_t inst_id = 0;
+        Arboria::ABI::to_int(&inst_id, const_cast<GDExtensionVariantPtr>(p_args[0]));
+        Arboria::Handle h = Arboria::Handle::from_u64(static_cast<uint64_t>(inst_id));
+        Arboria::String s_raw;
+        Arboria::ABI::to_string(s_raw.ptr(), const_cast<GDExtensionVariantPtr>(p_args[1]));
+        std::string filepath = s_raw.to_utf8();
+        ok = Arboria::ArboriaRenderWorld::instance().load_mutable_overlay(h, filepath) ? 1 : 0;
+    }
+    if (Arboria::ABI::from_bool) Arboria::ABI::from_bool(r_return, &ok);
+}
+
+static void call_mutable_has_geometry(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    uint8_t ok = 0;
+    if (p_argument_count >= 1 && Arboria::ABI::to_int) {
+        int64_t inst_id = 0;
+        Arboria::ABI::to_int(&inst_id, const_cast<GDExtensionVariantPtr>(p_args[0]));
+        Arboria::Handle h = Arboria::Handle::from_u64(static_cast<uint64_t>(inst_id));
+        ok = Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(h) ? 1 : 0;
+    }
+    if (Arboria::ABI::from_bool) Arboria::ABI::from_bool(r_return, &ok);
+}
+
+// ============================================================================
 // INICIALIZAÇÃO DA EXTENSÃO NO GODOT
 // ============================================================================
 
@@ -711,7 +802,28 @@ static void arboria_gdextension_initialize(void* userdata, GDExtensionInitializa
                     const char* names_streaming[] = { "camera_pos", "frame" };
                     register_method(lib, cname, "streaming_update", call_streaming_update, GDEXTENSION_VARIANT_TYPE_NIL, false, 2, args_streaming, names_streaming);
 
-                    std::cout << "[Arboria GDExtension] Metodos de 'ArboriaNativeCore' registrados com sucesso no ClassDB (GPU Scene Global + API Tipada + Streaming/Memoria)." << std::endl;
+                    // Geometria Mutavel Virtualizada (OPERACAO MUTABLE GEOMETRY)
+                    GDExtensionVariantType args_sculpt[] = {
+                        GDEXTENSION_VARIANT_TYPE_INT,
+                        GDEXTENSION_VARIANT_TYPE_VECTOR3,
+                        GDEXTENSION_VARIANT_TYPE_FLOAT,
+                        GDEXTENSION_VARIANT_TYPE_FLOAT,
+                        GDEXTENSION_VARIANT_TYPE_BOOL
+                    };
+                    const char* names_sculpt[] = { "instance_handle", "center", "radius", "depth", "subdivide" };
+                    register_method(lib, cname, "mutable_apply_depression", call_mutable_apply_depression, GDEXTENSION_VARIANT_TYPE_INT, true, 5, args_sculpt, names_sculpt);
+
+                    const char* name_inst_only[] = { "instance_handle" };
+                    register_method(lib, cname, "mutable_rebuild_dag", call_mutable_rebuild_dag, GDEXTENSION_VARIANT_TYPE_INT, true, 1, arg_budget, name_inst_only);
+
+                    GDExtensionVariantType args_path[] = { GDEXTENSION_VARIANT_TYPE_INT, GDEXTENSION_VARIANT_TYPE_STRING };
+                    const char* names_path[] = { "instance_handle", "filepath" };
+                    register_method(lib, cname, "mutable_export_obj", call_mutable_export_obj, GDEXTENSION_VARIANT_TYPE_BOOL, true, 2, args_path, names_path);
+                    register_method(lib, cname, "mutable_save", call_mutable_save, GDEXTENSION_VARIANT_TYPE_BOOL, true, 2, args_path, names_path);
+                    register_method(lib, cname, "mutable_load", call_mutable_load, GDEXTENSION_VARIANT_TYPE_BOOL, true, 2, args_path, names_path);
+                    register_method(lib, cname, "mutable_has_geometry", call_mutable_has_geometry, GDEXTENSION_VARIANT_TYPE_BOOL, true, 1, arg_budget, name_inst_only);
+
+                    std::cout << "[Arboria GDExtension] Metodos de 'ArboriaNativeCore' registrados com sucesso no ClassDB (GPU Scene Global + API Tipada + Streaming/Memoria + Mutable Geometry)." << std::endl;
                 }
             }
         }

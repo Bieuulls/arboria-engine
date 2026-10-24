@@ -249,8 +249,9 @@ int main(int argc, char** argv) {
         for (uint32_t i = 0; i < target_count; ++i) {
             Arboria::Handle ih = Arboria::ArboriaRenderWorld::instance().register_instance(shared_mesh, 0);
             assert(ih.is_valid());
+            uint32_t grid_row = i / 50;
             float col = static_cast<float>(i % 50);
-            float row = static_cast<float>(i / 50u);
+            float row = static_cast<float>(grid_row);
             float tr[16] = {
                 1.0f, 0.0f, 0.0f, 0.0f,
                 0.0f, 1.0f, 0.0f, 0.0f,
