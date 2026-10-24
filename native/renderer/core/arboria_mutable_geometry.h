@@ -54,6 +54,15 @@ struct GPUMutableGeometryPatch {
     std::vector<uint32_t> dynamic_triangles;
 };
 
+// Malha de colisão física sincronizada para Jolt Physics / Godot Physics (ETAPA 5)
+struct MutablePhysicsMesh {
+    std::vector<float> positions; // x, y, z contíguos
+    std::vector<uint32_t> indices; // triângulos 3 a 3
+    float aabb_min[3] = { 0.0f, 0.0f, 0.0f };
+    float aabb_max[3] = { 0.0f, 0.0f, 0.0f };
+    bool is_synchronized = true;
+};
+
 // Registro de uma região específica modificada na malha
 struct MutableRegion {
     uint32_t region_id = 0;
@@ -156,6 +165,14 @@ public:
     // Reloca offsets de vértices/triângulos no espaço dinâmico de SSBO e monta patch para upload
     GPUMutableGeometryPatch prepare_gpu_geometry_patch(uint32_t global_dynamic_vertex_base, uint32_t global_dynamic_triangle_base);
 
+    // Geração de Malha de Colisão Física para Godot / Jolt Physics (ETAPA 5)
+    MutablePhysicsMesh build_physics_collision_mesh(const VGMeshResource& base_mesh);
+    const MutablePhysicsMesh& get_physics_mesh() const { return m_physics_mesh; }
+
+    // Persistência Binária Versionada (.armut) (ETAPA 5)
+    bool save_to_file(const std::string& filepath) const;
+    bool load_from_file(const std::string& filepath, const VGMeshResource& base_mesh);
+
     const std::unordered_map<uint32_t, MutableRegion>& get_regions() const { return m_regions; }
 
     void clear();
@@ -165,6 +182,9 @@ private:
     uint32_t m_mesh_id = 0;
     uint32_t m_geometry_version = 1;
     uint32_t m_dirty_flags = MUTABLE_DIRTY_NONE;
+
+    // Cache da malha de colisão física sincronizada
+    MutablePhysicsMesh m_physics_mesh;
 
     // Regiões ativas do overlay
     std::unordered_map<uint32_t, MutableRegion> m_regions;

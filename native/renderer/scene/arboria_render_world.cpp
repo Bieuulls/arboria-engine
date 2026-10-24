@@ -94,6 +94,18 @@ GPUMutableGeometryPatch ArboriaRenderWorld::prepare_gpu_geometry_patch(
     );
 }
 
+MutablePhysicsMesh ArboriaRenderWorld::build_physics_collision_mesh(Handle instance_handle) {
+    return ArboriaInstanceRegistry::instance().build_physics_collision_mesh(instance_handle);
+}
+
+bool ArboriaRenderWorld::save_mutable_overlay(Handle instance_handle, const std::string& filepath) const {
+    return ArboriaInstanceRegistry::instance().save_mutable_overlay(instance_handle, filepath);
+}
+
+bool ArboriaRenderWorld::load_mutable_overlay(Handle instance_handle, const std::string& filepath) {
+    return ArboriaInstanceRegistry::instance().load_mutable_overlay(instance_handle, filepath);
+}
+
 bool ArboriaRenderWorld::render_scene_global(
     const GPUDriverContext& ctx,
     const void* framebuffer,

@@ -39,6 +39,9 @@ public:
     bool export_instance_to_obj(Handle instance_handle, const std::string& filepath) const;
     DAGReconstructionStats rebuild_dag_incremental(Handle instance_handle);
     GPUMutableGeometryPatch prepare_gpu_geometry_patch(Handle instance_handle, uint32_t global_dynamic_vertex_base, uint32_t global_dynamic_triangle_base);
+    MutablePhysicsMesh build_physics_collision_mesh(Handle instance_handle);
+    bool save_mutable_overlay(Handle instance_handle, const std::string& filepath) const;
+    bool load_mutable_overlay(Handle instance_handle, const std::string& filepath);
 
     // Renderização Agrupada Global
     bool render_scene_global(

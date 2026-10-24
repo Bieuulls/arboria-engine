@@ -196,6 +196,67 @@ GPUMutableGeometryPatch ArboriaInstanceRegistry::prepare_gpu_geometry_patch(
     return overlay->prepare_gpu_geometry_patch(global_dynamic_vertex_base, global_dynamic_triangle_base);
 }
 
+MutablePhysicsMesh ArboriaInstanceRegistry::build_physics_collision_mesh(Handle instance_handle) {
+    std::shared_ptr<MutableGeometryOverlay> overlay;
+    Handle mesh_h;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (!rec) return MutablePhysicsMesh{};
+        overlay = rec->mutable_overlay;
+        mesh_h = rec->mesh_handle;
+    }
+
+    const RegisteredMeshInfo* mesh_info = ArboriaMeshRegistry::instance().get_mesh_info(mesh_h);
+    if (!mesh_info || !mesh_info->resource) return MutablePhysicsMesh{};
+
+    if (overlay) {
+        return overlay->build_physics_collision_mesh(*mesh_info->resource);
+    } else {
+        MutableGeometryOverlay temp_overlay(instance_handle.index, mesh_h.index);
+        return temp_overlay.build_physics_collision_mesh(*mesh_info->resource);
+    }
+}
+
+bool ArboriaInstanceRegistry::save_mutable_overlay(Handle instance_handle, const std::string& filepath) const {
+    std::shared_ptr<MutableGeometryOverlay> overlay;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (!rec || !rec->mutable_overlay) return false;
+        overlay = rec->mutable_overlay;
+    }
+    return overlay->save_to_file(filepath);
+}
+
+bool ArboriaInstanceRegistry::load_mutable_overlay(Handle instance_handle, const std::string& filepath) {
+    std::shared_ptr<MutableGeometryOverlay> overlay;
+    Handle mesh_h;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (!rec) return false;
+        if (!rec->mutable_overlay) {
+            rec->mutable_overlay = std::make_shared<MutableGeometryOverlay>(instance_handle.index, rec->mesh_handle.index);
+        }
+        overlay = rec->mutable_overlay;
+        mesh_h = rec->mesh_handle;
+    }
+
+    const RegisteredMeshInfo* mesh_info = ArboriaMeshRegistry::instance().get_mesh_info(mesh_h);
+    if (!mesh_info || !mesh_info->resource) return false;
+
+    bool ok = overlay->load_from_file(filepath, *mesh_info->resource);
+    if (ok) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (rec) {
+            rec->geometry_version = overlay->get_geometry_version();
+        }
+    }
+    return ok;
+}
+
 void ArboriaInstanceRegistry::clear() {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_instance_pool.clear();

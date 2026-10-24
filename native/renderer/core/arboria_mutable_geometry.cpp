@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
+#include <cstring>
 
 namespace Arboria {
 
@@ -169,6 +170,7 @@ void MutableGeometryOverlay::compute_combined_bounds(
 void MutableGeometryOverlay::clear() {
     m_regions.clear();
     m_cluster_replacements.clear();
+    m_physics_mesh = MutablePhysicsMesh{};
     m_dirty_flags = MUTABLE_DIRTY_NONE;
     bump_version();
 }
@@ -850,4 +852,311 @@ GPUMutableGeometryPatch MutableGeometryOverlay::prepare_gpu_geometry_patch(
     return patch;
 }
 
+MutablePhysicsMesh MutableGeometryOverlay::build_physics_collision_mesh(const VGMeshResource& base_mesh) {
+    MutablePhysicsMesh phys_mesh;
+    if (!base_mesh.is_valid()) {
+        phys_mesh.is_synchronized = false;
+        return phys_mesh;
+    }
+
+    const auto& lods = base_mesh.get_lods();
+    const auto& clusters = base_mesh.get_clusters();
+    const auto& base_vertices = base_mesh.get_vertices();
+    const auto& base_indices = base_mesh.get_indices();
+
+    uint32_t lod0_offset = 0;
+    uint32_t lod0_count = static_cast<uint32_t>(clusters.size());
+    if (!lods.empty()) {
+        lod0_offset = lods[0].offset;
+        lod0_count = lods[0].clusters;
+    }
+
+    phys_mesh.aabb_min[0] = 1e9f; phys_mesh.aabb_min[1] = 1e9f; phys_mesh.aabb_min[2] = 1e9f;
+    phys_mesh.aabb_max[0] = -1e9f; phys_mesh.aabb_max[1] = -1e9f; phys_mesh.aabb_max[2] = -1e9f;
+
+    uint32_t vert_start_idx = 0;
+
+    for (uint32_t i = 0; i < lod0_count; ++i) {
+        uint32_t c_idx = lod0_offset + i;
+        const auto& c = clusters[c_idx];
+
+        if (is_cluster_replaced(c_idx)) {
+            const MutableRegion* reg = get_region(m_cluster_replacements.at(c_idx).region_id);
+            if (reg) {
+                for (const auto& v : reg->vertices) {
+                    phys_mesh.positions.push_back(v.position[0]);
+                    phys_mesh.positions.push_back(v.position[1]);
+                    phys_mesh.positions.push_back(v.position[2]);
+
+                    phys_mesh.aabb_min[0] = std::min(phys_mesh.aabb_min[0], v.position[0]);
+                    phys_mesh.aabb_min[1] = std::min(phys_mesh.aabb_min[1], v.position[1]);
+                    phys_mesh.aabb_min[2] = std::min(phys_mesh.aabb_min[2], v.position[2]);
+
+                    phys_mesh.aabb_max[0] = std::max(phys_mesh.aabb_max[0], v.position[0]);
+                    phys_mesh.aabb_max[1] = std::max(phys_mesh.aabb_max[1], v.position[1]);
+                    phys_mesh.aabb_max[2] = std::max(phys_mesh.aabb_max[2], v.position[2]);
+                }
+                for (uint32_t idx : reg->indices) {
+                    phys_mesh.indices.push_back(vert_start_idx + idx);
+                }
+                vert_start_idx += static_cast<uint32_t>(reg->vertices.size());
+            }
+        } else {
+            for (uint32_t v = 0; v < c.vertex_count; ++v) {
+                const auto& vert = base_vertices[c.vertex_offset + v];
+                phys_mesh.positions.push_back(vert.position[0]);
+                phys_mesh.positions.push_back(vert.position[1]);
+                phys_mesh.positions.push_back(vert.position[2]);
+
+                phys_mesh.aabb_min[0] = std::min(phys_mesh.aabb_min[0], vert.position[0]);
+                phys_mesh.aabb_min[1] = std::min(phys_mesh.aabb_min[1], vert.position[1]);
+                phys_mesh.aabb_min[2] = std::min(phys_mesh.aabb_min[2], vert.position[2]);
+
+                phys_mesh.aabb_max[0] = std::max(phys_mesh.aabb_max[0], vert.position[0]);
+                phys_mesh.aabb_max[1] = std::max(phys_mesh.aabb_max[1], vert.position[1]);
+                phys_mesh.aabb_max[2] = std::max(phys_mesh.aabb_max[2], vert.position[2]);
+            }
+            for (uint32_t t = 0; t < c.triangle_count * 3; ++t) {
+                phys_mesh.indices.push_back(vert_start_idx + base_indices[c.triangle_offset + t]);
+            }
+            vert_start_idx += c.vertex_count;
+        }
+    }
+
+    phys_mesh.is_synchronized = true;
+    m_physics_mesh = phys_mesh;
+    clear_dirty(MUTABLE_DIRTY_PHYSICS);
+
+    return phys_mesh;
+}
+
+bool MutableGeometryOverlay::save_to_file(const std::string& filepath) const {
+    std::ofstream out(filepath, std::ios::binary);
+    if (!out.is_open()) return false;
+
+    const char magic[8] = "ARMUT01";
+    out.write(magic, 8);
+
+    uint32_t version = 1;
+    out.write(reinterpret_cast<const char*>(&version), sizeof(version));
+    out.write(reinterpret_cast<const char*>(&m_instance_id), sizeof(m_instance_id));
+    out.write(reinterpret_cast<const char*>(&m_mesh_id), sizeof(m_mesh_id));
+    out.write(reinterpret_cast<const char*>(&m_geometry_version), sizeof(m_geometry_version));
+
+    uint32_t region_count = static_cast<uint32_t>(m_regions.size());
+    out.write(reinterpret_cast<const char*>(&region_count), sizeof(region_count));
+
+    for (const auto& pair : m_regions) {
+        const MutableRegion& reg = pair.second;
+        out.write(reinterpret_cast<const char*>(&reg.region_id), sizeof(reg.region_id));
+        out.write(reinterpret_cast<const char*>(&reg.mesh_id), sizeof(reg.mesh_id));
+        out.write(reinterpret_cast<const char*>(&reg.instance_id), sizeof(reg.instance_id));
+        out.write(reinterpret_cast<const char*>(&reg.geometry_version), sizeof(reg.geometry_version));
+        out.write(reinterpret_cast<const char*>(&reg.parent_cluster_id), sizeof(reg.parent_cluster_id));
+        out.write(reinterpret_cast<const char*>(&reg.dirty_flags), sizeof(reg.dirty_flags));
+
+        out.write(reinterpret_cast<const char*>(&reg.vertex_offset), sizeof(reg.vertex_offset));
+        out.write(reinterpret_cast<const char*>(&reg.vertex_count), sizeof(reg.vertex_count));
+        out.write(reinterpret_cast<const char*>(&reg.index_offset), sizeof(reg.index_offset));
+        out.write(reinterpret_cast<const char*>(&reg.index_count), sizeof(reg.index_count));
+        out.write(reinterpret_cast<const char*>(&reg.material_id), sizeof(reg.material_id));
+        out.write(reinterpret_cast<const char*>(&reg.residency_state), sizeof(reg.residency_state));
+
+        out.write(reinterpret_cast<const char*>(reg.center), sizeof(reg.center));
+        out.write(reinterpret_cast<const char*>(&reg.radius), sizeof(reg.radius));
+        out.write(reinterpret_cast<const char*>(reg.aabb_min), sizeof(reg.aabb_min));
+        out.write(reinterpret_cast<const char*>(reg.aabb_max), sizeof(reg.aabb_max));
+
+        // Replaced cluster IDs
+        uint32_t rep_count = static_cast<uint32_t>(reg.replaced_cluster_ids.size());
+        out.write(reinterpret_cast<const char*>(&rep_count), sizeof(rep_count));
+        if (rep_count > 0) {
+            out.write(reinterpret_cast<const char*>(reg.replaced_cluster_ids.data()), rep_count * sizeof(uint32_t));
+        }
+
+        // Vertices
+        uint32_t v_count = static_cast<uint32_t>(reg.vertices.size());
+        out.write(reinterpret_cast<const char*>(&v_count), sizeof(v_count));
+        if (v_count > 0) {
+            out.write(reinterpret_cast<const char*>(reg.vertices.data()), v_count * sizeof(Vertex));
+        }
+
+        // Indices
+        uint32_t i_count = static_cast<uint32_t>(reg.indices.size());
+        out.write(reinterpret_cast<const char*>(&i_count), sizeof(i_count));
+        if (i_count > 0) {
+            out.write(reinterpret_cast<const char*>(reg.indices.data()), i_count * sizeof(uint32_t));
+        }
+
+        // Clusters
+        uint32_t c_count = static_cast<uint32_t>(reg.clusters.size());
+        out.write(reinterpret_cast<const char*>(&c_count), sizeof(c_count));
+        if (c_count > 0) {
+            out.write(reinterpret_cast<const char*>(reg.clusters.data()), c_count * sizeof(Cluster));
+        }
+
+        // GPUClusters
+        uint32_t gc_count = static_cast<uint32_t>(reg.gpu_clusters.size());
+        out.write(reinterpret_cast<const char*>(&gc_count), sizeof(gc_count));
+        if (gc_count > 0) {
+            out.write(reinterpret_cast<const char*>(reg.gpu_clusters.data()), gc_count * sizeof(GPUCluster));
+        }
+
+        // Packed Vertices
+        uint32_t pv_count = static_cast<uint32_t>(reg.packed_vertices.size());
+        out.write(reinterpret_cast<const char*>(&pv_count), sizeof(pv_count));
+        if (pv_count > 0) {
+            out.write(reinterpret_cast<const char*>(reg.packed_vertices.data()), pv_count * sizeof(GPUPackedVertex));
+        }
+
+        // Packed Triangles
+        uint32_t pt_count = static_cast<uint32_t>(reg.packed_triangles.size());
+        out.write(reinterpret_cast<const char*>(&pt_count), sizeof(pt_count));
+        if (pt_count > 0) {
+            out.write(reinterpret_cast<const char*>(reg.packed_triangles.data()), pt_count * sizeof(uint32_t));
+        }
+    }
+
+    // Replacements map
+    uint32_t map_count = static_cast<uint32_t>(m_cluster_replacements.size());
+    out.write(reinterpret_cast<const char*>(&map_count), sizeof(map_count));
+    for (const auto& pair : m_cluster_replacements) {
+        uint32_t orig_c_id = pair.first;
+        uint32_t r_id = pair.second.region_id;
+        uint32_t l_idx = pair.second.local_cluster_idx;
+        out.write(reinterpret_cast<const char*>(&orig_c_id), sizeof(orig_c_id));
+        out.write(reinterpret_cast<const char*>(&r_id), sizeof(r_id));
+        out.write(reinterpret_cast<const char*>(&l_idx), sizeof(l_idx));
+    }
+
+    return out.good();
+}
+
+bool MutableGeometryOverlay::load_from_file(const std::string& filepath, const VGMeshResource& base_mesh) {
+    std::ifstream in(filepath, std::ios::binary);
+    if (!in.is_open()) return false;
+
+    char magic[8] = {0};
+    in.read(magic, 8);
+    if (std::memcmp(magic, "ARMUT01", 7) != 0) {
+        return false;
+    }
+
+    uint32_t version = 0;
+    in.read(reinterpret_cast<char*>(&version), sizeof(version));
+    if (version != 1) {
+        return false;
+    }
+
+    uint32_t inst_id = 0, m_id = 0, geom_version = 0, region_count = 0;
+    in.read(reinterpret_cast<char*>(&inst_id), sizeof(inst_id));
+    in.read(reinterpret_cast<char*>(&m_id), sizeof(m_id));
+    in.read(reinterpret_cast<char*>(&geom_version), sizeof(geom_version));
+    in.read(reinterpret_cast<char*>(&region_count), sizeof(region_count));
+
+    clear();
+    m_mesh_id = m_id;
+    m_geometry_version = geom_version;
+
+    for (uint32_t r = 0; r < region_count; ++r) {
+        MutableRegion reg{};
+        in.read(reinterpret_cast<char*>(&reg.region_id), sizeof(reg.region_id));
+        in.read(reinterpret_cast<char*>(&reg.mesh_id), sizeof(reg.mesh_id));
+        in.read(reinterpret_cast<char*>(&reg.instance_id), sizeof(reg.instance_id));
+        in.read(reinterpret_cast<char*>(&reg.geometry_version), sizeof(reg.geometry_version));
+        in.read(reinterpret_cast<char*>(&reg.parent_cluster_id), sizeof(reg.parent_cluster_id));
+        in.read(reinterpret_cast<char*>(&reg.dirty_flags), sizeof(reg.dirty_flags));
+
+        in.read(reinterpret_cast<char*>(&reg.vertex_offset), sizeof(reg.vertex_offset));
+        in.read(reinterpret_cast<char*>(&reg.vertex_count), sizeof(reg.vertex_count));
+        in.read(reinterpret_cast<char*>(&reg.index_offset), sizeof(reg.index_offset));
+        in.read(reinterpret_cast<char*>(&reg.index_count), sizeof(reg.index_count));
+        in.read(reinterpret_cast<char*>(&reg.material_id), sizeof(reg.material_id));
+        in.read(reinterpret_cast<char*>(&reg.residency_state), sizeof(reg.residency_state));
+
+        in.read(reinterpret_cast<char*>(reg.center), sizeof(reg.center));
+        in.read(reinterpret_cast<char*>(&reg.radius), sizeof(reg.radius));
+        in.read(reinterpret_cast<char*>(reg.aabb_min), sizeof(reg.aabb_min));
+        in.read(reinterpret_cast<char*>(reg.aabb_max), sizeof(reg.aabb_max));
+
+        // Replaced cluster IDs
+        uint32_t rep_count = 0;
+        in.read(reinterpret_cast<char*>(&rep_count), sizeof(rep_count));
+        reg.replaced_cluster_ids.resize(rep_count);
+        if (rep_count > 0) {
+            in.read(reinterpret_cast<char*>(reg.replaced_cluster_ids.data()), rep_count * sizeof(uint32_t));
+        }
+
+        // Vertices
+        uint32_t v_count = 0;
+        in.read(reinterpret_cast<char*>(&v_count), sizeof(v_count));
+        reg.vertices.resize(v_count);
+        if (v_count > 0) {
+            in.read(reinterpret_cast<char*>(reg.vertices.data()), v_count * sizeof(Vertex));
+        }
+
+        // Indices
+        uint32_t i_count = 0;
+        in.read(reinterpret_cast<char*>(&i_count), sizeof(i_count));
+        reg.indices.resize(i_count);
+        if (i_count > 0) {
+            in.read(reinterpret_cast<char*>(reg.indices.data()), i_count * sizeof(uint32_t));
+        }
+
+        // Clusters
+        uint32_t c_count = 0;
+        in.read(reinterpret_cast<char*>(&c_count), sizeof(c_count));
+        reg.clusters.resize(c_count);
+        if (c_count > 0) {
+            in.read(reinterpret_cast<char*>(reg.clusters.data()), c_count * sizeof(Cluster));
+        }
+
+        // GPUClusters
+        uint32_t gc_count = 0;
+        in.read(reinterpret_cast<char*>(&gc_count), sizeof(gc_count));
+        reg.gpu_clusters.resize(gc_count);
+        if (gc_count > 0) {
+            in.read(reinterpret_cast<char*>(reg.gpu_clusters.data()), gc_count * sizeof(GPUCluster));
+        }
+
+        // Packed Vertices
+        uint32_t pv_count = 0;
+        in.read(reinterpret_cast<char*>(&pv_count), sizeof(pv_count));
+        reg.packed_vertices.resize(pv_count);
+        if (pv_count > 0) {
+            in.read(reinterpret_cast<char*>(reg.packed_vertices.data()), pv_count * sizeof(GPUPackedVertex));
+        }
+
+        // Packed Triangles
+        uint32_t pt_count = 0;
+        in.read(reinterpret_cast<char*>(&pt_count), sizeof(pt_count));
+        reg.packed_triangles.resize(pt_count);
+        if (pt_count > 0) {
+            in.read(reinterpret_cast<char*>(reg.packed_triangles.data()), pt_count * sizeof(uint32_t));
+        }
+
+        m_regions[reg.region_id] = std::move(reg);
+    }
+
+    // Replacements map
+    uint32_t map_count = 0;
+    in.read(reinterpret_cast<char*>(&map_count), sizeof(map_count));
+    for (uint32_t m = 0; m < map_count; ++m) {
+        uint32_t orig_c_id = 0, r_id = 0, l_idx = 0;
+        in.read(reinterpret_cast<char*>(&orig_c_id), sizeof(orig_c_id));
+        in.read(reinterpret_cast<char*>(&r_id), sizeof(r_id));
+        in.read(reinterpret_cast<char*>(&l_idx), sizeof(l_idx));
+        m_cluster_replacements[orig_c_id] = { r_id, l_idx };
+    }
+
+    mark_dirty(MUTABLE_DIRTY_GPU_SYNC | MUTABLE_DIRTY_PHYSICS | MUTABLE_DIRTY_BOUNDS);
+
+    if (base_mesh.is_valid()) {
+        build_physics_collision_mesh(base_mesh);
+    }
+
+    return in.good() || in.eof();
+}
+
 } // namespace Arboria
+

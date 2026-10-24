@@ -65,6 +65,13 @@ public:
     // Preparação de Patch de Atualização GPU (ETAPA 4)
     GPUMutableGeometryPatch prepare_gpu_geometry_patch(Handle instance_handle, uint32_t global_dynamic_vertex_base, uint32_t global_dynamic_triangle_base);
 
+    // Geração de Malha de Colisão Física (ETAPA 5)
+    MutablePhysicsMesh build_physics_collision_mesh(Handle instance_handle);
+
+    // Persistência Binária Versionada (.armut) (ETAPA 5)
+    bool save_mutable_overlay(Handle instance_handle, const std::string& filepath) const;
+    bool load_mutable_overlay(Handle instance_handle, const std::string& filepath);
+
     const InstanceRecord* get_instance(Handle instance_handle) const;
     size_t get_instance_count() const;
 
