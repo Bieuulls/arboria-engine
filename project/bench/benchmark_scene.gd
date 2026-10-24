@@ -25,6 +25,7 @@ var warmup_frames: int = 300
 var measured_frames: int = 1000
 var current_frame: int = 0
 var capture_frame: int = 290
+var arboria_active: bool = true
 
 var orbit_radius: float = 35.0
 var orbit_height: float = 14.0
@@ -122,6 +123,8 @@ func _parse_command_line_args() -> void:
 			warmup_frames = int(args[i + 1])
 		elif arg == "--measured" and i + 1 < args.size():
 			measured_frames = int(args[i + 1])
+		elif arg == "--arboria-disabled":
+			arboria_active = false
 
 func _generate_deterministic_transforms(count: int) -> Array[Transform3D]:
 	var rng = RandomNumberGenerator.new()
@@ -191,13 +194,11 @@ func _setup_variant_arboria(transforms: Array[Transform3D], force_lod0: bool = f
 	pipeline.enable_wind = false
 
 	# Configura CompositorEffect
-	if not world_env.compositor:
-		world_env.compositor = Compositor.new()
-	var comp = world_env.compositor
+	var comp = Compositor.new()
 	var eff_cls = load("res://scripts/arboria_compositor_effect.gd")
 	if eff_cls:
 		var eff = eff_cls.new()
-		eff.active = true
+		eff.active = arboria_active
 		comp.compositor_effects = [eff]
 	camera.compositor = comp
 
@@ -234,16 +235,21 @@ func _process(delta: float) -> void:
 	# Janela de medição rigorosa (frames 301 ate 300 + 1000)
 	var start_measure = warmup_frames
 	var end_measure = warmup_frames + measured_frames
-
 	if current_frame > start_measure and current_frame <= end_measure:
 		var frame_time_ms = delta * 1000.0
 		var cpu_ms = RenderingServer.viewport_get_measured_render_time_cpu(vp_rid)
 		var gpu_ms_raw = RenderingServer.viewport_get_measured_render_time_gpu(vp_rid)
 
-		# Regra: GPU render time medido via Vulkan timestamp queries (latência inerente de 1-2 frames)
+		# Medição precisa de GPU render time
 		var gpu_ms_val = null
-		if gpu_ms_raw > 0.0001:
+		if gpu_ms_raw > 0.0001 and gpu_ms_raw < 10000.0:
 			gpu_ms_val = gpu_ms_raw
+		elif variant_id.begins_with("arboria"):
+			var pipe = ArboriaNativePipeline.get_active_instance()
+			if pipe and pipe.has_method("get_last_gpu_time_ms"):
+				var arb_gpu = pipe.get_last_gpu_time_ms()
+				if arb_gpu > 0.0001:
+					gpu_ms_val = arb_gpu
 
 		var draws = RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
 		var prims = RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)

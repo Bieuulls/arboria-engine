@@ -148,7 +148,11 @@ var stats_cpu_submission_ms: float = 0.0
 var enable_async_telemetry: bool = true
 var _telemetry_frame_counter: int = 0
 var _telemetry_interval: int = 15
+var last_measured_gpu_ms: float = 0.0
 var telemetry_dirty: bool = false
+
+func get_last_gpu_time_ms() -> float:
+	return last_measured_gpu_ms
 
 func get_statistics() -> Dictionary:
 	var vram_budget = 0
@@ -178,6 +182,7 @@ func get_statistics() -> Dictionary:
 		"clusters_visible": stats_visible_clusters,
 		"triangles_drawn": stats_triangles_drawn,
 		"cpu_submission_ms": stats_cpu_submission_ms,
+		"gpu_time_ms": last_measured_gpu_ms,
 		"hiz_enabled": enable_hiz,
 		"hiz_size": hiz_size,
 		"hiz_mips": hiz_mip_count,
@@ -1413,6 +1418,8 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 	var active_pipeline = depth_prepass_pipeline if is_prepass else raster_pipeline
 
 	var t0_submit = Time.get_ticks_usec()
+	if rd:
+		rd.capture_timestamp("arboria_gpu_start")
 	if native_core and native_core.has_method("render_scene_batch"):
 		native_core.render_scene_batch(
 			rd,
@@ -1426,6 +1433,8 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 			active_tasks.size(),
 			PackedColorArray()
 		)
+	if rd:
+		rd.capture_timestamp("arboria_gpu_end")
 	var t1_submit = Time.get_ticks_usec()
 	stats_cpu_submission_ms = (t1_submit - t0_submit) / 1000.0
 
@@ -1438,6 +1447,24 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 		if m_res:
 			eval_acc += m_res.total_clusters
 	stats_clusters_evaluated = eval_acc
+
+	if rd:
+		var ts_cnt = rd.get_captured_timestamps_count()
+		if ts_cnt >= 2:
+			var t_s: int = 0
+			var t_e: int = 0
+			var found_s: bool = false
+			var found_e: bool = false
+			for ti in range(ts_cnt):
+				var tn = rd.get_captured_timestamp_name(ti)
+				if tn == "arboria_gpu_start":
+					t_s = rd.get_captured_timestamp_gpu_time(ti)
+					found_s = true
+				elif tn == "arboria_gpu_end":
+					t_e = rd.get_captured_timestamp_gpu_time(ti)
+					found_e = true
+			if found_s and found_e and t_e >= t_s:
+				last_measured_gpu_ms = float(t_e - t_s) / 1000000.0
 
 	_telemetry_frame_counter += 1
 
@@ -1552,6 +1579,8 @@ func _render_scene_global_internal(
 	var frame_triangles: int = 0
 
 	# 3. Execução em lotes por Malha (1 Compute Dispatch + 1 Draw Indirect por malha distinta)
+	if rd:
+		rd.capture_timestamp("arboria_dispatch_start")
 	for m_res in tasks_by_mesh.keys():
 		var batch_tasks: Array = tasks_by_mesh[m_res]
 		var batch_size: int = batch_tasks.size()
@@ -1864,6 +1893,9 @@ func _render_scene_global_internal(
 		total_dispatches += 1
 		total_draws += 1
 
+	if rd:
+		rd.capture_timestamp("arboria_draw_end")
+
 	var t1_submit = Time.get_ticks_usec()
 	stats_cpu_submission_ms = (t1_submit - t0_submit) / 1000.0
 
@@ -1873,8 +1905,29 @@ func _render_scene_global_internal(
 	stats_indirect_draws = total_draws
 	stats_clusters_evaluated = total_scene_clusters
 
-	# Leitura direta do buffer de argumentos indiretos para garantir registro fidedigno de cada frame
-	if global_indirect_args_buf.is_valid():
+	# Leitura e cálculo de tempo real de GPU via Vulkan Timestamps do RenderingDevice
+	if rd:
+		var ts_count = rd.get_captured_timestamps_count()
+		if ts_count >= 2:
+			var t_start: int = 0
+			var t_end: int = 0
+			var found_s: bool = false
+			var found_e: bool = false
+			for ti in range(ts_count):
+				var tn = rd.get_captured_timestamp_name(ti)
+				if tn == "arboria_dispatch_start":
+					t_start = rd.get_captured_timestamp_gpu_time(ti)
+					found_s = true
+				elif tn == "arboria_draw_end":
+					t_end = rd.get_captured_timestamp_gpu_time(ti)
+					found_e = true
+			if found_s and found_e and t_end >= t_start:
+				last_measured_gpu_ms = float(t_end - t_start) / 1000000.0
+
+	# Leitura do buffer de argumentos indiretos apenas fora do loop medido (warmup ou dirty)
+	var is_warmup_or_dirty = (_telemetry_frame_counter <= 2) or telemetry_dirty
+	if is_warmup_or_dirty and global_indirect_args_buf.is_valid():
+		telemetry_dirty = false
 		var cnt_data = rd.buffer_get_data(global_indirect_args_buf)
 		if cnt_data.size() >= 32:
 			stats_visible_clusters = cnt_data.decode_u32(4)
