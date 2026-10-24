@@ -101,17 +101,27 @@ $tools["VulkanSDK"] = @{
 }
 
 # RenderDoc
-$renderdocPath = "C:\Program Files\RenderDoc\qrenderdoc.exe"
-$renderdocInstalled = Test-Path $renderdocPath
+$renderdocCandidates = @("D:\instalacoes\RenderDoc\qrenderdoc.exe", "C:\Program Files\RenderDoc\qrenderdoc.exe")
+$renderdocPath = $renderdocCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 $tools["RenderDoc"] = @{
     Required = $true
-    Installed = $renderdocInstalled
-    Path = if ($renderdocInstalled) { $renderdocPath } else { "" }
-    Details = if ($renderdocInstalled) { "Pronto para captura de frames" } else { "Necessario baixar: https://renderdoc.org" }
+    Installed = [bool]$renderdocPath
+    Path = if ($renderdocPath) { $renderdocPath } else { "" }
+    Details = if ($renderdocPath) { "Pronto para captura de frames ($renderdocPath)" } else { "Necessario baixar: https://renderdoc.org" }
+}
+
+# Blender
+$blenderCandidates = @("D:\instalacoes\blander\blender.exe", "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe", "C:\Program Files\Blender Foundation\Blender 4.2\blender.exe")
+$blenderPath = $blenderCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+$tools["Blender"] = @{
+    Required = $false
+    Installed = [bool]$blenderPath
+    Path = if ($blenderPath) { $blenderPath } else { "" }
+    Details = if ($blenderPath) { "Blender 5.2 Detectado ($blenderPath)" } else { "Blender nao encontrado" }
 }
 
 # Nsight Graphics
-$nsightGraphics = Get-Item "C:\Program Files\NVIDIA Corporation\Nsight Graphics*\host\windows-desktop-nomad-x64\ngfx-ui.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+$nsightGraphics = Get-Item "C:\Program Files\NVIDIA Corporation\Nsight Graphics*\host\windows-desktop-nomad-x64\ngfx-ui.exe", "D:\instalacoes\Nsight Graphics*\host\windows-desktop-nomad-x64\ngfx-ui.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 $tools["NsightGraphics"] = @{
     Required = $true
     Installed = [bool]$nsightGraphics
@@ -120,7 +130,7 @@ $tools["NsightGraphics"] = @{
 }
 
 # Nsight Systems
-$nsightSystems = Get-Item "C:\Program Files\NVIDIA Corporation\Nsight Systems*\host-windows-x64\nsys-ui.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+$nsightSystems = Get-Item "C:\Program Files\NVIDIA Corporation\Nsight Systems*\host-windows-x64\nsys-ui.exe", "D:\instalacoes\Nsight Systems*\host-windows-x64\nsys-ui.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 $tools["NsightSystems"] = @{
     Required = $true
     Installed = [bool]$nsightSystems
@@ -128,18 +138,19 @@ $tools["NsightSystems"] = @{
     Details = if ($nsightSystems) { "Timeline CPU/GPU Ativo" } else { "Necessario baixar da NVIDIA Developer" }
 }
 
-# Visual Studio / MSVC C++
+# Visual Studio / MinGW C++
 $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
 $vsPath = ""
 if (Test-Path $vswhere) {
     $vsPath = & $vswhere -latest -property installationPath 2>$null
 }
+$mingwGpp = "D:\instalacoes\mingw64\bin\g++.exe"
 $cmakeCmd = Get-Command cmake -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
-$tools["VisualStudioCpp"] = @{
+$tools["CompiladorCpp"] = @{
     Required = $true
-    Installed = [bool]($vsPath -or $cmakeCmd)
-    Path = if ($vsPath) { $vsPath } else { $cmakeCmd }
-    Details = if ($vsPath) { "MSVC Visual Studio Detectado" } elseif ($cmakeCmd) { "CMake + MinGW C++ Detectado" } else { "Instalar ferramentas C++" }
+    Installed = [bool]($vsPath -or (Test-Path $mingwGpp) -or $cmakeCmd)
+    Path = if (Test-Path $mingwGpp) { $mingwGpp } elseif ($vsPath) { $vsPath } else { $cmakeCmd }
+    Details = if (Test-Path $mingwGpp) { "MinGW64 C++17 Detectado ($mingwGpp)" } elseif ($vsPath) { "MSVC Visual Studio Detectado" } else { "CMake C++ Detectado" }
 }
 
 # Python
@@ -152,12 +163,15 @@ $tools["Python"] = @{
 }
 
 # Git
-$gitCmd = Get-Command git -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
+$gitCmd = "D:\instalacoes\cmd\git.exe"
+if (-not (Test-Path $gitCmd)) {
+    $gitCmd = Get-Command git -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
+}
 $tools["Git"] = @{
     Required = $false
-    Installed = [bool]$gitCmd
+    Installed = [bool]($gitCmd -and (Test-Path $gitCmd))
     Path = $gitCmd
-    Details = if ($gitCmd) { "Git Ativo" } else { "Git nao encontrado" }
+    Details = if ($gitCmd -and (Test-Path $gitCmd)) { "Git Ativo ($gitCmd)" } else { "Git nao encontrado" }
 }
 
 foreach ($k in $tools.Keys) {
