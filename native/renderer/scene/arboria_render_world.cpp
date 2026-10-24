@@ -70,6 +70,14 @@ bool ArboriaRenderWorld::has_mutable_geometry(Handle instance_handle) const {
     return rec && rec->has_mutable_geometry();
 }
 
+uint32_t ArboriaRenderWorld::apply_depression(Handle instance_handle, const float center[3], float radius, float depth, bool subdivide) {
+    return ArboriaInstanceRegistry::instance().apply_depression(instance_handle, center, radius, depth, subdivide);
+}
+
+bool ArboriaRenderWorld::export_instance_to_obj(Handle instance_handle, const std::string& filepath) const {
+    return ArboriaInstanceRegistry::instance().export_instance_to_obj(instance_handle, filepath);
+}
+
 bool ArboriaRenderWorld::render_scene_global(
     const GPUDriverContext& ctx,
     const void* framebuffer,

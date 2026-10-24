@@ -55,6 +55,10 @@ public:
     std::shared_ptr<MutableGeometryOverlay> get_mutable_overlay(Handle instance_handle) const;
     bool remove_mutable_overlay(Handle instance_handle);
 
+    // Operações de Edição Localizada de Geometria (ETAPA 2)
+    uint32_t apply_depression(Handle instance_handle, const float center[3], float radius, float depth, bool subdivide = true);
+    bool export_instance_to_obj(Handle instance_handle, const std::string& filepath) const;
+
     const InstanceRecord* get_instance(Handle instance_handle) const;
     size_t get_instance_count() const;
 

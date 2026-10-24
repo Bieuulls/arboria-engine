@@ -11,6 +11,8 @@
 
 namespace Arboria {
 
+class VGMeshResource;
+
 enum MutableDirtyFlags : uint32_t {
     MUTABLE_DIRTY_NONE      = 0,
     MUTABLE_DIRTY_GEOMETRY  = 1 << 0, // Vértices/índices foram alterados
@@ -103,6 +105,22 @@ public:
         float out_center[3], float& out_radius,
         float out_min[3], float out_max[3]
     ) const;
+
+    // Operação Geométrica: Esculpir depressão localizada (ETAPA 2)
+    // Retorna a contagem de clusters modificados/substituídos nesta operação
+    uint32_t apply_depression(
+        const VGMeshResource& base_mesh,
+        const float center[3],
+        float radius,
+        float depth,
+        bool subdivide = true
+    );
+
+    // Exporta a geometria combinada final (base compartilhada + overlay modificado) para formato Wavefront OBJ
+    bool export_to_obj(const VGMeshResource& base_mesh, const std::string& filepath) const;
+
+    // Retorna contagens combinadas de vértices e triângulos no LOD 0
+    void get_combined_lod0_stats(const VGMeshResource& base_mesh, size_t& out_vertices, size_t& out_triangles) const;
 
     const std::unordered_map<uint32_t, MutableRegion>& get_regions() const { return m_regions; }
 

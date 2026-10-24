@@ -35,6 +35,8 @@ public:
     std::shared_ptr<MutableGeometryOverlay> get_mutable_overlay(Handle instance_handle) const;
     bool remove_mutable_overlay(Handle instance_handle);
     bool has_mutable_geometry(Handle instance_handle) const;
+    uint32_t apply_depression(Handle instance_handle, const float center[3], float radius, float depth, bool subdivide = true);
+    bool export_instance_to_obj(Handle instance_handle, const std::string& filepath) const;
 
     // Renderização Agrupada Global
     bool render_scene_global(

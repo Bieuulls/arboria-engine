@@ -18,6 +18,8 @@
 #include "../core/arboria_mutable_geometry.h"
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <cassert>
 #include <cmath>
 
@@ -535,6 +537,94 @@ int main(int argc, char** argv) {
         Arboria::ArboriaRenderWorld::instance().release_instance(inst_a);
         Arboria::ArboriaRenderWorld::instance().release_instance(inst_b);
         std::cout << "[TESTE 22] Geometria Mutavel (Copy-On-Write Overlay) e Isolamento de Instancias - OK" << std::endl;
+    }
+
+    // TESTE 23: Primeira Modificação Topológica Real (Esculpir Depressão e Exportação/Importação OBJ - GATE 2)
+    {
+        Arboria::Handle h_mesh(mesh_id, 1);
+        Arboria::Handle inst_rock_a = Arboria::ArboriaRenderWorld::instance().register_instance(h_mesh, 0);
+        Arboria::Handle inst_rock_b = Arboria::ArboriaRenderWorld::instance().register_instance(h_mesh, 0);
+        assert(inst_rock_a.is_valid());
+        assert(inst_rock_b.is_valid());
+
+        const auto* mesh_info = Arboria::ArboriaMeshRegistry::instance().get_mesh_info(h_mesh);
+        assert(mesh_info && mesh_info->resource);
+        const auto& base_resource = *mesh_info->resource;
+
+        // 1. Estatísticas originais do asset compartilhado no LOD 0
+        auto overlay_b = Arboria::ArboriaRenderWorld::instance().get_or_create_mutable_overlay(inst_rock_b);
+        assert(overlay_b != nullptr);
+
+        size_t initial_verts = 0, initial_tris = 0;
+        overlay_b->get_combined_lod0_stats(base_resource, initial_verts, initial_tris);
+        assert(initial_verts > 0);
+        assert(initial_tris > 0);
+
+        // 2. Operação geométrica real: Esculpir depressão localizada
+        // Centro exatamente sobre a superfície da rocha
+        const auto& first_c = base_resource.get_clusters()[0];
+        const auto& first_v = base_resource.get_vertices()[first_c.vertex_offset];
+        float sculpt_center[3] = { first_v.position[0], first_v.position[1], first_v.position[2] };
+        float sculpt_radius = 0.5f;
+        float sculpt_depth = 0.15f;
+
+        uint32_t affected_clusters = Arboria::ArboriaRenderWorld::instance().apply_depression(
+            inst_rock_b, sculpt_center, sculpt_radius, sculpt_depth, true
+        );
+        assert(affected_clusters > 0);
+        std::cout << "  -> Clusters afetados e reconstruidos localmente: " << affected_clusters << std::endl;
+
+        // 3. Comprovação de alteração topológica real (não apenas shader ou deslocamento puro)
+        size_t modified_verts = 0, modified_tris = 0;
+        overlay_b->get_combined_lod0_stats(base_resource, modified_verts, modified_tris);
+        assert(modified_verts > initial_verts); // Topologia alterada via remalhamento/subdivisão localizada
+        assert(modified_tris > initial_tris);   // Novos triângulos e faces criados
+        std::cout << "  -> Vertices LOD 0: " << initial_verts << " -> " << modified_verts << " (+" << (modified_verts - initial_verts) << ")" << std::endl;
+        std::cout << "  -> Triangulos LOD 0: " << initial_tris << " -> " << modified_tris << " (+" << (modified_tris - initial_tris) << ")" << std::endl;
+
+        // 4. Verificação de normais recalculadas e finitas
+        for (const auto& pair : overlay_b->get_regions()) {
+            const auto& reg = pair.second;
+            for (const auto& v : reg.vertices) {
+                assert(!std::isnan(v.normal[0]) && !std::isnan(v.normal[1]) && !std::isnan(v.normal[2]));
+                assert(!std::isinf(v.normal[0]) && !std::isinf(v.normal[1]) && !std::isinf(v.normal[2]));
+                float len = std::sqrt(v.normal[0]*v.normal[0] + v.normal[1]*v.normal[1] + v.normal[2]*v.normal[2]);
+                assert(std::abs(len - 1.0f) < 0.01f);
+            }
+        }
+
+        // 5. Isolamento de instância: Rocha A permanece 100% inalterada
+        assert(!Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(inst_rock_a));
+        assert(Arboria::ArboriaRenderWorld::instance().get_mutable_overlay(inst_rock_a) == nullptr);
+
+        // 6. Exportação para arquivo Wavefront OBJ em disco
+        std::string obj_export_path = "artifacts/gates/stage_02/modified_rock.obj";
+        assert(Arboria::ArboriaRenderWorld::instance().export_instance_to_obj(inst_rock_b, obj_export_path));
+
+        // 7. Releitura e validação independente da malha exportada (comprovando que não depende de shader)
+        std::ifstream obj_file(obj_export_path);
+        assert(obj_file.is_open());
+
+        size_t parsed_v_count = 0;
+        size_t parsed_vn_count = 0;
+        size_t parsed_f_count = 0;
+        std::string line;
+        while (std::getline(obj_file, line)) {
+            if (line.rfind("v ", 0) == 0) parsed_v_count++;
+            else if (line.rfind("vn ", 0) == 0) parsed_vn_count++;
+            else if (line.rfind("f ", 0) == 0) parsed_f_count++;
+        }
+        obj_file.close();
+
+        assert(parsed_v_count == modified_verts);
+        assert(parsed_vn_count == modified_verts);
+        assert(parsed_f_count == modified_tris);
+        std::cout << "  -> OBJ exportado e reimportado com sucesso: " << parsed_v_count << " vertices, " << parsed_f_count << " faces - OK" << std::endl;
+
+        // 8. Limpeza
+        Arboria::ArboriaRenderWorld::instance().release_instance(inst_rock_a);
+        Arboria::ArboriaRenderWorld::instance().release_instance(inst_rock_b);
+        std::cout << "[TESTE 23] Primeira Modificacao Topologica Real (Escultura & Export/Import OBJ) - OK" << std::endl;
     }
 
     // TESTE 16: Limpeza e Finalização do ArboriaRenderWorld

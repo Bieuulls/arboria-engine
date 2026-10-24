@@ -114,6 +114,56 @@ bool ArboriaInstanceRegistry::remove_mutable_overlay(Handle instance_handle) {
     return true;
 }
 
+uint32_t ArboriaInstanceRegistry::apply_depression(Handle instance_handle, const float center[3], float radius, float depth, bool subdivide) {
+    std::shared_ptr<MutableGeometryOverlay> overlay;
+    Handle mesh_h;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (!rec) return 0;
+        if (!rec->mutable_overlay) {
+            rec->mutable_overlay = std::make_shared<MutableGeometryOverlay>(instance_handle.index, rec->mesh_handle.index);
+        }
+        overlay = rec->mutable_overlay;
+        mesh_h = rec->mesh_handle;
+    }
+
+    const RegisteredMeshInfo* mesh_info = ArboriaMeshRegistry::instance().get_mesh_info(mesh_h);
+    if (!mesh_info || !mesh_info->resource) return 0;
+
+    uint32_t modified = overlay->apply_depression(*mesh_info->resource, center, radius, depth, subdivide);
+    if (modified > 0) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (rec) {
+            rec->geometry_version = overlay->get_geometry_version();
+        }
+    }
+    return modified;
+}
+
+bool ArboriaInstanceRegistry::export_instance_to_obj(Handle instance_handle, const std::string& filepath) const {
+    std::shared_ptr<MutableGeometryOverlay> overlay;
+    Handle mesh_h;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (!rec) return false;
+        overlay = rec->mutable_overlay;
+        mesh_h = rec->mesh_handle;
+    }
+
+    const RegisteredMeshInfo* mesh_info = ArboriaMeshRegistry::instance().get_mesh_info(mesh_h);
+    if (!mesh_info || !mesh_info->resource) return false;
+
+    if (overlay) {
+        return overlay->export_to_obj(*mesh_info->resource, filepath);
+    } else {
+        MutableGeometryOverlay temp_overlay(instance_handle.index, mesh_h.index);
+        return temp_overlay.export_to_obj(*mesh_info->resource, filepath);
+    }
+}
+
 void ArboriaInstanceRegistry::clear() {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_instance_pool.clear();
