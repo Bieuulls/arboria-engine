@@ -19,8 +19,8 @@ class_name PlayerController3D
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
-@onready var spring_arm: SpringArm3D = $SpringArm3D
-@onready var visual_mesh: Node3D = $VisualMesh
+@onready var spring_arm: SpringArm3D = get_node_or_null("SpringArm3D")
+@onready var visual_mesh: Node3D = get_node_or_null("VisualMesh")
 
 func _ready() -> void:
 	_setup_input_actions()

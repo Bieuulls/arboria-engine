@@ -5,8 +5,8 @@ extends RigidBody3D
 ## Corpo rígido dinâmico com simulação física no Jolt e renderização virtualizada no Arboria Engine.
 ## As transformações físicas sincronizam automaticamente com a GPU Scene a cada physics tick.
 
-const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
-const ArboriaMeshLoader = preload("res://scripts/arboria_mesh_loader.gd")
+const ArboriaInstance3D = preload("arboria_instance_3d.gd")
+const ArboriaMeshLoader = preload("../core/arboria_mesh_loader.gd")
 
 @export_file("*.vgmesh") var mesh_path: String = "res://assets/dense_rock_test.vgmesh":
 	set(val):

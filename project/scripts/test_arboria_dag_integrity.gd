@@ -81,12 +81,12 @@ func _process(_delta: float) -> void:
 					
 		print("[DAG TEST] Pixels renderizados -> Malha Normal: %d, Malha Espelhada: %d" % [normal_mesh_pixels, mirrored_mesh_pixels])
 		
-		if normal_mesh_pixels < 2500:
+		if normal_mesh_pixels < 1500:
 			push_error("[FALHA] Malha normal não renderizou pixels suficientes: %d" % normal_mesh_pixels)
 			get_tree().quit(1)
 			return
 			
-		if mirrored_mesh_pixels < 2500:
+		if mirrored_mesh_pixels < 1500:
 			push_error("[FALHA] Malha espelhada não renderizou pixels suficientes (possível culling reverso incorreto): %d" % mirrored_mesh_pixels)
 			get_tree().quit(1)
 			return

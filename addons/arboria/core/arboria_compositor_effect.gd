@@ -6,7 +6,7 @@ extends CompositorEffect
 ## Conecta a renderização nativa de geometria virtualizada às passagens Forward+ do Godot,
 ## suportando Depth Prepass com Reversed-Z, Motion Vectors, Normais/Roughness e Renderização Opaca Principal.
 
-const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
+const ArboriaNativePipeline = preload("arboria_native_pipeline.gd")
 
 @export_enum("PreOpaque_DepthPrepass", "PostOpaque_MainRaster") var stage: int = 1:
 	set(val):
@@ -56,9 +56,8 @@ static func attach_to_environment(target: Variant) -> void:
 		comp = target
 
 	if comp:
-		var script_cls = load("res://scripts/arboria_compositor_effect.gd") as GDScript
-		var pre_eff = script_cls.new(CompositorEffect.EFFECT_CALLBACK_TYPE_PRE_OPAQUE)
-		var post_eff = script_cls.new(CompositorEffect.EFFECT_CALLBACK_TYPE_POST_OPAQUE)
+		var pre_eff = ArboriaCompositorEffect.new(CompositorEffect.EFFECT_CALLBACK_TYPE_PRE_OPAQUE)
+		var post_eff = ArboriaCompositorEffect.new(CompositorEffect.EFFECT_CALLBACK_TYPE_POST_OPAQUE)
 		comp.compositor_effects = [pre_eff, post_eff]
 		print("[ArboriaCompositorEffect] Integracao Forward+ completa ativada (Depth Prepass + Main Opaque).")
 

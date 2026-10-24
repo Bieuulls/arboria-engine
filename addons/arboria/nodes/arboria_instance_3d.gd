@@ -6,7 +6,7 @@ extends VisualInstance3D
 ## Permite instanciar malhas virtuais (.vgmesh) na cena 3D do Godot com LOD Nanite DAG,
 ## GPU Culling e desenho indireto nativo no Forward+.
 
-const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
+const ArboriaNativePipeline = preload("../core/arboria_native_pipeline.gd")
 
 signal mesh_loaded(path: String)
 signal transform_updated()

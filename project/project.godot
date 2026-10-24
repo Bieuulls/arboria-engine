@@ -1,3 +1,11 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
 config_version=5
 
 [application]
@@ -12,20 +20,12 @@ config/icon="res://icon.svg"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/size/resizable=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-
-[rendering]
-
-renderer/rendering_method="forward_plus"
 
 [physics]
 
 3d/physics_engine="Jolt Physics"
-jolt_physics_3d/simulation/velocity_steps=10
-jolt_physics_3d/simulation/position_steps=2
-jolt_physics_3d/simulation/allow_sleep=true
 jolt_physics_3d/sleep/linear_threshold=0.1
 jolt_physics_3d/sleep/angular_threshold=0.1
 jolt_physics_3d/sleep/time_threshold=0.4

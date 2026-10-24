@@ -5,7 +5,7 @@ extends RefCounted
 ## Pipeline Vulkan com separação estrita de Compute/Raster, sincronização de buffers indiretos,
 ## suporte multi-instâncias isoladas em VRAM, eliminação de transformação duplicada e Reversed-Z Depth.
 
-const ArboriaMeshLoader = preload("res://scripts/arboria_mesh_loader.gd")
+const ArboriaMeshLoader = preload("arboria_mesh_loader.gd")
 
 static var _shared_instance = null
 
@@ -194,8 +194,7 @@ static func get_active_instance() -> RefCounted:
 
 static func get_or_create_shared() -> RefCounted:
 	if not _shared_instance:
-		var script_cls = load("res://scripts/arboria_native_pipeline.gd") as GDScript
-		_shared_instance = script_cls.new()
+		_shared_instance = ArboriaNativePipeline.new()
 	return _shared_instance
 
 func request_telemetry_read() -> void:
@@ -299,10 +298,18 @@ func _setup_shaders() -> void:
 	_compile_hiz_shader()
 	_compile_global_shaders()
 
+static func find_shader_file(shader_filename: String) -> String:
+	for base_path in ["res://addons/arboria/shaders/", "res://shaders/"]:
+		var candidate = base_path + shader_filename
+		if FileAccess.file_exists(candidate):
+			return candidate
+	return "res://shaders/" + shader_filename
+
 func _compile_hiz_shader() -> void:
-	var f = FileAccess.open("res://shaders/hiz_downsample.glsl", FileAccess.READ)
+	var path = find_shader_file("hiz_downsample.glsl")
+	var f = FileAccess.open(path, FileAccess.READ)
 	if not f:
-		push_error("[ArboriaNativePipeline] Falha ao abrir res://shaders/hiz_downsample.glsl")
+		push_error("[ArboriaNativePipeline] Falha ao abrir: " + path)
 		return
 	var glsl_code = f.get_as_text()
 	f.close()
@@ -503,9 +510,10 @@ func _build_hiz_pyramid(depth_tex: RID, vp_size: Vector2i) -> void:
 		rd.texture_copy(hiz_scratch_texture, hiz_texture, Vector3.ZERO, Vector3.ZERO, Vector3(dst_w, dst_h, 1), 0, m, 0, 0)
 
 func _compile_compute_shader() -> void:
-	var f = FileAccess.open("res://shaders/cull_clusters.glsl", FileAccess.READ)
+	var path = find_shader_file("cull_clusters.glsl")
+	var f = FileAccess.open(path, FileAccess.READ)
 	if not f:
-		push_error("[ArboriaNativePipeline] Falha ao abrir res://shaders/cull_clusters.glsl")
+		push_error("[ArboriaNativePipeline] Falha ao abrir: " + path)
 		return
 	var glsl_code = f.get_as_text()
 	f.close()
@@ -524,7 +532,8 @@ func _compile_compute_shader() -> void:
 	compute_pipeline = rd.compute_pipeline_create(compute_shader_rid)
 
 func _compile_raster_shader() -> void:
-	var f = FileAccess.open("res://shaders/arboria_forward_raster.glsl", FileAccess.READ)
+	var path = find_shader_file("arboria_forward_raster.glsl")
+	var f = FileAccess.open(path, FileAccess.READ)
 	var full_text = ""
 	if f:
 		full_text = f.get_as_text()
@@ -538,7 +547,7 @@ func _compile_raster_shader() -> void:
 		vs_code = full_text.substr(v_start, f_start - v_start).strip_edges()
 		fs_code = full_text.substr(f_start + 11).strip_edges()
 	else:
-		push_error("[ArboriaNativePipeline] Falha ao ler secoes do arboria_forward_raster.glsl")
+		push_error("[ArboriaNativePipeline] Falha ao ler secoes do " + path)
 		return
 
 	var src = RDShaderSource.new()
@@ -555,7 +564,8 @@ func _compile_global_shaders() -> void:
 	if not rd: return
 
 	# 1. Compute Shader Global (cull_clusters_global.glsl)
-	var f_c = FileAccess.open("res://shaders/cull_clusters_global.glsl", FileAccess.READ)
+	var path_c = find_shader_file("cull_clusters_global.glsl")
+	var f_c = FileAccess.open(path_c, FileAccess.READ)
 	if f_c:
 		var c_code = f_c.get_as_text()
 		f_c.close()
@@ -574,7 +584,8 @@ func _compile_global_shaders() -> void:
 				print("[ArboriaNativePipeline] Compute Global Pipeline compilado com sucesso.")
 
 	# 2. Raster Shader Global (arboria_forward_raster_global.glsl)
-	var f_r = FileAccess.open("res://shaders/arboria_forward_raster_global.glsl", FileAccess.READ)
+	var path_r = find_shader_file("arboria_forward_raster_global.glsl")
+	var f_r = FileAccess.open(path_r, FileAccess.READ)
 	if f_r:
 		var r_code = f_r.get_as_text()
 		f_r.close()

@@ -5,8 +5,8 @@ extends StaticBody3D
 ## Corpo físico estático para terreno e obstáculos do Arboria Engine no Jolt.
 ## Utiliza colisor côncavo (trimesh perfeito do LOD 0), convexo ou caixa.
 
-const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
-const ArboriaMeshLoader = preload("res://scripts/arboria_mesh_loader.gd")
+const ArboriaInstance3D = preload("arboria_instance_3d.gd")
+const ArboriaMeshLoader = preload("../core/arboria_mesh_loader.gd")
 
 @export_file("*.vgmesh") var mesh_path: String = "res://assets/dense_rock_test.vgmesh":
 	set(val):
