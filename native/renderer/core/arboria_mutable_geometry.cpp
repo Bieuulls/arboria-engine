@@ -804,4 +804,50 @@ DAGReconstructionStats MutableGeometryOverlay::rebuild_dag_incremental(const VGM
     return stats;
 }
 
+GPUMutableGeometryPatch MutableGeometryOverlay::prepare_gpu_geometry_patch(
+    uint32_t global_dynamic_vertex_base,
+    uint32_t global_dynamic_triangle_base
+) {
+    GPUMutableGeometryPatch patch{};
+    patch.instance_id = m_instance_id;
+    patch.geometry_version = m_geometry_version;
+    patch.dynamic_vertex_offset = global_dynamic_vertex_base;
+    patch.dynamic_triangle_offset = global_dynamic_triangle_base;
+
+    uint32_t curr_v_offset = global_dynamic_vertex_base;
+    uint32_t curr_t_offset = global_dynamic_triangle_base;
+
+    for (auto& pair : m_regions) {
+        MutableRegion& reg = pair.second;
+        if (reg.vertices.empty()) continue;
+
+        uint32_t reg_v_base = curr_v_offset;
+        uint32_t reg_t_base = curr_t_offset;
+
+        // Anexa vértices empacotados ao patch
+        patch.dynamic_vertices.insert(patch.dynamic_vertices.end(), reg.packed_vertices.begin(), reg.packed_vertices.end());
+        curr_v_offset += static_cast<uint32_t>(reg.packed_vertices.size());
+
+        // Anexa palavras de triângulos empacotados ao patch
+        patch.dynamic_triangles.insert(patch.dynamic_triangles.end(), reg.packed_triangles.begin(), reg.packed_triangles.end());
+        curr_t_offset += static_cast<uint32_t>(reg.packed_triangles.size() * 4); // bytes
+
+        // Atualiza os data_offsets dos GPUClusters desta região para apontar para o novo espaço dinâmico válido
+        for (auto& gc : reg.gpu_clusters) {
+            gc.data_offsets[0] = reg_v_base;
+            gc.data_offsets[2] = reg_t_base;
+            patch.updated_gpu_clusters.push_back(gc);
+            patch.modified_cluster_count++;
+        }
+
+        reg.residency_state = MUTABLE_RESIDENCY_RESIDENT;
+    }
+
+    patch.dynamic_vertex_count = static_cast<uint32_t>(patch.dynamic_vertices.size());
+    patch.dynamic_triangle_count = static_cast<uint32_t>(patch.dynamic_triangles.size());
+
+    clear_dirty(MUTABLE_DIRTY_GPU_SYNC);
+    return patch;
+}
+
 } // namespace Arboria

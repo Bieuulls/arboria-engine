@@ -82,6 +82,18 @@ DAGReconstructionStats ArboriaRenderWorld::rebuild_dag_incremental(Handle instan
     return ArboriaInstanceRegistry::instance().rebuild_dag_incremental(instance_handle);
 }
 
+GPUMutableGeometryPatch ArboriaRenderWorld::prepare_gpu_geometry_patch(
+    Handle instance_handle,
+    uint32_t global_dynamic_vertex_base,
+    uint32_t global_dynamic_triangle_base
+) {
+    return ArboriaInstanceRegistry::instance().prepare_gpu_geometry_patch(
+        instance_handle,
+        global_dynamic_vertex_base,
+        global_dynamic_triangle_base
+    );
+}
+
 bool ArboriaRenderWorld::render_scene_global(
     const GPUDriverContext& ctx,
     const void* framebuffer,

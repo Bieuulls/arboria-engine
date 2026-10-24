@@ -62,6 +62,9 @@ public:
     // Reconstrução Incremental do DAG (ETAPA 3)
     DAGReconstructionStats rebuild_dag_incremental(Handle instance_handle);
 
+    // Preparação de Patch de Atualização GPU (ETAPA 4)
+    GPUMutableGeometryPatch prepare_gpu_geometry_patch(Handle instance_handle, uint32_t global_dynamic_vertex_base, uint32_t global_dynamic_triangle_base);
+
     const InstanceRecord* get_instance(Handle instance_handle) const;
     size_t get_instance_count() const;
 

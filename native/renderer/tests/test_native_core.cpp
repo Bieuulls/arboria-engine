@@ -692,6 +692,72 @@ int main(int argc, char** argv) {
         std::cout << "[TESTE 24] Reconstrucao Incremental do DAG (GATE 3) - OK" << std::endl;
     }
 
+    // TESTE 25: Integração Completa ao GPU Scene e Sub-Alocação Parcial (GATE 4)
+    {
+        Arboria::Handle h_mesh(mesh_id, 1);
+        Arboria::Handle inst_1 = Arboria::ArboriaRenderWorld::instance().register_instance(h_mesh, 0);
+        Arboria::Handle inst_2 = Arboria::ArboriaRenderWorld::instance().register_instance(h_mesh, 0);
+        assert(inst_1.is_valid() && inst_2.is_valid());
+
+        const auto* mesh_info = Arboria::ArboriaMeshRegistry::instance().get_mesh_info(h_mesh);
+        assert(mesh_info && mesh_info->resource);
+        const auto& base_resource = *mesh_info->resource;
+
+        // 1. Modifica a Instância 2
+        const auto& first_c = base_resource.get_clusters()[0];
+        const auto& first_v = base_resource.get_vertices()[first_c.vertex_offset];
+        float center[3] = { first_v.position[0], first_v.position[1], first_v.position[2] };
+        uint32_t affected = Arboria::ArboriaRenderWorld::instance().apply_depression(inst_2, center, 0.5f, 0.15f, true);
+        assert(affected > 0);
+        Arboria::ArboriaRenderWorld::instance().rebuild_dag_incremental(inst_2);
+
+        // 2. Prepara patch de relocação e sub-alocação parcial para GPU
+        uint32_t dynamic_v_base = 50000;
+        uint32_t dynamic_t_base = 200000;
+        Arboria::GPUMutableGeometryPatch patch = Arboria::ArboriaRenderWorld::instance().prepare_gpu_geometry_patch(
+            inst_2, dynamic_v_base, dynamic_t_base
+        );
+
+        // 3. Validação estrita do patch de GPU
+        assert(patch.instance_id == inst_2.index);
+        assert(patch.geometry_version > 0);
+        assert(patch.modified_cluster_count > 0);
+        assert(patch.dynamic_vertex_count > 0);
+        assert(patch.dynamic_triangle_count > 0);
+        assert(patch.updated_gpu_clusters.size() == patch.modified_cluster_count);
+
+        // 4. Garante que nenhum cluster acessa offsets antigos ou inválidos
+        for (const auto& gc : patch.updated_gpu_clusters) {
+            assert(gc.data_offsets[0] >= dynamic_v_base); // Offset de vértices estritamente no espaço dinâmico válido
+            assert(gc.data_offsets[1] <= 255);            // Contagem de vértices dentro do limite seguro
+            assert(gc.data_offsets[2] >= dynamic_t_base); // Offset de triângulos no espaço dinâmico válido
+            assert(gc.data_offsets[3] <= 128);            // Contagem de triângulos dentro do limite do Indirect Draw
+        }
+
+        // 5. Culling e Indirect Draw unificados em lote global (sem submissão individual por objeto)
+        float view_proj[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+        float cam_pos[3] = { 0.0f, 0.0f, 4.0f };
+        Arboria::GlobalSceneUniforms uniforms = Arboria::ArboriaGPUScene::instance().build_scene_uniforms(
+            view_proj, cam_pos, 1.0f, 1920.0f, 1080.0f, 1.5f, 0, true, true
+        );
+        Arboria::SceneCullResult cull_res = Arboria::ArboriaGPUScene::instance().simulate_cull_scene(uniforms);
+        assert(cull_res.visible_instances >= 2);
+        assert(cull_res.visible_clusters > 0);
+        assert(cull_res.total_triangles_drawn > 0);
+        assert(!cull_res.has_overflow);
+
+        std::cout << "  -> GPU Scene Unificado:" << std::endl;
+        std::cout << "     * Instâncias avaliadas no lote único: " << cull_res.visible_instances << std::endl;
+        std::cout << "     * Clusters visíveis selecionados: " << cull_res.visible_clusters << std::endl;
+        std::cout << "     * Triângulos submetidos via Indirect Draw: " << cull_res.total_triangles_drawn << std::endl;
+        std::cout << "     * VRAM dinâmica alocada: " << (patch.dynamic_vertex_count * sizeof(Arboria::GPUPackedVertex) + patch.dynamic_triangle_count * sizeof(uint32_t)) << " bytes" << std::endl;
+
+        // 6. Limpeza
+        Arboria::ArboriaRenderWorld::instance().release_instance(inst_1);
+        Arboria::ArboriaRenderWorld::instance().release_instance(inst_2);
+        std::cout << "[TESTE 25] Integracao Completa ao GPU Scene e Sub-Alocacao Parcial (GATE 4) - OK" << std::endl;
+    }
+
     // TESTE 16: Limpeza e Finalização do ArboriaRenderWorld
     Arboria::ArboriaRenderWorld::instance().shutdown();
     assert(!Arboria::ArboriaRenderWorld::instance().is_initialized());

@@ -40,6 +40,20 @@ struct DAGReconstructionStats {
     bool fallback_triggered = false;
 };
 
+// Patch de atualização parcial de geometria para o GPU Scene (ETAPA 4)
+struct GPUMutableGeometryPatch {
+    uint32_t instance_id = 0;
+    uint32_t geometry_version = 0;
+    uint32_t modified_cluster_count = 0;
+    uint32_t dynamic_vertex_offset = 0;
+    uint32_t dynamic_vertex_count = 0;
+    uint32_t dynamic_triangle_offset = 0;
+    uint32_t dynamic_triangle_count = 0;
+    std::vector<GPUCluster> updated_gpu_clusters;
+    std::vector<GPUPackedVertex> dynamic_vertices;
+    std::vector<uint32_t> dynamic_triangles;
+};
+
 // Registro de uma região específica modificada na malha
 struct MutableRegion {
     uint32_t region_id = 0;
@@ -137,6 +151,10 @@ public:
     // Reconstrução Incremental do DAG (ETAPA 3)
     // Propaga modificações locais para os grupos hierárquicos do DAG mantendo continuidade topológica
     DAGReconstructionStats rebuild_dag_incremental(const VGMeshResource& base_mesh);
+
+    // Preparação de Patch de Atualização GPU (ETAPA 4)
+    // Reloca offsets de vértices/triângulos no espaço dinâmico de SSBO e monta patch para upload
+    GPUMutableGeometryPatch prepare_gpu_geometry_patch(uint32_t global_dynamic_vertex_base, uint32_t global_dynamic_triangle_base);
 
     const std::unordered_map<uint32_t, MutableRegion>& get_regions() const { return m_regions; }
 

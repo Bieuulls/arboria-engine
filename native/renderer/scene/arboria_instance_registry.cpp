@@ -181,6 +181,21 @@ DAGReconstructionStats ArboriaInstanceRegistry::rebuild_dag_incremental(Handle i
     return overlay->rebuild_dag_incremental(*mesh_info->resource);
 }
 
+GPUMutableGeometryPatch ArboriaInstanceRegistry::prepare_gpu_geometry_patch(
+    Handle instance_handle,
+    uint32_t global_dynamic_vertex_base,
+    uint32_t global_dynamic_triangle_base
+) {
+    std::shared_ptr<MutableGeometryOverlay> overlay;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (!rec || !rec->mutable_overlay) return GPUMutableGeometryPatch{};
+        overlay = rec->mutable_overlay;
+    }
+    return overlay->prepare_gpu_geometry_patch(global_dynamic_vertex_base, global_dynamic_triangle_base);
+}
+
 void ArboriaInstanceRegistry::clear() {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_instance_pool.clear();
