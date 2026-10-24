@@ -202,6 +202,15 @@ static void call_update_camera(void *method_userdata, GDExtensionClassInstancePt
 
 // 8. render_frame(...) -> Dictionary
 static void call_render_frame(void *method_userdata, GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argument_count, GDExtensionVariantPtr r_return, GDExtensionCallError *r_error) {
+    static bool s_logged = false;
+    if (!s_logged) {
+        s_logged = true;
+        std::cout << "[Arboria C++ render_frame] Caminho C++ acionado: CompositorEffect ativo, Instancias RenderWorld = "
+                  << Arboria::ArboriaRenderWorld::instance().get_active_instance_count()
+                  << ", Malhas = " << Arboria::ArboriaRenderWorld::instance().get_registered_mesh_count()
+                  << ", Instancias SceneBridge = " << Arboria::VGSceneBridge::instance().get_instance_count()
+                  << std::endl;
+    }
     Arboria::Dictionary d;
     d.set("status", "OK");
     d.set("active_instances", static_cast<int64_t>(Arboria::VGSceneBridge::instance().get_instance_count()));

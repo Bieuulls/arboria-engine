@@ -1147,9 +1147,17 @@ func extract_frustum_planes(m: Projection) -> Array[Plane]:
 func render_depth_prepass(p_render_data: RenderData) -> void:
 	_render_scene_instances_internal(p_render_data, true)
 
+var _diag_log_executed: bool = false
+
+## Ponto de entrada oficial chamado pelo CompositorEffect no estágio POST_OPAQUE
+func render_frame(p_render_data: RenderData) -> void:
+	if native_core and native_core.has_method("render_frame"):
+		native_core.render_frame()
+	_render_scene_instances_internal(p_render_data, false)
+
 ## Ponto de entrada chamado pelo CompositorEffect no estágio POST_OPAQUE (Renderização Principal e Sombras)
 func render_scene_instances(p_render_data: RenderData) -> void:
-	_render_scene_instances_internal(p_render_data, false)
+	render_frame(p_render_data)
 
 func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: bool) -> void:
 	if not is_initialized or _registered_instances.is_empty():
@@ -1864,17 +1872,25 @@ func _render_scene_global_internal(
 	stats_indirect_draws = total_draws
 	stats_clusters_evaluated = total_scene_clusters
 
-	# Leitura síncrona SOMENTE quando explicitamente solicitada (telemetry_dirty == true)
-	if telemetry_dirty and global_indirect_args_buf.is_valid():
-		telemetry_dirty = false
+	# Leitura direta do buffer de argumentos indiretos para garantir registro fidedigno de cada frame
+	if global_indirect_args_buf.is_valid():
 		var cnt_data = rd.buffer_get_data(global_indirect_args_buf)
 		if cnt_data.size() >= 32:
 			stats_visible_clusters = cnt_data.decode_u32(4)
 			stats_triangles_drawn = cnt_data.decode_u32(16)
-			if _telemetry_frame_counter % 60 == 0:
-				print("[ARBORIA GPU SCENE MULTIMALHA] Instâncias: %d, Malhas: %d, Clusters: %d, Triângulos: %d, Dispatches: %d, Draws: %d, CPU Submit: %.3f ms" % [
-					stats_total_instances, tasks_by_mesh.size(), stats_visible_clusters, stats_triangles_drawn, stats_dispatches, stats_indirect_draws, stats_cpu_submission_ms
+			if not _diag_log_executed and not is_prepass:
+				_diag_log_executed = true
+				print("================================================================================")
+				print("[ARBORIA DIAG ETAPA 1] Log Unico no inicio de render_frame:")
+				print("  1. Compositor Effect ativo       : SIM (Post-Opaque callback ativo)")
+				print("  2. Viewport tem camera certa     : SIM (Pos=%s, VP Size=%s)" % [cam_pos_world, vp_size])
+				print("  3. Instancia registrada          : SIM (Registradas=%d, Ativas=%d, Malhas=%d)" % [_registered_instances.size(), active_tasks.size(), tasks_by_mesh.size()])
+				print("  4. Uniform Set criado            : SIM (Compute=%s, Raster=%s)" % [global_compute_pipeline.is_valid(), global_raster_pipeline.is_valid()])
+				print("  5. Draw Indirect chamado         : SIM (Dispatches=%d, Draws=%d)" % [total_dispatches, total_draws])
+				print("  6. Retorno de GPU Indirect Args  : vertex_count=%d, instance_count=%d, triangles_drawn=%d, evaluated=%d, overflow=%d" % [
+					cnt_data.decode_u32(0), cnt_data.decode_u32(4), cnt_data.decode_u32(16), cnt_data.decode_u32(20), cnt_data.decode_u32(28)
 				])
+				print("================================================================================")
 
 	if native_core and native_core.has_method("streaming_update"):
 		native_core.streaming_update(cam_pos_world, _telemetry_frame_counter)
