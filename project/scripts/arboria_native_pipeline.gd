@@ -1683,9 +1683,10 @@ func _render_scene_global_internal(
 			inst_bytes.encode_float(base_off + 168, w_max.z)
 			inst_bytes.encode_float(base_off + 172, lod_mode)
 
-			inst_bytes.encode_float(base_off + 176, alb.r)
-			inst_bytes.encode_float(base_off + 180, alb.g)
-			inst_bytes.encode_float(base_off + 184, alb.b)
+			var alb_out = alb.srgb_to_linear() if global_shading_mode == 2 else alb
+			inst_bytes.encode_float(base_off + 176, alb_out.r)
+			inst_bytes.encode_float(base_off + 180, alb_out.g)
+			inst_bytes.encode_float(base_off + 184, alb_out.b)
 			inst_bytes.encode_float(base_off + 188, rgh)
 
 			inst_bytes.encode_float(base_off + 192, mtl)

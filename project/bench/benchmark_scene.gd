@@ -62,12 +62,13 @@ func _ready() -> void:
 		get_tree().quit(2)
 		return
 
-	# Material de referência PBR
+	if sun_light:
+		sun_light.shadow_enabled = false
+
+	# Material de referência PBR / Unshaded (ETAPA 3 - Paridade Visual Minima)
 	default_material = StandardMaterial3D.new()
+	default_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	default_material.albedo_color = Color(0.75, 0.76, 0.78)
-	default_material.roughness = 0.6
-	default_material.metallic = 0.05
-	default_material.metallic_specular = 0.5
 
 	# Ajusta raio da órbita conforme o tamanho da cena
 	if instance_count >= 500:
@@ -185,6 +186,9 @@ func _setup_variant_arboria(transforms: Array[Transform3D], force_lod0: bool = f
 	var mode_name = "ARBORIA (LOD0 Forçado)" if force_lod0 else "ARBORIA (DAG Dinâmico)"
 	print("[Variante: %s] Inicializando pipeline nativo de geometria virtualizada..." % mode_name)
 	var pipeline = ArboriaNativePipeline.get_or_create_shared()
+	pipeline.global_shading_mode = 2 # 2 = Unshaded
+	pipeline.enable_hiz = false
+	pipeline.enable_wind = false
 
 	# Configura CompositorEffect
 	if not world_env.compositor:
@@ -200,6 +204,7 @@ func _setup_variant_arboria(transforms: Array[Transform3D], force_lod0: bool = f
 	for i in range(transforms.size()):
 		var vmi = ArboriaInstance3D.new()
 		vmi.mesh_path = mesh_path_vg
+		vmi.base_albedo = default_material.albedo_color
 		if force_lod0:
 			vmi.lod_mode = 1 # Forced LOD
 			vmi.forced_lod = 0 # LOD 0
