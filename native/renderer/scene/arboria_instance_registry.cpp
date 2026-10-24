@@ -86,6 +86,34 @@ size_t ArboriaInstanceRegistry::get_instance_count() const {
     return m_instance_pool.active_count();
 }
 
+std::shared_ptr<MutableGeometryOverlay> ArboriaInstanceRegistry::get_or_create_mutable_overlay(Handle instance_handle) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    InstanceRecord* rec = m_instance_pool.get(instance_handle);
+    if (!rec) return nullptr;
+
+    if (!rec->mutable_overlay) {
+        rec->mutable_overlay = std::make_shared<MutableGeometryOverlay>(instance_handle.index, rec->mesh_handle.index);
+        rec->geometry_version = rec->mutable_overlay->get_geometry_version();
+    }
+    return rec->mutable_overlay;
+}
+
+std::shared_ptr<MutableGeometryOverlay> ArboriaInstanceRegistry::get_mutable_overlay(Handle instance_handle) const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    const InstanceRecord* rec = m_instance_pool.get(instance_handle);
+    if (!rec) return nullptr;
+    return rec->mutable_overlay;
+}
+
+bool ArboriaInstanceRegistry::remove_mutable_overlay(Handle instance_handle) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    InstanceRecord* rec = m_instance_pool.get(instance_handle);
+    if (!rec) return false;
+    rec->mutable_overlay = nullptr;
+    rec->geometry_version = 0;
+    return true;
+}
+
 void ArboriaInstanceRegistry::clear() {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_instance_pool.clear();
@@ -208,7 +236,7 @@ size_t ArboriaInstanceRegistry::build_gpu_instance_buffer(std::vector<GPUInstanc
         std::memcpy(gpu.model_matrix, rec.model_matrix, 16 * sizeof(float));
         compute_normal_matrix(rec.model_matrix, gpu.normal_matrix);
 
-        // Bounds em espaço de mundo
+        // Bounds base da malha compartilhada
         float bs_center[3] = {
             (hdr.bmin[0] + hdr.bmax[0]) * 0.5f,
             (hdr.bmin[1] + hdr.bmax[1]) * 0.5f,
@@ -219,10 +247,25 @@ size_t ArboriaInstanceRegistry::build_gpu_instance_buffer(std::vector<GPUInstanc
         float dz = hdr.bmax[2] - bs_center[2];
         float bs_radius = std::sqrt(dx*dx + dy*dy + dz*dz);
 
+        float eff_min[3] = { hdr.bmin[0], hdr.bmin[1], hdr.bmin[2] };
+        float eff_max[3] = { hdr.bmax[0], hdr.bmax[1], hdr.bmax[2] };
+        float eff_center[3] = { bs_center[0], bs_center[1], bs_center[2] };
+        float eff_radius = bs_radius;
+
+        // Se a instância tiver geometria mutável, combina com os limites do overlay
+        if (rec.has_mutable_geometry()) {
+            rec.mutable_overlay->compute_combined_bounds(
+                bs_center, bs_radius,
+                hdr.bmin, hdr.bmax,
+                eff_center, eff_radius,
+                eff_min, eff_max
+            );
+        }
+
         float w_center[3], w_radius, w_min[3], w_max[3];
         compute_world_bounds(
-            bs_center, bs_radius,
-            hdr.bmin, hdr.bmax,
+            eff_center, eff_radius,
+            eff_min, eff_max,
             rec.model_matrix,
             w_center, w_radius, w_min, w_max
         );

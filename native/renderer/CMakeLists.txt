@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(ARBORIA_SOURCES
     core/arboria_mesh_resource.cpp
+    core/arboria_mutable_geometry.cpp
     core/arboria_runtime.cpp
     core/arboria_security.cpp
     gpu/arboria_buffer_manager.cpp
@@ -30,6 +31,7 @@ set(ARBORIA_HEADERS
     core/arboria_types.h
     core/arboria_handle.h
     core/arboria_mesh_resource.h
+    core/arboria_mutable_geometry.h
     core/arboria_runtime.h
     core/arboria_security.h
     gpu/arboria_gpu_driver.h

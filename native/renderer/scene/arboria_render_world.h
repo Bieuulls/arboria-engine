@@ -30,6 +30,12 @@ public:
     bool update_instance_visibility(Handle instance_handle, bool visible);
     bool release_instance(Handle instance_handle);
 
+    // Gerenciamento de Geometria Mutável (Copy-On-Write por Instância)
+    std::shared_ptr<MutableGeometryOverlay> get_or_create_mutable_overlay(Handle instance_handle);
+    std::shared_ptr<MutableGeometryOverlay> get_mutable_overlay(Handle instance_handle) const;
+    bool remove_mutable_overlay(Handle instance_handle);
+    bool has_mutable_geometry(Handle instance_handle) const;
+
     // Renderização Agrupada Global
     bool render_scene_global(
         const GPUDriverContext& ctx,

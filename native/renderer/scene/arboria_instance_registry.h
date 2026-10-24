@@ -3,8 +3,10 @@
 
 #include "../core/arboria_types.h"
 #include "../core/arboria_handle.h"
+#include "../core/arboria_mutable_geometry.h"
 #include "arboria_gpu_scene_types.h"
 #include <vector>
+#include <memory>
 #include <mutex>
 
 namespace Arboria {
@@ -24,6 +26,15 @@ struct InstanceRecord {
     uint32_t forced_lod = 0;
     bool visible = true;
     bool shadow_caster = true;
+
+    // Overlay de Geometria Mutável (ETAPA 1)
+    // Instâncias sem modificação mantêm nullptr (compartilhando 100% da malha original)
+    std::shared_ptr<MutableGeometryOverlay> mutable_overlay = nullptr;
+    uint32_t geometry_version = 0;
+
+    bool has_mutable_geometry() const {
+        return mutable_overlay != nullptr && mutable_overlay->has_modifications();
+    }
 };
 
 class ARBORIA_CLASS ArboriaInstanceRegistry {
@@ -38,6 +49,11 @@ public:
     bool set_lod_parameters(Handle instance_handle, float max_screen_error, uint32_t lod_mode, uint32_t forced_lod);
     bool set_visibility(Handle instance_handle, bool visible);
     bool set_material(Handle instance_handle, uint32_t material_id);
+
+    // Gestão de Geometria Mutável por Instância
+    std::shared_ptr<MutableGeometryOverlay> get_or_create_mutable_overlay(Handle instance_handle);
+    std::shared_ptr<MutableGeometryOverlay> get_mutable_overlay(Handle instance_handle) const;
+    bool remove_mutable_overlay(Handle instance_handle);
 
     const InstanceRecord* get_instance(Handle instance_handle) const;
     size_t get_instance_count() const;

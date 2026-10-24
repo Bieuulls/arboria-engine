@@ -53,6 +53,23 @@ bool ArboriaRenderWorld::release_instance(Handle instance_handle) {
     return ArboriaInstanceRegistry::instance().unregister_instance(instance_handle);
 }
 
+std::shared_ptr<MutableGeometryOverlay> ArboriaRenderWorld::get_or_create_mutable_overlay(Handle instance_handle) {
+    return ArboriaInstanceRegistry::instance().get_or_create_mutable_overlay(instance_handle);
+}
+
+std::shared_ptr<MutableGeometryOverlay> ArboriaRenderWorld::get_mutable_overlay(Handle instance_handle) const {
+    return ArboriaInstanceRegistry::instance().get_mutable_overlay(instance_handle);
+}
+
+bool ArboriaRenderWorld::remove_mutable_overlay(Handle instance_handle) {
+    return ArboriaInstanceRegistry::instance().remove_mutable_overlay(instance_handle);
+}
+
+bool ArboriaRenderWorld::has_mutable_geometry(Handle instance_handle) const {
+    const InstanceRecord* rec = ArboriaInstanceRegistry::instance().get_instance(instance_handle);
+    return rec && rec->has_mutable_geometry();
+}
+
 bool ArboriaRenderWorld::render_scene_global(
     const GPUDriverContext& ctx,
     const void* framebuffer,

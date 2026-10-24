@@ -15,6 +15,7 @@
 #include "../scene/arboria_indirect_command_manager.h"
 #include "../gpu/arboria_memory_manager.h"
 #include "../scene/arboria_streaming_manager.h"
+#include "../core/arboria_mutable_geometry.h"
 
 #include <iostream>
 #include <cassert>
@@ -443,6 +444,97 @@ int main(int argc, char** argv) {
         assert(tel.total_page_faults > 0);
         assert(tel.under_budget);
         std::cout << "[TESTE 21] Fallback Seguro de Clusters para Pagina Raiz Durante Page Faults - OK" << std::endl;
+    }
+
+    // TESTE 22: Geometria Mutavel (Copy-On-Write Overlay) e Isolamento de Assets Compartilhados (GATE 1)
+    {
+        // 1. Instanciacao de duas entidades compartilhando o mesmo asset de malha
+        Arboria::Handle h_shared_mesh(mesh_id, 1);
+        Arboria::Handle inst_a = Arboria::ArboriaRenderWorld::instance().register_instance(h_shared_mesh, 0);
+        Arboria::Handle inst_b = Arboria::ArboriaRenderWorld::instance().register_instance(h_shared_mesh, 0);
+        assert(inst_a.is_valid());
+        assert(inst_b.is_valid());
+        assert(inst_a.index != inst_b.index);
+
+        // 2. Ambas devem iniciar sem geometria mutavel (custo 0 de memoria adicional)
+        assert(!Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(inst_a));
+        assert(!Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(inst_b));
+        assert(Arboria::ArboriaRenderWorld::instance().get_mutable_overlay(inst_a) == nullptr);
+        assert(Arboria::ArboriaRenderWorld::instance().get_mutable_overlay(inst_b) == nullptr);
+
+        // 3. Modifica apenas a Instancia B gerando COW Overlay sob demanda
+        auto overlay_b = Arboria::ArboriaRenderWorld::instance().get_or_create_mutable_overlay(inst_b);
+        assert(overlay_b != nullptr);
+        assert(Arboria::ArboriaRenderWorld::instance().get_mutable_overlay(inst_b) != nullptr);
+        // Instancia A DEVE permanecer 100% inalterada e compartilhando o asset base
+        assert(!Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(inst_a));
+        assert(Arboria::ArboriaRenderWorld::instance().get_mutable_overlay(inst_a) == nullptr);
+
+        // 4. Injeta regiao modificada em B com versionamento e metadados requeridos
+        Arboria::MutableRegion& reg = overlay_b->get_or_create_region(101);
+        reg.region_id = 101;
+        reg.mesh_id = static_cast<uint32_t>(mesh_id);
+        reg.instance_id = inst_b.index;
+        reg.geometry_version = 1;
+        reg.parent_cluster_id = 0;
+        reg.dirty_flags = Arboria::MUTABLE_DIRTY_GEOMETRY | Arboria::MUTABLE_DIRTY_BOUNDS;
+        reg.vertex_offset = 0;
+        reg.vertex_count = 12;
+        reg.index_offset = 0;
+        reg.index_count = 36;
+        reg.material_id = 0;
+        reg.residency_state = Arboria::MUTABLE_RESIDENCY_RESIDENT;
+        reg.center[0] = 1.0f; reg.center[1] = 2.0f; reg.center[2] = 3.0f;
+        reg.radius = 0.5f;
+        reg.aabb_min[0] = 0.5f; reg.aabb_min[1] = 1.5f; reg.aabb_min[2] = 2.5f;
+        reg.aabb_max[0] = 1.5f; reg.aabb_max[1] = 2.5f; reg.aabb_max[2] = 3.5f;
+        reg.replaced_cluster_ids.push_back(0); // Cluster 0 localmente substituido
+
+        overlay_b->map_cluster_replacement(0, 101, 0);
+        overlay_b->bump_version();
+        overlay_b->mark_dirty(Arboria::MUTABLE_DIRTY_GEOMETRY | Arboria::MUTABLE_DIRTY_BOUNDS);
+
+        // 5. Verificacao de versionamento e estado do DAG local
+        assert(Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(inst_b));
+        assert(!Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(inst_a));
+        assert(overlay_b->get_geometry_version() == 2);
+        assert(overlay_b->is_cluster_replaced(0));
+        assert(!overlay_b->is_cluster_replaced(1)); // Cluster 1 continua compartilhado do asset base
+        assert(overlay_b->is_dirty(Arboria::MUTABLE_DIRTY_GEOMETRY));
+        assert(overlay_b->is_dirty(Arboria::MUTABLE_DIRTY_BOUNDS));
+
+        // 6. Validacao dos limites combinados
+        float base_center[3] = { 0.0f, 0.0f, 0.0f };
+        float base_radius = 1.732f;
+        float base_min[3] = { -1.0f, -1.0f, -1.0f };
+        float base_max[3] = {  1.0f,  1.0f,  1.0f };
+        float comb_center[3], comb_radius, comb_min[3], comb_max[3];
+        overlay_b->compute_combined_bounds(
+            base_center, base_radius,
+            base_min, base_max,
+            comb_center, comb_radius,
+            comb_min, comb_max
+        );
+        assert(comb_min[0] <= -1.0f && comb_min[1] <= -1.0f && comb_min[2] <= -1.0f);
+        assert(comb_max[0] >= 1.5f && comb_max[1] >= 2.5f && comb_max[2] >= 3.5f);
+
+        // 7. Validacao do GPU Instance Buffer
+        std::vector<Arboria::GPUInstanceData> gpu_instances;
+        Arboria::ArboriaInstanceRegistry::instance().build_gpu_instance_buffer(gpu_instances);
+        assert(gpu_instances.size() >= 2);
+
+        // 8. Limpa dirty flags
+        overlay_b->clear_dirty(Arboria::MUTABLE_DIRTY_GEOMETRY | Arboria::MUTABLE_DIRTY_BOUNDS);
+        assert(!overlay_b->is_dirty(Arboria::MUTABLE_DIRTY_GEOMETRY));
+        assert(!overlay_b->is_dirty(Arboria::MUTABLE_DIRTY_BOUNDS));
+
+        // 9. Garante que Instancia A continua perfeitamente intacta
+        assert(!Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(inst_a));
+
+        // 10. Limpeza
+        Arboria::ArboriaRenderWorld::instance().release_instance(inst_a);
+        Arboria::ArboriaRenderWorld::instance().release_instance(inst_b);
+        std::cout << "[TESTE 22] Geometria Mutavel (Copy-On-Write Overlay) e Isolamento de Instancias - OK" << std::endl;
     }
 
     // TESTE 16: Limpeza e Finalização do ArboriaRenderWorld
