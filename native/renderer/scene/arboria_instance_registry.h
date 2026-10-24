@@ -59,6 +59,9 @@ public:
     uint32_t apply_depression(Handle instance_handle, const float center[3], float radius, float depth, bool subdivide = true);
     bool export_instance_to_obj(Handle instance_handle, const std::string& filepath) const;
 
+    // Reconstrução Incremental do DAG (ETAPA 3)
+    DAGReconstructionStats rebuild_dag_incremental(Handle instance_handle);
+
     const InstanceRecord* get_instance(Handle instance_handle) const;
     size_t get_instance_count() const;
 

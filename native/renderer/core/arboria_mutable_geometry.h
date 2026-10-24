@@ -5,9 +5,11 @@
 #include "arboria_handle.h"
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <cstdint>
 #include <string>
+#include <chrono>
 
 namespace Arboria {
 
@@ -26,6 +28,16 @@ enum MutableResidencyState : uint32_t {
     MUTABLE_RESIDENCY_RESIDENT       = 0,
     MUTABLE_RESIDENCY_EVICTED        = 1,
     MUTABLE_RESIDENCY_PENDING_UPLOAD = 2
+};
+
+// Estatísticas de Reconstrução Incremental do DAG (ETAPA 3)
+struct DAGReconstructionStats {
+    uint32_t modified_lod0_clusters = 0;
+    uint32_t affected_groups = 0;
+    uint32_t rebuilt_parent_clusters = 0;
+    uint32_t preserved_clusters = 0;
+    float dag_update_time_ms = 0.0f;
+    bool fallback_triggered = false;
 };
 
 // Registro de uma região específica modificada na malha
@@ -121,6 +133,10 @@ public:
 
     // Retorna contagens combinadas de vértices e triângulos no LOD 0
     void get_combined_lod0_stats(const VGMeshResource& base_mesh, size_t& out_vertices, size_t& out_triangles) const;
+
+    // Reconstrução Incremental do DAG (ETAPA 3)
+    // Propaga modificações locais para os grupos hierárquicos do DAG mantendo continuidade topológica
+    DAGReconstructionStats rebuild_dag_incremental(const VGMeshResource& base_mesh);
 
     const std::unordered_map<uint32_t, MutableRegion>& get_regions() const { return m_regions; }
 

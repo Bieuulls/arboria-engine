@@ -164,6 +164,23 @@ bool ArboriaInstanceRegistry::export_instance_to_obj(Handle instance_handle, con
     }
 }
 
+DAGReconstructionStats ArboriaInstanceRegistry::rebuild_dag_incremental(Handle instance_handle) {
+    std::shared_ptr<MutableGeometryOverlay> overlay;
+    Handle mesh_h;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const InstanceRecord* rec = m_instance_pool.get(instance_handle);
+        if (!rec || !rec->mutable_overlay) return DAGReconstructionStats{};
+        overlay = rec->mutable_overlay;
+        mesh_h = rec->mesh_handle;
+    }
+
+    const RegisteredMeshInfo* mesh_info = ArboriaMeshRegistry::instance().get_mesh_info(mesh_h);
+    if (!mesh_info || !mesh_info->resource) return DAGReconstructionStats{};
+
+    return overlay->rebuild_dag_incremental(*mesh_info->resource);
+}
+
 void ArboriaInstanceRegistry::clear() {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_instance_pool.clear();

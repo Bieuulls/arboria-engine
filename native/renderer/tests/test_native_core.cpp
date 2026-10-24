@@ -19,7 +19,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <sstream>
 #include <cassert>
 #include <cmath>
 
@@ -256,7 +255,7 @@ int main(int argc, char** argv) {
                 1.0f, 0.0f, 0.0f, 0.0f,
                 0.0f, 1.0f, 0.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 0.0f,
-                (float)(i % 50) * 4.0f - 100.0f, 0.0f, -((float)(i / 50) * 4.0f + 10.0f), 1.0f
+                (float)(i % 50) * 4.0f - 100.0f, 0.0f, -((float)(i / 50u) * 4.0f + 10.0f), 1.0f
             };
             Arboria::ArboriaRenderWorld::instance().update_instance_transform(ih, tr);
             inst_handles.push_back(ih);
@@ -625,6 +624,72 @@ int main(int argc, char** argv) {
         Arboria::ArboriaRenderWorld::instance().release_instance(inst_rock_a);
         Arboria::ArboriaRenderWorld::instance().release_instance(inst_rock_b);
         std::cout << "[TESTE 23] Primeira Modificacao Topologica Real (Escultura & Export/Import OBJ) - OK" << std::endl;
+    }
+
+    // TESTE 24: Reconstrução Incremental do DAG e Extensão do Trabalho Realizado (GATE 3)
+    {
+        Arboria::Handle h_mesh(mesh_id, 1);
+        Arboria::Handle inst_a = Arboria::ArboriaRenderWorld::instance().register_instance(h_mesh, 0);
+        Arboria::Handle inst_b = Arboria::ArboriaRenderWorld::instance().register_instance(h_mesh, 0);
+        assert(inst_a.is_valid() && inst_b.is_valid());
+
+        const auto* mesh_info = Arboria::ArboriaMeshRegistry::instance().get_mesh_info(h_mesh);
+        assert(mesh_info && mesh_info->resource);
+        const auto& base_resource = *mesh_info->resource;
+
+        // 1. Aplica operação localizada de escultura na Instância B
+        const auto& first_c = base_resource.get_clusters()[0];
+        const auto& first_v = base_resource.get_vertices()[first_c.vertex_offset];
+        float sculpt_center[3] = { first_v.position[0], first_v.position[1], first_v.position[2] };
+        float sculpt_radius = 0.5f;
+        float sculpt_depth = 0.15f;
+
+        uint32_t affected = Arboria::ArboriaRenderWorld::instance().apply_depression(
+            inst_b, sculpt_center, sculpt_radius, sculpt_depth, true
+        );
+        assert(affected > 0);
+
+        // 2. Executa Reconstrução Incremental do DAG (propagação hierárquica sem recomputação global)
+        Arboria::DAGReconstructionStats dag_stats = Arboria::ArboriaRenderWorld::instance().rebuild_dag_incremental(inst_b);
+
+        // 3. Validação dos critérios inegociáveis do GATE 3
+        assert(dag_stats.modified_lod0_clusters > 0);
+        assert(dag_stats.affected_groups > 0);
+        assert(dag_stats.rebuilt_parent_clusters > 0);
+        assert(dag_stats.preserved_clusters > 300); // Mais de 80% da malha preservada intacta sem reprocessamento!
+        assert(!dag_stats.fallback_triggered);
+        assert(dag_stats.dag_update_time_ms >= 0.0f);
+
+        std::cout << "  -> Extensão do Trabalho Incremental no DAG:" << std::endl;
+        std::cout << "     * Clusters LOD 0 modificados: " << dag_stats.modified_lod0_clusters << std::endl;
+        std::cout << "     * Grupos DAG afetados: " << dag_stats.affected_groups << std::endl;
+        std::cout << "     * Clusters pais reconstruídos: " << dag_stats.rebuilt_parent_clusters << std::endl;
+        std::cout << "     * Clusters preservados intactos: " << dag_stats.preserved_clusters << std::endl;
+        std::cout << "     * Tempo de atualização do DAG: " << dag_stats.dag_update_time_ms << " ms" << std::endl;
+
+        // 4. Validação da Seleção de LOD no DAG com a geometria mutável integrada
+        const float distances[] = { 2.0f, 12.0f, 50.0f, 100.0f };
+        for (float dist : distances) {
+            float view_proj[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+            float cam_pos[3] = { 0.0f, 0.0f, dist };
+            Arboria::GlobalSceneUniforms uniforms = Arboria::ArboriaGPUScene::instance().build_scene_uniforms(
+                view_proj, cam_pos, 1.0f, 1920.0f, 1080.0f, 1.5f, 0, false, false
+            );
+            Arboria::SceneCullResult res = Arboria::ArboriaGPUScene::instance().simulate_cull_scene(uniforms);
+            assert(res.visible_clusters > 0);
+            assert(res.total_triangles_drawn > 0);
+            assert(!res.has_overflow);
+            std::cout << "     * Distancia " << dist << "m -> " << res.visible_clusters << " clusters, "
+                      << res.total_triangles_drawn << " triangulos no corte DAG mutavel - OK" << std::endl;
+        }
+
+        // 5. Instância A permanece 100% inalterada
+        assert(!Arboria::ArboriaRenderWorld::instance().has_mutable_geometry(inst_a));
+
+        // 6. Limpeza
+        Arboria::ArboriaRenderWorld::instance().release_instance(inst_a);
+        Arboria::ArboriaRenderWorld::instance().release_instance(inst_b);
+        std::cout << "[TESTE 24] Reconstrucao Incremental do DAG (GATE 3) - OK" << std::endl;
     }
 
     // TESTE 16: Limpeza e Finalização do ArboriaRenderWorld

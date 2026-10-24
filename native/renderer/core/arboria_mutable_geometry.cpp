@@ -640,4 +640,168 @@ void MutableGeometryOverlay::get_combined_lod0_stats(const VGMeshResource& base_
     }
 }
 
+DAGReconstructionStats MutableGeometryOverlay::rebuild_dag_incremental(const VGMeshResource& base_mesh) {
+    DAGReconstructionStats stats{};
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    if (!base_mesh.is_valid() || m_cluster_replacements.empty()) {
+        return stats;
+    }
+
+    const auto& base_clusters = base_mesh.get_clusters();
+    const auto& base_groups = base_mesh.get_groups();
+
+    // 1. Identificar os clusters atingidos no LOD 0 e seus grupos DAG pais
+    std::unordered_set<uint32_t> affected_groups;
+    for (const auto& pair : m_cluster_replacements) {
+        uint32_t orig_c_id = pair.first;
+        if (orig_c_id < base_clusters.size()) {
+            stats.modified_lod0_clusters++;
+            int32_t parent_grp = base_clusters[orig_c_id].group;
+            if (parent_grp >= 0 && static_cast<uint32_t>(parent_grp) < base_groups.size()) {
+                affected_groups.insert(static_cast<uint32_t>(parent_grp));
+            }
+        }
+    }
+    stats.affected_groups = static_cast<uint32_t>(affected_groups.size());
+
+    // 2. Para cada grupo DAG atingido, propaga a reconstrução incremental
+    for (uint32_t grp_id : affected_groups) {
+        // Encontra todos os clusters da malha pertencentes a este grupo (irmãos)
+        std::vector<uint32_t> sibling_cluster_ids;
+        for (size_t i = 0; i < base_clusters.size(); ++i) {
+            if (base_clusters[i].group == static_cast<int32_t>(grp_id)) {
+                sibling_cluster_ids.push_back(static_cast<uint32_t>(i));
+            }
+        }
+
+        // Encontra clusters pais do grupo (clusters que têm refined == grp_id)
+        std::vector<uint32_t> parent_cluster_ids;
+        for (size_t i = 0; i < base_clusters.size(); ++i) {
+            if (base_clusters[i].refined == static_cast<int32_t>(grp_id)) {
+                parent_cluster_ids.push_back(static_cast<uint32_t>(i));
+            }
+        }
+
+        // Se o grupo não tiver pais no DAG, já é o nível mais simplificado
+        if (parent_cluster_ids.empty()) continue;
+
+        // 3. Atualiza limites e erros geométricos dos clusters pais
+        float grp_min[3] = {  1e9f,  1e9f,  1e9f };
+        float grp_max[3] = { -1e9f, -1e9f, -1e9f };
+        float max_child_error = 0.0f;
+
+        for (uint32_t sib_id : sibling_cluster_ids) {
+            if (is_cluster_replaced(sib_id)) {
+                const MutableRegion* reg = get_region(m_cluster_replacements.at(sib_id).region_id);
+                if (reg) {
+                    grp_min[0] = std::min(grp_min[0], reg->aabb_min[0]);
+                    grp_min[1] = std::min(grp_min[1], reg->aabb_min[1]);
+                    grp_min[2] = std::min(grp_min[2], reg->aabb_min[2]);
+                    grp_max[0] = std::max(grp_max[0], reg->aabb_max[0]);
+                    grp_max[1] = std::max(grp_max[1], reg->aabb_max[1]);
+                    grp_max[2] = std::max(grp_max[2], reg->aabb_max[2]);
+                    max_child_error = std::max(max_child_error, reg->clusters[0].error);
+                }
+            } else if (sib_id < base_clusters.size()) {
+                const auto& bc = base_clusters[sib_id];
+                grp_min[0] = std::min(grp_min[0], bc.center[0] - bc.radius);
+                grp_min[1] = std::min(grp_min[1], bc.center[1] - bc.radius);
+                grp_min[2] = std::min(grp_min[2], bc.center[2] - bc.radius);
+                grp_max[0] = std::max(grp_max[0], bc.center[0] + bc.radius);
+                grp_max[1] = std::max(grp_max[1], bc.center[1] + bc.radius);
+                grp_max[2] = std::max(grp_max[2], bc.center[2] + bc.radius);
+                max_child_error = std::max(max_child_error, bc.error);
+            }
+        }
+
+        float grp_center[3] = {
+            (grp_min[0] + grp_max[0]) * 0.5f,
+            (grp_min[1] + grp_max[1]) * 0.5f,
+            (grp_min[2] + grp_max[2]) * 0.5f
+        };
+        float dx = grp_max[0] - grp_center[0];
+        float dy = grp_max[1] - grp_center[1];
+        float dz = grp_max[2] - grp_center[2];
+        float grp_radius = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+        // Erro geométrico do grupo pai = erro da base com ampliação proporcional
+        float new_grp_error = std::max(base_groups[grp_id].error, max_child_error * 1.25f + 0.05f);
+
+        // 4. Propaga para os clusters pais reconstruídos
+        for (uint32_t p_cid : parent_cluster_ids) {
+            const auto& base_parent_c = base_clusters[p_cid];
+            uint32_t p_region_id = 5000 + p_cid;
+
+            MutableRegion& p_reg = get_or_create_region(p_region_id);
+            p_reg.region_id = p_region_id;
+            p_reg.mesh_id = m_mesh_id;
+            p_reg.instance_id = m_instance_id;
+            p_reg.geometry_version = m_geometry_version;
+            p_reg.parent_cluster_id = p_cid;
+            p_reg.dirty_flags = MUTABLE_DIRTY_DAG | MUTABLE_DIRTY_BOUNDS | MUTABLE_DIRTY_GPU_SYNC;
+
+            // Cluster pai atualizado
+            Cluster p_c = base_parent_c;
+            p_c.center[0] = grp_center[0];
+            p_c.center[1] = grp_center[1];
+            p_c.center[2] = grp_center[2];
+            p_c.radius = grp_radius;
+            p_c.error = new_grp_error;
+
+            GPUCluster p_gc{};
+            p_gc.center_radius[0] = grp_center[0];
+            p_gc.center_radius[1] = grp_center[1];
+            p_gc.center_radius[2] = grp_center[2];
+            p_gc.center_radius[3] = grp_radius;
+
+            p_gc.cone_axis_cutoff[0] = base_parent_c.cone[0];
+            p_gc.cone_axis_cutoff[1] = base_parent_c.cone[1];
+            p_gc.cone_axis_cutoff[2] = base_parent_c.cone[2];
+            p_gc.cone_axis_cutoff[3] = base_parent_c.cone[3];
+
+            p_gc.refined_bounds_error[0] = grp_center[0];
+            p_gc.refined_bounds_error[1] = grp_center[1];
+            p_gc.refined_bounds_error[2] = grp_center[2];
+            p_gc.refined_bounds_error[3] = new_grp_error;
+
+            // Mantém referências do grupo pai
+            if (p_c.group >= 0 && static_cast<uint32_t>(p_c.group) < base_groups.size()) {
+                const auto& parent_grp_meta = base_groups[p_c.group];
+                p_gc.group_bounds_error[0] = parent_grp_meta.center[0];
+                p_gc.group_bounds_error[1] = parent_grp_meta.center[1];
+                p_gc.group_bounds_error[2] = parent_grp_meta.center[2];
+                p_gc.group_bounds_error[3] = parent_grp_meta.error;
+            } else {
+                p_gc.group_bounds_error[3] = 999999.0f;
+            }
+
+            p_gc.data_offsets[0] = base_parent_c.vertex_offset;
+            p_gc.data_offsets[1] = base_parent_c.vertex_count;
+            p_gc.data_offsets[2] = base_parent_c.triangle_offset;
+            p_gc.data_offsets[3] = base_parent_c.triangle_count;
+
+            p_gc.cluster_info[0] = p_cid;
+            p_gc.cluster_info[1] = base_parent_c.lod;
+            p_gc.cluster_info[2] = static_cast<uint32_t>(base_parent_c.group);
+            p_gc.cluster_info[3] = static_cast<uint32_t>(base_parent_c.refined);
+
+            p_reg.clusters = { p_c };
+            p_reg.gpu_clusters = { p_gc };
+            p_reg.replaced_cluster_ids = { p_cid };
+            map_cluster_replacement(p_cid, p_region_id, 0);
+
+            stats.rebuilt_parent_clusters++;
+        }
+    }
+
+    stats.preserved_clusters = static_cast<uint32_t>(base_clusters.size()) - stats.modified_lod0_clusters - stats.rebuilt_parent_clusters;
+
+    clear_dirty(MUTABLE_DIRTY_DAG);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    stats.dag_update_time_ms = std::chrono::duration<float, std::milli>(end_time - start_time).count();
+
+    return stats;
+}
+
 } // namespace Arboria

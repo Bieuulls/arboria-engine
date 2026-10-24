@@ -78,6 +78,10 @@ bool ArboriaRenderWorld::export_instance_to_obj(Handle instance_handle, const st
     return ArboriaInstanceRegistry::instance().export_instance_to_obj(instance_handle, filepath);
 }
 
+DAGReconstructionStats ArboriaRenderWorld::rebuild_dag_incremental(Handle instance_handle) {
+    return ArboriaInstanceRegistry::instance().rebuild_dag_incremental(instance_handle);
+}
+
 bool ArboriaRenderWorld::render_scene_global(
     const GPUDriverContext& ctx,
     const void* framebuffer,

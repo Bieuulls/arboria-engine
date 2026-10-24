@@ -37,6 +37,7 @@ public:
     bool has_mutable_geometry(Handle instance_handle) const;
     uint32_t apply_depression(Handle instance_handle, const float center[3], float radius, float depth, bool subdivide = true);
     bool export_instance_to_obj(Handle instance_handle, const std::string& filepath) const;
+    DAGReconstructionStats rebuild_dag_incremental(Handle instance_handle);
 
     // Renderização Agrupada Global
     bool render_scene_global(

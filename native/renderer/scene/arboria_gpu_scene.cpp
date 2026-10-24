@@ -2,7 +2,6 @@
 #include <cmath>
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 
 namespace Arboria {
 
@@ -165,8 +164,18 @@ SceneCullResult ArboriaGPUScene::simulate_cull_scene(const GlobalSceneUniforms& 
 
         const auto& clusters = mesh_info->resource->get_gpu_clusters();
 
+        // Recupera overlay de geometria mutável se a instância possuir modificações
+        Handle inst_handle(inst.instance_id, 1);
+        auto overlay = ArboriaInstanceRegistry::instance().get_mutable_overlay(inst_handle);
+
         for (size_t c_idx = 0; c_idx < clusters.size(); ++c_idx) {
-            const auto& c = clusters[c_idx];
+            GPUCluster c = clusters[c_idx];
+            if (overlay && overlay->is_cluster_replaced(static_cast<uint32_t>(c_idx))) {
+                const GPUCluster* rep = overlay->get_replacement_gpu_cluster(static_cast<uint32_t>(c_idx));
+                if (rep) {
+                    c = *rep;
+                }
+            }
 
             // Posição do cluster no espaço de mundo
             float local_c[3] = { c.center_radius[0], c.center_radius[1], c.center_radius[2] };
