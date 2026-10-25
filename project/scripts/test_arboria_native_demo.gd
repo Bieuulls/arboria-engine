@@ -6,6 +6,7 @@ const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 
 var frame_count: int = 0
 var demo_scene: Node = null
+var captured_img: Image = null
 
 func _ready() -> void:
 	print("====================================================")
@@ -55,9 +56,9 @@ func _process(_delta: float) -> void:
 			pipeline.request_telemetry_read()
 
 	elif frame_count == 27:
-		var img = get_viewport().get_texture().get_image()
-		if img:
-			img.save_png("res://diag_arboria_native_demo_frame.png")
+		captured_img = get_viewport().get_texture().get_image()
+		if captured_img:
+			captured_img.save_png("res://diag_arboria_native_demo_frame.png")
 			print("[TESTE ETAPA 5] Captura salva: diag_arboria_native_demo_frame.png: OK")
 
 	elif frame_count == 28:
@@ -115,7 +116,9 @@ func _process(_delta: float) -> void:
 		print("[TESTE] 3. Sem dependencia de MultiMesh legado: OK")
 
 		# 4. Validacao dos pixels na imagem capturada
-		var img = Image.load_from_file("res://diag_arboria_native_demo_frame.png")
+		var img = captured_img
+		if not img:
+			img = Image.load_from_file("res://diag_arboria_native_demo_frame.png")
 		if not img or img.is_empty():
 			push_error("[FALHA] Imagem capturada invalida ou vazia.")
 			get_tree().quit(1)
