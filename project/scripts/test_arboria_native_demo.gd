@@ -7,6 +7,7 @@ const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 var frame_count: int = 0
 var demo_scene: Node = null
 var captured_img: Image = null
+var initial_cam_transform: Transform3D
 
 func _ready() -> void:
 	print("====================================================")
@@ -20,6 +21,9 @@ func _ready() -> void:
 
 	demo_scene = scene_res.instantiate()
 	add_child(demo_scene)
+	var cam: Camera3D = demo_scene.get_node_or_null("OrbitCamera")
+	if cam:
+		initial_cam_transform = cam.transform
 	print("[TESTE] Cena de demonstracao instanciada com sucesso.")
 
 func _process(_delta: float) -> void:
@@ -46,10 +50,9 @@ func _process(_delta: float) -> void:
 		cam.look_at(Vector3(0.0, 0.5, 0.0), Vector3.UP)
 
 	elif frame_count == 25:
-		# Retorna à posição de enquadramento canônico
+		# Retorna à posição de enquadramento canônico original
 		var cam: Camera3D = demo_scene.get_node("OrbitCamera")
-		cam.global_position = Vector3(8.0, 4.0, 8.0)
-		cam.look_at(Vector3(0.0, 0.5, 0.0), Vector3.UP)
+		cam.transform = initial_cam_transform
 
 		var pipeline = ArboriaNativePipeline.get_active_instance()
 		if pipeline:
