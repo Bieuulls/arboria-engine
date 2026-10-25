@@ -19,6 +19,15 @@
 #include <cmath>
 #include <chrono>
 #include <iomanip>
+#include <filesystem>
+
+static std::string resolve_test_mesh(const std::string& rel) {
+    if (std::filesystem::exists(rel)) return rel;
+    if (std::filesystem::exists("../../" + rel)) return "../../" + rel;
+    if (std::filesystem::exists("project/" + rel)) return "project/" + rel;
+    if (std::filesystem::exists("../../project/" + rel)) return "../../project/" + rel;
+    return rel;
+}
 
 int main(int argc, char** argv) {
     std::cout << "====================================================" << std::endl;
@@ -972,9 +981,9 @@ int main(int argc, char** argv) {
         // Cenário E: 3 tipos de malhas diferentes modificadas simultaneamente
         {
             Arboria::ArboriaInstanceRegistry::instance().clear();
-            std::string path_rock = "assets/dense_rock.vgmesh";
-            std::string path_boulder = "assets/boulder_granite.vgmesh";
-            std::string path_pine = "assets/pine_trunk_complex.vgmesh";
+            std::string path_rock = resolve_test_mesh("assets/dense_rock.vgmesh");
+            std::string path_boulder = resolve_test_mesh("assets/boulder_granite.vgmesh");
+            std::string path_pine = resolve_test_mesh("assets/pine_trunk_complex.vgmesh");
 
             Arboria::Handle h_mesh_rock = Arboria::ArboriaRenderWorld::instance().register_mesh(path_rock);
             Arboria::Handle h_mesh_boulder = Arboria::ArboriaRenderWorld::instance().register_mesh(path_boulder);

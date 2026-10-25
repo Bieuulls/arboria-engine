@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iomanip>
 #include <cstring>
+#include <filesystem>
 
 namespace Arboria {
 
@@ -541,6 +542,13 @@ uint32_t MutableGeometryOverlay::apply_depression(
 bool MutableGeometryOverlay::export_to_obj(const VGMeshResource& base_mesh, const std::string& filepath) const {
     if (!base_mesh.is_valid()) return false;
 
+    try {
+        std::filesystem::path p(filepath);
+        if (p.has_parent_path()) {
+            std::filesystem::create_directories(p.parent_path());
+        }
+    } catch (...) {}
+
     std::ofstream out(filepath);
     if (!out.is_open()) return false;
 
@@ -931,6 +939,13 @@ MutablePhysicsMesh MutableGeometryOverlay::build_physics_collision_mesh(const VG
 }
 
 bool MutableGeometryOverlay::save_to_file(const std::string& filepath) const {
+    try {
+        std::filesystem::path p(filepath);
+        if (p.has_parent_path()) {
+            std::filesystem::create_directories(p.parent_path());
+        }
+    } catch (...) {}
+
     std::ofstream out(filepath, std::ios::binary);
     if (!out.is_open()) return false;
 
