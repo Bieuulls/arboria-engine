@@ -14,8 +14,21 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+where cl >nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    where clang++ >nul 2>nul
+    if %ERRORLEVEL% neq 0 (
+        set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Packages\MartinStorsjo.LLVM-MinGW.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\llvm-mingw-20260616-ucrt-x86_64\bin;%LOCALAPPDATA%\Microsoft\WinGet\Packages\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe;%PATH%"
+    )
+)
+
 echo [1/4] Compilando ARBORIA Baker (tools/baker)...
-cmake -B tools/baker/build -S tools/baker -DCMAKE_BUILD_TYPE=Release
+where ninja >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    cmake -G Ninja -B tools/baker/build -S tools/baker -DCMAKE_BUILD_TYPE=Release
+) else (
+    cmake -B tools/baker/build -S tools/baker -DCMAKE_BUILD_TYPE=Release
+)
 if %ERRORLEVEL% neq 0 (
     echo [ERRO] Falha ao configurar CMake para o Baker!
     exit /b 1
@@ -26,8 +39,47 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+echo [1.5/4] Gerando malhas virtuais de referencia (.vgmesh) via Baker...
+if not exist "assets" mkdir "assets"
+if not exist "project\assets" mkdir "project\assets"
+
+set "BAKER_EXE=bin\arboria_baker_cli.exe"
+if not exist "%BAKER_EXE%" set "BAKER_EXE=bin\vg_baker_cli.exe"
+
+if exist "%BAKER_EXE%" (
+    if exist "assets\dense_rock_test.obj" (
+        "%BAKER_EXE%" assets\dense_rock_test.obj assets\dense_rock.vgmesh
+        copy /Y assets\dense_rock.vgmesh assets\dense_rock_verified.vgmesh >nul
+        copy /Y assets\dense_rock.vgmesh project\assets\dense_rock.vgmesh >nul
+        copy /Y assets\dense_rock.vgmesh project\assets\dense_rock_test.vgmesh >nul
+        copy /Y assets\dense_rock.vgmesh project\assets\dense_rock_verified.vgmesh >nul
+    )
+    if exist "assets\boulder_granite.obj" (
+        "%BAKER_EXE%" assets\boulder_granite.obj assets\boulder_granite.vgmesh
+        copy /Y assets\boulder_granite.vgmesh project\assets\boulder_granite.vgmesh >nul
+    )
+    if exist "assets\pine_trunk_complex.obj" (
+        "%BAKER_EXE%" assets\pine_trunk_complex.obj assets\pine_trunk_complex.vgmesh
+        copy /Y assets\pine_trunk_complex.vgmesh project\assets\pine_trunk_complex.vgmesh >nul
+    )
+    if exist "assets\small_mesh_test.obj" (
+        "%BAKER_EXE%" assets\small_mesh_test.obj assets\small_mesh.vgmesh
+        copy /Y assets\small_mesh.vgmesh project\assets\small_mesh.vgmesh >nul
+    )
+    if exist "assets\rock_cluster.obj" (
+        "%BAKER_EXE%" assets\rock_cluster.obj project\assets\rock_cluster_baked.vgmesh
+    )
+) else (
+    echo [AVISO] Executavel do Baker nao encontrado para pre-bake de malhas.
+)
+
 echo [2/4] Compilando ARBORIA Native Core e GDExtension (native/renderer)...
-cmake -B native/renderer/build -S native/renderer -DCMAKE_BUILD_TYPE=Release
+where ninja >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    cmake -G Ninja -B native/renderer/build -S native/renderer -DCMAKE_BUILD_TYPE=Release
+) else (
+    cmake -B native/renderer/build -S native/renderer -DCMAKE_BUILD_TYPE=Release
+)
 if %ERRORLEVEL% neq 0 (
     echo [ERRO] Falha ao configurar CMake para o nucleo nativo!
     exit /b 1

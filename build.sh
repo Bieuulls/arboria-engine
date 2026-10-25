@@ -14,6 +14,38 @@ echo "[1/4] Compilando ARBORIA Baker (tools/baker)..."
 cmake -B tools/baker/build -S tools/baker -DCMAKE_BUILD_TYPE=Release
 cmake --build tools/baker/build --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
+echo "[1.5/4] Gerando malhas virtuais de referencia (.vgmesh) via Baker..."
+mkdir -p assets project/assets
+BAKER_BIN="bin/arboria_baker_cli"
+[ ! -f "$BAKER_BIN" ] && BAKER_BIN="bin/arboria_baker_cli.exe"
+[ ! -f "$BAKER_BIN" ] && BAKER_BIN="bin/vg_baker_cli"
+[ ! -f "$BAKER_BIN" ] && BAKER_BIN="bin/vg_baker_cli.exe"
+
+if [ -f "$BAKER_BIN" ]; then
+    if [ -f "assets/dense_rock_test.obj" ]; then
+        "$BAKER_BIN" assets/dense_rock_test.obj assets/dense_rock.vgmesh
+        cp assets/dense_rock.vgmesh assets/dense_rock_verified.vgmesh
+        cp assets/dense_rock.vgmesh project/assets/dense_rock.vgmesh
+        cp assets/dense_rock.vgmesh project/assets/dense_rock_test.vgmesh
+        cp assets/dense_rock.vgmesh project/assets/dense_rock_verified.vgmesh
+    fi
+    if [ -f "assets/boulder_granite.obj" ]; then
+        "$BAKER_BIN" assets/boulder_granite.obj assets/boulder_granite.vgmesh
+        cp assets/boulder_granite.vgmesh project/assets/boulder_granite.vgmesh
+    fi
+    if [ -f "assets/pine_trunk_complex.obj" ]; then
+        "$BAKER_BIN" assets/pine_trunk_complex.obj assets/pine_trunk_complex.vgmesh
+        cp assets/pine_trunk_complex.vgmesh project/assets/pine_trunk_complex.vgmesh
+    fi
+    if [ -f "assets/small_mesh_test.obj" ]; then
+        "$BAKER_BIN" assets/small_mesh_test.obj assets/small_mesh.vgmesh
+        cp assets/small_mesh.vgmesh project/assets/small_mesh.vgmesh
+    fi
+    if [ -f "assets/rock_cluster.obj" ]; then
+        "$BAKER_BIN" assets/rock_cluster.obj project/assets/rock_cluster_baked.vgmesh
+    fi
+fi
+
 echo "[2/4] Compilando ARBORIA Native Core e GDExtension (native/renderer)..."
 cmake -B native/renderer/build -S native/renderer -DCMAKE_BUILD_TYPE=Release
 cmake --build native/renderer/build --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
