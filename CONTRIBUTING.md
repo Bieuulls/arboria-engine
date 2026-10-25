@@ -60,11 +60,12 @@ Em um clone limpo do repositório, os arquivos `.vgmesh` e o cache de scripts `.
    ```bash
    git checkout -b feature/minha-melhoria
    ```
-2. Execute a suíte de testes antes de abrir o Pull Request:
-   ```bash
-   python tests/test_suite.py
+2. Execute a suíte de CI Local unificada antes de abrir o Pull Request:
+   ```cmd
+   ci_local.bat
    ```
-3. Garanta que todas as cenas de teste fechem com código de saída 0 e sem vazamentos de RIDs.
+   (Ou `.\ci_local.ps1` no PowerShell / `python tests/panel/panel.py --cli`).
+3. Garanta que todas as 5 etapas da CI Local aprovem com status `[PASSOU]`.
 4. Abra o Pull Request descrevendo claramente:
    - Qual problema está sendo resolvido.
    - Como testar e reproduzir o comportamento.
