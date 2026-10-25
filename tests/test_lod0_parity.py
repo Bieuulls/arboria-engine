@@ -11,6 +11,8 @@ import sys
 import json
 import subprocess
 import re
+import shutil
+import glob
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "project"))
@@ -19,14 +21,50 @@ REPO_ROOT = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 def find_godot_bin():
     if "GODOT_BIN" in os.environ and os.path.isfile(os.environ["GODOT_BIN"]):
         return os.environ["GODOT_BIN"]
-    default_path = r"C:\Users\srgab\AppData\Local\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7.2-stable_win64_console.exe"
-    if os.path.isfile(default_path):
-        return default_path
-    import shutil
-    cand = shutil.which("godot") or shutil.which("godot4")
-    if cand:
-        return cand
+    
+    localapp = os.environ.get("LOCALAPPDATA", "")
+    import glob
+    candidates = [
+        os.path.join(REPO_ROOT, "bin", "godot_console.exe"),
+        os.path.join(REPO_ROOT, "bin", "godot.exe"),
+        shutil.which("godot"),
+        shutil.which("godot4"),
+        shutil.which("godot_console.exe"),
+    ]
+    if localapp:
+        winget_pattern = os.path.join(localapp, "Microsoft", "WinGet", "Packages", "GodotEngine.GodotEngine*", "*console.exe")
+        candidates.extend(glob.glob(winget_pattern))
+        winget_pattern_gui = os.path.join(localapp, "Microsoft", "WinGet", "Packages", "GodotEngine.GodotEngine*", "Godot*.exe")
+        candidates.extend(glob.glob(winget_pattern_gui))
+
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return os.path.normpath(c)
     raise RuntimeError("Executavel do Godot nao encontrado. Defina GODOT_BIN.")
+
+def ensure_dependencies(godot_bin):
+    """Garante que as dependências necessárias para a cena de benchmark existam em um clone limpo."""
+    vg_target = os.path.join(PROJECT_DIR, "assets", "dense_rock_test.vgmesh")
+    obj_source = os.path.join(REPO_ROOT, "assets", "dense_rock_test.obj")
+    baker_bin = os.path.join(REPO_ROOT, "baker", "build", "arboria_baker_cli.exe")
+    
+    # Se o .vgmesh não existir, tenta compilar ou rodar o baker
+    if not os.path.isfile(vg_target) and os.path.isfile(obj_source) and os.path.isfile(baker_bin):
+        print("[INIT] Gerando dense_rock_test.vgmesh via baker...")
+        os.makedirs(os.path.dirname(vg_target), exist_ok=True)
+        subprocess.run([baker_bin, obj_source, vg_target, "--verify"], check=True)
+        # Sincroniza também para assets/
+        shutil.copyfile(vg_target, os.path.join(REPO_ROOT, "assets", "dense_rock_test.vgmesh"))
+
+    # Se o cache de scripts do Godot não existir, força indexação inicial
+    class_cache = os.path.join(PROJECT_DIR, ".godot", "global_script_class_cache.cfg")
+    if not os.path.isfile(class_cache):
+        print("[INIT] Gerando cache de classes do Godot (.godot/global_script_class_cache.cfg)...")
+        try:
+            subprocess.run([godot_bin, "--headless", "--editor", "--quit", "--path", PROJECT_DIR],
+                           timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"[WARN] Indexacao do Godot retornou: {e}")
 
 def run_arboria_lod0(godot_bin, instance_count):
     cmd = [
@@ -65,6 +103,7 @@ def main():
     godot_bin = find_godot_bin()
     print(f"Godot Binario: {godot_bin}")
     print(f"Projeto      : {PROJECT_DIR}\n")
+    ensure_dependencies(godot_bin)
     
     TRIANGLES_PER_INSTANCE = 15800
     test_cases = [1, 80, 500]

@@ -4,27 +4,38 @@ Agradecemos o seu interesse em contribuir com o **ARBORIA ENGINE**! Este projeto
 
 ---
 
-## 1. Como Configurar o Ambiente de Desenvolvimento
+## 1. Ordem de Inicialização e Build para Clones Novos
+
+Em um clone limpo do repositório, os arquivos `.vgmesh` e o cache de scripts `.godot/` não vêm versionados. Para inicializar e validar o ambiente corretamente:
 
 1. **Clone o repositório:**
    ```bash
    git clone https://github.com/seu-usuario/arboria-engine.git
    cd arboria-engine
    ```
-2. **Compile a biblioteca C++ nativa (GDExtension):**
-   ```powershell
-   # Windows (PowerShell)
-   .\tools\gates\build_native.ps1
+2. **Execute o script de compilação e inicialização integrada:**
+   ```cmd
+   # Windows
+   build.bat
+
+   # Linux
+   ./build.sh
    ```
-   Isso compilará `libarboria_native.dll` e a copiará automaticamente para `project/bin/`.
-3. **Compile o Baker CLI:**
+   Esse script executa automaticamente em ordem determinística:
+   - **Passo 1:** Compilação do Baker CLI C++ (`baker/build/arboria_baker_cli.exe`).
+   - **Passo 2:** Geração automática dos arquivos binários `.vgmesh` a partir dos `.obj` de referência em `assets/` e sincronização para `project/assets/`.
+   - **Passo 3:** Compilação da biblioteca nativa C++ Forward+ (`project/bin/libarboria_native.dll`).
+   - **Passo 4:** Execução dos testes unitários C++ (CTest).
+   - **Passo 5:** Indexação inicial do editor Godot (`godot --headless --editor --quit --path project`), gerando `.godot/global_script_class_cache.cfg` para resolução de `ArboriaMeshLoader` e classes GDExtension.
+
+3. **Validação de Paridade Geométrica (LOD0):**
    ```bash
-   cd baker
-   cmake -B build -DCMAKE_BUILD_TYPE=Release
-   cmake --build build --config Release
+   python tests/test_lod0_parity.py
    ```
-4. **Abra o projeto de teste:**
-   Abra a pasta `project/` com o **Godot 4.7.2 Forward+**.
+4. **Execução do Painel Completo de Testes:**
+   ```bash
+   python tests/panel/panel.py --cli
+   ```
 
 ---
 

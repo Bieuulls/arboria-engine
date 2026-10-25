@@ -79,17 +79,26 @@ install_addon.bat "C:\Caminho\Para\SeuProjeto"
 
 ---
 
-## Como Gerar Malhas (.obj -> .vgmesh)
+## Como Compilar e Inicializar em Clone Limpo
 
-Utilize o Baker C++ incluído na pasta `baker/`:
+O projeto dispõe de scripts determinísticos de ponta a ponta (`build.bat` no Windows e `build.sh` no Linux) que realizam todo o ciclo automaticamente:
+1. Compilação do Baker CLI C++.
+2. Pré-geração dos arquivos `.vgmesh` de referência a partir dos `.obj`.
+3. Compilação da biblioteca nativa C++ Forward+ (`libarboria_native.dll` / `.so`).
+4. Execução dos testes unitários nativos (CTest).
+5. Indexação headless do Godot gerando `.godot/global_script_class_cache.cfg`.
+
+```cmd
+# Windows
+build.bat
+
+# Linux
+./build.sh
+```
+
+Para gerar malhas customizadas individualmente:
 ```bash
-# Compilar o baker (Windows / Linux)
-cd baker
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
-
-# Converter um modelo OBJ
-./build/arboria_baker_cli minha_rocha.obj minha_rocha.vgmesh --verify
+./baker/build/arboria_baker_cli minha_rocha.obj minha_rocha.vgmesh --verify
 ```
 
 ---
