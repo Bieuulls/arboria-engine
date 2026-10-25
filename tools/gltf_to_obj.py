@@ -4,19 +4,40 @@ import os
 import sys
 
 def convert_gltf_to_obj(gltf_path, obj_path):
-    print(f"[gltf_to_obj] Lendo GLTF: {gltf_path}")
+    print(f"[gltf_to_obj] Lendo modelo 3D: {gltf_path}")
     base_dir = os.path.dirname(os.path.abspath(gltf_path))
     
-    with open(gltf_path, 'r', encoding='utf-8') as f:
-        gltf = json.load(f)
-        
     buffers_data = []
-    for buf in gltf.get('buffers', []):
-        buf_uri = buf['uri']
-        buf_path = os.path.join(base_dir, buf_uri)
-        print(f"[gltf_to_obj] Carregando buffer binario: {buf_path} ({os.path.getsize(buf_path):,} bytes)")
-        with open(buf_path, 'rb') as bf:
-            buffers_data.append(bf.read())
+    gltf = {}
+    
+    # Suporte a GLB (glTF binário autônomo)
+    if gltf_path.lower().endswith(".glb"):
+        with open(gltf_path, 'rb') as f:
+            magic, version, length = struct.unpack('<4sII', f.read(12))
+            if magic != b'glTF':
+                raise ValueError("Arquivo inválido: assinatura GLB não encontrada.")
+            while f.tell() < length:
+                chunk_len, chunk_type = struct.unpack('<I4s', f.read(8))
+                chunk_data = f.read(chunk_len)
+                if chunk_type == b'JSON':
+                    gltf = json.loads(chunk_data.decode('utf-8'))
+                elif chunk_type == b'BIN\x00':
+                    buffers_data.append(chunk_data)
+    else:
+        with open(gltf_path, 'r', encoding='utf-8') as f:
+            gltf = json.load(f)
+            
+        for buf in gltf.get('buffers', []):
+            buf_uri = buf.get('uri', '')
+            if buf_uri.startswith('data:'):
+                import base64
+                data_b64 = buf_uri.split(',', 1)[1]
+                buffers_data.append(base64.b64decode(data_b64))
+            else:
+                buf_path = os.path.join(base_dir, buf_uri)
+                print(f"[gltf_to_obj] Carregando buffer binario: {buf_path} ({os.path.getsize(buf_path):,} bytes)")
+                with open(buf_path, 'rb') as bf:
+                    buffers_data.append(bf.read())
             
     buffer_views = gltf.get('bufferViews', [])
     accessors = gltf.get('accessors', [])
@@ -187,7 +208,7 @@ def convert_gltf_to_obj(gltf_path, obj_path):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print("Uso: python gltf_to_obj.py <caminho_entrada.gltf> <caminho_saida.obj>")
+        print("Uso: python gltf_to_obj.py <caminho_entrada.gltf|.glb> <caminho_saida.obj>")
         sys.exit(1)
     src = sys.argv[1]
     dst = sys.argv[2]

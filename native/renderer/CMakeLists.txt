@@ -91,4 +91,9 @@ add_custom_command(TARGET arboria_native POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     $<TARGET_FILE:arboria_native>
     ${CMAKE_CURRENT_SOURCE_DIR}/../../project/bin/libarboria_native.dll
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../addons/arboria/bin
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:arboria_native>
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../addons/arboria/bin/libarboria_native.dll
 )

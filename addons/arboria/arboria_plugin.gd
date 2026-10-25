@@ -26,9 +26,16 @@ func _enter_tree() -> void:
 		preload("nodes/arboria_static_body_3d.gd"),
 		preload("icons/arboria_static_body_3d.svg") if ResourceLoader.exists("res://addons/arboria/icons/arboria_static_body_3d.svg") else null
 	)
+	add_custom_type(
+		"VirtualMeshInstance3D",
+		"VisualInstance3D",
+		preload("nodes/virtual_mesh_instance_3d.gd"),
+		preload("icons/virtual_mesh_instance_3d.svg") if ResourceLoader.exists("res://addons/arboria/icons/virtual_mesh_instance_3d.svg") else null
+	)
 	print("[Arboria] Plugin ativado com sucesso. Nós de Geometria Virtualizada registrados.")
 
 func _exit_tree() -> void:
+	remove_custom_type("VirtualMeshInstance3D")
 	remove_custom_type("ArboriaInstance3D")
 	remove_custom_type("ArboriaRigidBody3D")
 	remove_custom_type("ArboriaStaticBody3D")
