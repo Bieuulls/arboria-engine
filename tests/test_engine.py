@@ -3,10 +3,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from tools.arboria_ai.safety import normalize_target, apply_literal_edits, sha
-from tools.arboria_ai.bench import checked_metrics, compare, aggregate
-from tools.arboria_ai.memory import Memory
-from tools.arboria_ai.experiment import evaluate, promote
+from tools.extras.arboria_ai.safety import normalize_target, apply_literal_edits, sha
+from tools.extras.arboria_ai.bench import checked_metrics, compare, aggregate
+from tools.extras.arboria_ai.memory import Memory
+from tools.extras.arboria_ai.experiment import evaluate, promote
 
 ALLOW=['project/shaders/*.glsl','native/renderer/**/*.cpp']
 
@@ -53,7 +53,7 @@ class TestSafety(unittest.TestCase):
 
     def test_gate_fail_closed(self):
         with tempfile.TemporaryDirectory() as d:
-            from tools.arboria_ai.experiment import _checks
+            from tools.extras.arboria_ai.experiment import _checks
             with self.assertRaisesRegex(ValueError,'NENHUM TESTE'):_checks({'checks':[]},Path(d),Path(d),'baseline')
 
     def test_git_worktree_real_a_b_runner(self):
@@ -91,14 +91,12 @@ class TestSafety(unittest.TestCase):
             finally:
                 db.con.close()
 
-if __name__=='__main__':unittest.main()
-
 class TestOllamaTransport(unittest.TestCase):
     def test_models_and_schema_response_via_http(self):
         """Protocol/transport test with local HTTP fixture; not an actual Ollama run."""
         from http.server import BaseHTTPRequestHandler, HTTPServer
         from threading import Thread
-        from tools.arboria_ai.ollama_client import models, propose, EDIT_SCHEMA
+        from tools.extras.arboria_ai.ollama_client import models, propose, EDIT_SCHEMA
         got=[]
         class Handler(BaseHTTPRequestHandler):
             def log_message(self,*args): pass
@@ -126,7 +124,7 @@ class TestOllamaTransport(unittest.TestCase):
 class TestVisualComparison(unittest.TestCase):
     def test_real_png_mae(self):
         from PIL import Image
-        from tools.arboria_ai.visual_compare import compare_png
+        from tools.extras.arboria_ai.visual_compare import compare_png
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
             a=root/'a.png';b=root/'b.png'
@@ -135,3 +133,6 @@ class TestVisualComparison(unittest.TestCase):
             self.assertEqual(compare_png(a,b)['visual_error'],0.0)
             Image.new('RGB',(12,12),(0,0,0)).save(b)
             self.assertGreater(compare_png(a,b)['visual_error'],0.3)
+
+if __name__=='__main__':
+    unittest.main()
