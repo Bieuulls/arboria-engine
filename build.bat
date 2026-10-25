@@ -119,6 +119,24 @@ for %%f in (assets\*.obj) do (
     copy /Y "%%f" "project\assets\" >nul
 )
 
+echo [Extra 2] Indexando projeto e classes do Godot (.godot cache)...
+set "GODOT_EXE="
+if defined GODOT_BIN if exist "%GODOT_BIN%" set "GODOT_EXE=%GODOT_BIN%"
+if not defined GODOT_EXE if exist "%LOCALAPPDATA%\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7.2-stable_win64_console.exe" set "GODOT_EXE=%LOCALAPPDATA%\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7.2-stable_win64_console.exe"
+if not defined GODOT_EXE if exist "bin\godot_console.exe" set "GODOT_EXE=bin\godot_console.exe"
+if not defined GODOT_EXE (
+    where godot_console.exe >nul 2>nul && set "GODOT_EXE=godot_console.exe"
+)
+if not defined GODOT_EXE (
+    where godot.exe >nul 2>nul && set "GODOT_EXE=godot.exe"
+)
+
+if defined GODOT_EXE (
+    "%GODOT_EXE%" --headless --editor --quit --path project >nul 2>nul
+) else (
+    echo [AVISO] Executavel do Godot nao encontrado para pre-indexacao.
+)
+
 echo ================================================================
 echo   BUILD CONCLUIDO COM SUCESSO E REPRODUZIVEL!
 echo ================================================================

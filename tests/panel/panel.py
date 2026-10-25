@@ -58,6 +58,22 @@ def find_godot_bin():
             return os.path.normpath(c)
     return None
 
+def ensure_godot_indexed():
+    cache_file = os.path.join(PROJECT_DIR, ".godot", "global_script_class_cache.cfg")
+    if not os.path.isfile(cache_file):
+        g_bin = find_godot_bin()
+        if g_bin:
+            try:
+                subprocess.run(
+                    [g_bin, "--headless", "--editor", "--quit", "--path", PROJECT_DIR],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=30,
+                    cwd=REPO_ROOT
+                )
+            except Exception:
+                pass
+
 def find_baker_bin():
     candidates = [
         os.path.join(REPO_ROOT, "bin", "arboria_baker_cli.exe"),
@@ -141,6 +157,7 @@ class TestCase:
             self.reason = f"Excecao na execucao: {e}"
 
 def build_test_catalog():
+    ensure_godot_indexed()
     tests = []
 
     # 1. Python Unit Tests

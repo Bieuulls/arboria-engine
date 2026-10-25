@@ -73,6 +73,14 @@ mkdir -p project/assets
 cp -u assets/*.vgmesh project/assets/ 2>/dev/null || true
 cp -u assets/*.obj project/assets/ 2>/dev/null || true
 
+echo "[Extra 2] Indexando projeto e classes do Godot (.godot cache)..."
+GODOT_EXE="${GODOT_BIN:-}"
+[ -z "$GODOT_EXE" ] && command -v godot >/dev/null 2>&1 && GODOT_EXE="godot"
+[ -z "$GODOT_EXE" ] && command -v godot4 >/dev/null 2>&1 && GODOT_EXE="godot4"
+if [ -n "$GODOT_EXE" ]; then
+    "$GODOT_EXE" --headless --editor --quit --path project >/dev/null 2>&1 || true
+fi
+
 echo "================================================================"
 echo "  BUILD CONCLUIDO COM SUCESSO E REPRODUZIVEL!"
 echo "================================================================"
