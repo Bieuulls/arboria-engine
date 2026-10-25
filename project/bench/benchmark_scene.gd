@@ -434,9 +434,10 @@ func _finalize_benchmark() -> void:
 		print("   ARBORIA Triangulos Reais : %.0f" % avg_triangles)
 	print("================================================================")
 
-	var pipe = ArboriaNativePipeline.get_active_instance()
-	if pipe and pipe.has_method("cleanup"):
-		pipe.cleanup()
+	if variant_id.begins_with("arboria"):
+		var pipe = ArboriaNativePipeline.get_active_instance()
+		if pipe and pipe.has_method("cleanup"):
+			pipe.cleanup()
 
 	get_tree().quit(0)
 

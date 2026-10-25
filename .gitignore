@@ -64,3 +64,7 @@ tests/panel/reports/*.md
 tests/panel/reports/*.png
 !tests/panel/reports/.gitkeep
 
+project/diag_*.png
+bench/results/captures/*.png
+
+

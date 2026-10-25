@@ -233,7 +233,7 @@ static func get_active_instance() -> RefCounted:
 
 static func get_or_create_shared() -> RefCounted:
 	if not _shared_instance:
-		_shared_instance = ArboriaNativePipeline.new()
+		_shared_instance = load("res://scripts/arboria_native_pipeline.gd").new()
 	return _shared_instance
 
 func request_telemetry_read() -> void:

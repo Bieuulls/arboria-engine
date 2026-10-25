@@ -7,6 +7,7 @@ extends VisualInstance3D
 ## GPU Culling e desenho indireto nativo no Forward+.
 
 const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd")
+const ArboriaMeshLoader = preload("res://scripts/arboria_mesh_loader.gd")
 
 signal mesh_loaded(path: String)
 signal transform_updated()

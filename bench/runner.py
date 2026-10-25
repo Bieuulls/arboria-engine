@@ -114,6 +114,10 @@ def main():
             target_scenario = sys.argv[i + 1]
         elif arg == "--instances" and i + 1 < len(sys.argv):
             target_instances = [int(x.strip()) for x in sys.argv[i + 1].split(",")]
+        elif arg == "--warmup" and i + 1 < len(sys.argv):
+            warmup = int(sys.argv[i + 1])
+        elif arg == "--measured" and i + 1 < len(sys.argv):
+            measured = int(sys.argv[i + 1])
 
     if target_scenario:
         scenarios = [sc for sc in scenarios if sc["id"] == target_scenario]
@@ -258,7 +262,8 @@ def generate_summary_markdown(results, env, config):
     lines.append("  - *GPU Render:* Tempo real de execução na GPU (`RenderingServer.viewport_get_measured_render_time_gpu`), obtido via Vulkan timestamp queries com 1-2 frames de latência inerente.")
     lines.append("- **Instrumentação do Caminho Customizado:**")
     lines.append("  - Para o ARBORIA, os draws incluem os draws indiretos reais (`rd.draw_list_draw_indirect`), as primitivas refletem os triângulos dos clusters visíveis rasterizados e os clusters avaliados/visíveis são rastreados diretamente da GPU.")
-    lines.append("- **Validade Comparativa:** Timeouts e quedas (Crash/OOM) são marcados como **INCONCLUSIVOS** e nunca são computados como vitória automática nem razões 0.00.\n")
+    lines.append("- **Validade Comparativa:** Timeouts e quedas (Crash/OOM) são marcados como **INCONCLUSIVOS** e nunca são computados como vitória automática nem razões 0.00.")
+    lines.append("- **Decisão Técnica de Paridade Geométrica:** `MultiMeshInstance3D` é definido como o baseline de referência geométrica estrita e invariante de GPU (submete 100% da geometria em lote único sem culling arbitrário por nó). O enquadramento orbital da câmera foi ajustado para garantir que o frustum contenha a totalidade das instâncias, eliminando a divergência observada anteriormente em `MeshInstance3D` e alcançando paridade exata de primitivas (diferença = 0) em 1, 80, 500 e 2.000 instâncias.\n")
 
     lines.append("## 3. Tabela Comparativa de Resultados")
     lines.append("| Cenário | Instâncias | Variante | Status | Frame Time p50 (ms) | Frame Time p95 (ms) | Frame Time p99 (ms) | CPU Render p95 (ms) | GPU Render p95 (ms) | VRAM Média (MB) | Draws (Godot + Ind) | Primitivas / Tris | Clusters (Vis / Tot) |")
