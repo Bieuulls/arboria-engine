@@ -71,13 +71,17 @@ func _ready() -> void:
 	default_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	default_material.albedo_color = Color(0.75, 0.76, 0.78)
 
-	# Ajusta raio da órbita conforme o tamanho da cena
-	if instance_count >= 500:
-		orbit_radius = 85.0
-		orbit_height = 25.0
+	# Ajusta raio da órbita conforme o tamanho da cena para que todas as instâncias
+	# permaneçam 100% dentro do frustum da câmera (eliminando frustum culling parcial)
+	if instance_count >= 2000:
+		orbit_radius = 260.0
+		orbit_height = 80.0
+	elif instance_count >= 500:
+		orbit_radius = 145.0
+		orbit_height = 45.0
 	elif instance_count >= 80:
-		orbit_radius = 45.0
-		orbit_height = 16.0
+		orbit_radius = 65.0
+		orbit_height = 20.0
 	else:
 		orbit_radius = 25.0
 		orbit_height = 10.0

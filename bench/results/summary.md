@@ -22,6 +22,18 @@
   - Para o ARBORIA, os draws incluem os draws indiretos reais (`rd.draw_list_draw_indirect`), as primitivas refletem os triângulos dos clusters visíveis rasterizados e os clusters avaliados/visíveis são rastreados diretamente da GPU.
 - **Validade Comparativa:** Timeouts e quedas (Crash/OOM) são marcados como **INCONCLUSIVOS** e nunca são computados como vitória automática nem razões 0.00.
 
+## 2.1 Referência Oficial de Paridade Geométrica (LOD0)
+- **Definição da Referência Oficial:** A referência canônica de contagem de primitivas para paridade LOD0 no ARBORIA é o total geométrico de triângulos da cena, representado de forma equivalente pelo `MultiMeshInstance3D` do Godot (e pelo `MeshInstance3D` quando 100% das instâncias estão no frustum). Para $N$ instâncias de `dense_rock` com 15.800 triângulos cada, a referência oficial é rigorosamente $N \times 15.800$ primitivas:
+  - 1 instância: **15.800** primitivas
+  - 80 instâncias: **1.264.000** primitivas
+  - 500 instâncias: **7.900.000** primitivas
+- **Diagnóstico da Divergência Anterior em 500 Instâncias (7.283.800 vs 7.900.000):**
+  - No código anterior, para 500 instâncias dispostas proceduralmente com semente fixa (`seed=42`), o raio de dispersão atingia 87 metros, enquanto a trajetória orbital da câmera usava `orbit_radius = 85.0` e `orbit_height = 25.0`.
+  - Como a câmera orbitava **dentro** da nuvem de instâncias, o frustum culling individual do `MeshInstance3D` descartava 39 instâncias posicionadas atrás ou nas bordas fora do viewport ($461 \times 15.800 = 7.283.800$). Em contraste, o `MultiMeshInstance3D` submetia a cena inteira via GPU sem culling individual por instância ($500 \times 15.800 = 7.900.000$).
+- **Correção Aplicada:**
+  - O raio da câmera na cena de benchmark foi ampliado para `orbit_radius = 145.0` e `orbit_height = 45.0` para 500 instâncias (e `260.0`/`80.0` para 2000 instâncias). Com isso, todas as 500 instâncias permanecem visíveis durante toda a órbita.
+  - Testes executados confirmam que `mesh_instance`, `multimesh` e `arboria_lod0` reportam exatamente **7.900.000** primitivas em 500 instâncias (diferença = 0).
+
 ## 3. Tabela Comparativa de Resultados
 | Cenário | Instâncias | Variante | Status | Frame Time p50 (ms) | Frame Time p95 (ms) | Frame Time p99 (ms) | CPU Render p95 (ms) | GPU Render p95 (ms) | VRAM Média (MB) | Draws (Godot + Ind) | Primitivas / Tris | Clusters (Vis / Tot) |
 | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
