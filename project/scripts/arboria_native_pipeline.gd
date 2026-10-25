@@ -1622,18 +1622,8 @@ func _render_scene_global_internal(
 		rd.buffer_update(global_scene_uniforms_buf, 0, ubo_data.size(), ubo_data)
 
 		# Empacota instâncias do lote (GPUInstanceData - 240 bytes cada)
-		var any_instance_dirty = false
-		for i in range(batch_size):
-			var task = batch_tasks[i]
-			var inst: Node3D = task["inst"]
-			var inst_gpu: InstanceGPUData = task.get("gpu_data", null)
-			if not inst_gpu or not inst_gpu.is_transform_cached or inst_gpu.cached_transform != inst.global_transform or inst_gpu.cached_visible != inst.visible:
-				any_instance_dirty = true
-				break
-
-		if any_instance_dirty:
-			var inst_bytes = PackedByteArray()
-			inst_bytes.resize(batch_size * 240)
+		var inst_bytes = PackedByteArray()
+		inst_bytes.resize(batch_size * 240)
 
 		for i in range(batch_size):
 			var task = batch_tasks[i]
