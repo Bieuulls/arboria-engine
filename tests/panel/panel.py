@@ -405,6 +405,7 @@ def run_cli(tests_list, target_group=None, target_id=None):
         print(f"[{t.status}] ({t.duration_sec:.2f}s)")
         if t.status != STATUS_PASSOU and t.reason:
             print(f"     -> Motivo: {t.reason}")
+        time.sleep(0.5)
 
     md_path, json_path = generate_reports(filtered)
     print("\n" + "=" * 80)
