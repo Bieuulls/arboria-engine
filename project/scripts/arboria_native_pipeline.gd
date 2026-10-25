@@ -1473,8 +1473,8 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 	stats_cpu_submission_ms = (t1_submit - t0_submit) / 1000.0
 
 	stats_total_instances = active_tasks.size()
-	stats_dispatches = active_tasks.size()
-	stats_indirect_draws = active_tasks.size()
+	stats_dispatches = 1
+	stats_indirect_draws = 1
 	var eval_acc: int = 0
 	for task in active_tasks:
 		var m_res: MeshGPUResource = task.get("mesh_res", null)

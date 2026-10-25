@@ -292,22 +292,33 @@ bool VGComputeDispatch::dispatch_cull_clusters_batch(
     int64_t one = 1;
     if (ctx.from_int) ctx.from_int(one_var, &one);
 
+    int64_t total_groups_x = 0;
     for (int64_t i = 0; i < count; ++i) {
-        uint8_t cset_var[32] = {0};
         uint8_t gx_var[32] = {0};
         uint8_t valid = 0, oob = 0;
-
+        int64_t gx = 0;
         if (ctx.get_indexed) {
-            ctx.get_indexed(compute_sets_array, i, cset_var, &valid, &oob);
             ctx.get_indexed(groups_x_array, i, gx_var, &valid, &oob);
+            if (ctx.to_int) ctx.to_int(&gx, gx_var);
         }
-
-        const void* bind_set_args[] = { cl_var, cset_var, set_idx_var };
-        ctx.call_method(ctx.rd, "compute_list_bind_uniform_set", bind_set_args, 3, nullptr);
-
-        const void* dispatch_args[] = { cl_var, gx_var, one_var, one_var };
-        ctx.call_method(ctx.rd, "compute_list_dispatch", dispatch_args, 4, nullptr);
+        total_groups_x += (gx > 0 ? gx : 1);
     }
+    if (total_groups_x == 0) total_groups_x = 1;
+
+    uint8_t cset_var[32] = {0};
+    uint8_t valid = 0, oob = 0;
+    if (ctx.get_indexed) {
+        ctx.get_indexed(compute_sets_array, 0, cset_var, &valid, &oob);
+    }
+
+    const void* bind_set_args[] = { cl_var, cset_var, set_idx_var };
+    ctx.call_method(ctx.rd, "compute_list_bind_uniform_set", bind_set_args, 3, nullptr);
+
+    uint8_t total_gx_var[32] = {0};
+    if (ctx.from_int) ctx.from_int(total_gx_var, &total_groups_x);
+
+    const void* dispatch_args[] = { cl_var, total_gx_var, one_var, one_var };
+    ctx.call_method(ctx.rd, "compute_list_dispatch", dispatch_args, 4, nullptr);
 
     ctx.call_method(ctx.rd, "compute_list_end", nullptr, 0, nullptr);
     return true;

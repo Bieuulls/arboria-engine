@@ -142,14 +142,14 @@ bool VGIndirectRenderer::draw_indirect_batch(
     int64_t stride_16 = 16;
     if (ctx.from_int) ctx.from_int(stride_var, &stride_16);
 
-    for (int64_t i = 0; i < count; ++i) {
+    if (count > 0) {
         uint8_t rset_var[32] = {0};
         uint8_t cnt_var[32] = {0};
         uint8_t valid = 0, oob = 0;
 
         if (ctx.get_indexed) {
-            ctx.get_indexed(raster_sets_array, i, rset_var, &valid, &oob);
-            ctx.get_indexed(counter_bufs_array, i, cnt_var, &valid, &oob);
+            ctx.get_indexed(raster_sets_array, 0, rset_var, &valid, &oob);
+            ctx.get_indexed(counter_bufs_array, 0, cnt_var, &valid, &oob);
         }
 
         const void* bind_set_args[] = { dl_var, rset_var, set_idx_var };
