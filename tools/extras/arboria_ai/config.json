@@ -1,0 +1,42 @@
+{
+  "ollama": {
+    "url": "http://127.0.0.1:11434",
+    "model": "qwen2.5-coder:7b",
+    "timeout_seconds": 240,
+    "num_ctx": 8192
+  },
+  "target_allowlist": [
+    "project/shaders/*.glsl",
+    "project/scripts/*.gd",
+    "native/renderer/**/*.cpp",
+    "native/renderer/**/*.h",
+    "native/renderer/**/*.hpp"
+  ],
+  "limits": {
+    "max_source_chars": 24000,
+    "max_edits": 4,
+    "max_added_chars": 10000
+  },
+  "checks": [
+    {
+      "name": "native_build_and_tests",
+      "argv": ["powershell", "-ExecutionPolicy", "Bypass", "-File", "tools/gates/build_native.ps1"],
+      "timeout_seconds": 120
+    }
+  ],
+  "benchmark": {
+    "argv": ["python", "tools/arboria_ai/run_benchmark_metrics.py"],
+    "output_json": "artifacts/aeoc_metrics.json",
+    "timeout_seconds": 600,
+    "repetitions": 3
+  },
+  "acceptance": {
+    "primary_metric": "gpu_p95_ms",
+    "min_gain_pct": 3.0,
+    "max_regression_pct": 2.0,
+    "require_cluster_count_parity": false,
+    "cluster_count_tolerance_pct": 0.5,
+    "max_visual_error": 0.01,
+    "max_visual_error_increase": 0.005
+  }
+}
