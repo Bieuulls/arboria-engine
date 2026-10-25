@@ -1,9 +1,11 @@
+import sys
 import unittest
 import tempfile
 import json
 from pathlib import Path
 
-from tools.arboria_ai.bench import checked_metrics, compare
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.extras.arboria_ai.bench import checked_metrics, compare
 
 class TestBenchmarkMetricsStrict(unittest.TestCase):
 
