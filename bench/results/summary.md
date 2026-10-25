@@ -1,5 +1,5 @@
 # ARBORIA ENGINE — RELATÓRIO OFICIAL DE BENCHMARK
-**Data da Execução:** 25/10/2026 14:29:28
+**Data da Execução:** 25/10/2026 14:56:43
 
 ## 1. Ambiente de Execução e Hardware
 - **Sistema Operacional:** Windows 10 (AMD64)
@@ -26,21 +26,21 @@
 ## 3. Tabela Comparativa de Resultados
 | Cenário | Instâncias | Variante | Status | Frame Time p50 (ms) | Frame Time p95 (ms) | Frame Time p99 (ms) | CPU Render p95 (ms) | GPU Render p95 (ms) | VRAM Média (MB) | Draws (Godot + Ind) | Primitivas / Tris | Clusters (Vis / Tot) |
 | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| dense_rock | 1 | mesh_instance | ✅ OK | 0.90 | 1.24 | 1.29 | 0.19 | 0.26 | 111.7 | 1 | 15800 | - |
-| dense_rock | 1 | multimesh | ✅ OK | 0.91 | 1.67 | 1.67 | 0.11 | 0.26 | 111.7 | 1 | 15800 | - |
-| dense_rock | 1 | arboria | ✅ OK | 0.88 | 1.15 | 1.30 | 0.31 | 0.26 | 130.2 | 1 (1 ind) | 3866 | 47 / 367 |
-| dense_rock | 1 | arboria_lod0 | ✅ OK | 0.92 | 1.85 | 1.85 | 0.26 | 0.27 | 130.2 | 1 (1 ind) | 15800 | 172 / 367 |
-| dense_rock | 500 | mesh_instance | ✅ OK | 5.91 | 6.69 | 7.08 | 0.24 | 6.09 | 111.7 | 3 | 7900000 | - |
-| dense_rock | 500 | multimesh | ✅ OK | 6.67 | 7.24 | 7.26 | 0.27 | 6.36 | 111.7 | 1 | 7900000 | - |
-| dense_rock | 500 | arboria | ✅ OK | 6.64 | 8.06 | 8.33 | 7.01 | 0.63 | 131.1 | 1 (1 ind) | 337374 | 4137 / 183500 |
-| dense_rock | 500 | arboria_lod0 | ✅ OK | 6.67 | 8.31 | 8.33 | 6.52 | 7.50 | 131.1 | 1 (1 ind) | 7900000 | 86000 / 183500 |
+| dense_rock | 1 | mesh_instance | ✅ OK | 0.95 | 1.12 | 1.39 | 0.12 | 0.26 | 111.7 | 1 | 15800 | - |
+| dense_rock | 1 | multimesh | ✅ OK | 0.91 | 2.38 | 2.38 | 0.11 | 0.26 | 111.7 | 1 | 15800 | - |
+| dense_rock | 1 | arboria | ✅ OK | 0.88 | 2.78 | 2.78 | 0.34 | 0.26 | 130.2 | 1 (1 ind) | 3866 | 47 / 367 |
+| dense_rock | 1 | arboria_lod0 | ✅ OK | 1.39 | 1.39 | 1.39 | 0.35 | 0.27 | 130.2 | 1 (1 ind) | 15800 | 172 / 367 |
+| dense_rock | 500 | mesh_instance | ✅ OK | 6.06 | 6.92 | 7.13 | 0.21 | 6.07 | 111.7 | 3 | 7900000 | - |
+| dense_rock | 500 | multimesh | ✅ OK | 6.67 | 6.92 | 7.24 | 0.22 | 6.36 | 111.7 | 1 | 7900000 | - |
+| dense_rock | 500 | arboria | ✅ OK | 6.67 | 6.67 | 6.67 | 6.63 | 0.63 | 131.1 | 1 (1 ind) | 337374 | 4137 / 183500 |
+| dense_rock | 500 | arboria_lod0 | ✅ OK | 7.58 | 8.33 | 8.33 | 6.80 | 7.76 | 131.1 | 1 (1 ind) | 7900000 | 86000 / 183500 |
 
 ## 4. Comparações Diretas e Avaliação de Desempenho
 ### 4.1 Comparação de Qualidade Equivalente: ARBORIA (DAG Dinâmico) vs. Melhor Godot Convencional
 | Cenário | Instâncias | Melhor Godot Convencional | p95 Godot (ms) | p95 ARBORIA (ms) | Razão p95 (ARB/Godot) | VRAM Godot (MB) | VRAM ARBORIA (MB) | Razão VRAM | Vantagem Significativa? |
 | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| dense_rock | 1 | MeshInstance3D | 1.24 | 1.15 | 0.93 | 111.7 | 130.2 | 1.17 | Não (0.93x tempo, 1.17x VRAM) |
-| dense_rock | 500 | MeshInstance3D | 6.69 | 8.06 | 1.21 | 111.7 | 131.1 | 1.17 | Não (1.21x tempo, 1.17x VRAM) |
+| dense_rock | 1 | MeshInstance3D | 1.12 | 2.78 | 2.48 | 111.7 | 130.2 | 1.17 | Não (2.48x tempo, 1.17x VRAM) |
+| dense_rock | 500 | MeshInstance3D | 6.92 | 6.67 | 0.96 | 111.7 | 131.1 | 1.17 | Não (0.96x tempo, 1.17x VRAM) |
 | pine_trunk | 1 | - | - | - | N/A | - | - | N/A | Inconclusivo (ARBORIA Ausente) |
 | pine_trunk | 80 | - | - | - | N/A | - | - | N/A | Inconclusivo (ARBORIA Ausente) |
 | pine_trunk | 500 | - | - | - | N/A | - | - | N/A | Inconclusivo (ARBORIA Ausente) |
@@ -49,8 +49,8 @@
 ### 4.2 Comparação de LOD0 Idêntico: ARBORIA (LOD0 Forçado) vs. Melhor Godot Convencional
 | Cenário | Instâncias | Melhor Godot Convencional | p95 Godot (ms) | p95 ARBORIA LOD0 (ms) | Razão p95 | VRAM Godot (MB) | VRAM ARBORIA LOD0 (MB) | Razão VRAM |
 | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| dense_rock | 1 | MeshInstance3D | 1.24 | 1.85 | 1.50 | 111.7 | 130.2 | 1.17 |
-| dense_rock | 500 | MeshInstance3D | 6.69 | 8.31 | 1.24 | 111.7 | 131.1 | 1.17 |
+| dense_rock | 1 | MeshInstance3D | 1.12 | 1.39 | 1.24 | 111.7 | 130.2 | 1.17 |
+| dense_rock | 500 | MeshInstance3D | 6.92 | 8.33 | 1.20 | 111.7 | 131.1 | 1.17 |
 
 ## 5. Diferenças de Qualidade Visual e Limitações Honestamente Registradas
 1. **Sombras Dinâmicas no Cenário:** As variantes A e B nativas do Godot projetam e recebem sombras dinâmicas completas via Shadow Atlas. A variante ARBORIA escreve no buffer Forward+, mas ainda não injeta no passe de Shadow Map do Godot.
