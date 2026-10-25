@@ -2,7 +2,7 @@
 """
 ARBORIA ENGINE — TESTE DE REGRESSÃO: NEUTRALIZAÇÃO DE CAMINHOS LOCAIS (FASE 0.2)
 Verifica que nenhum arquivo versionado no repositório contém caminhos absolutos locais
-de desenvolvimento (ex: 'srgab' ou 'C:\\Users\\').
+de desenvolvimento de usuários anteriores.
 """
 
 import os
@@ -16,7 +16,6 @@ def main():
     print(" [TESTE DE REGRESSÃO 0.2] NEUTRALIZAÇÃO DE CAMINHOS LOCAIS       ")
     print("==================================================================")
 
-    # Lista todos os arquivos rastreados pelo git
     res = subprocess.run(
         ["git", "ls-files"],
         cwd=REPO_ROOT,
@@ -27,7 +26,7 @@ def main():
     tracked_files = res.stdout.strip().splitlines()
     print(f"Total de arquivos rastreados no git: {len(tracked_files)}")
 
-    forbidden_patterns = ["srgab"]
+    target_token = "".join(["s", "r", "g", "a", "b"])
     violations = []
 
     for rel_path in tracked_files:
@@ -35,17 +34,19 @@ def main():
         if not os.path.isfile(full_path):
             continue
 
-        # Pula binários compilados conhecidos
+        # Ignora o proprio script de teste e binarios compilados
+        if rel_path.replace("\\", "/").endswith("tests/test_path_neutralization.py"):
+            continue
+
         if rel_path.endswith((".exe", ".dll", ".pck", ".lib", ".obj", ".png", ".jpg", ".vgmesh")):
             continue
 
         try:
             with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
-                for pat in forbidden_patterns:
-                    if pat.lower() in content.lower():
-                        violations.append((rel_path, pat))
-        except Exception as e:
+                if target_token.lower() in content.lower():
+                    violations.append((rel_path, target_token))
+        except Exception:
             pass
 
     if violations:
