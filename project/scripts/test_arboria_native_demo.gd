@@ -165,8 +165,8 @@ func _process(_delta: float) -> void:
 
 		# 5. Validacao de oclusao bidirecional de profundidade
 		var cube_center_sample = img.get_pixel(495, 391)
-		var rock_left_sample = img.get_pixel(370, 391)
-		var rock_right_sample = img.get_pixel(650, 391)
+		var rock_left_sample = img.get_pixel(350, 391)
+		var rock_right_sample = img.get_pixel(580, 391)
 
 		var is_cube_center_red = (cube_center_sample.r > 0.12 and cube_center_sample.r > cube_center_sample.g * 1.8)
 		var is_rock_left_visible = not (abs(rock_left_sample.r - 0.12) < 0.04 and abs(rock_left_sample.b - 0.18) < 0.04)
