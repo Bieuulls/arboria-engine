@@ -168,6 +168,7 @@ def build_test_catalog():
         ("py_lod0_parity", "tests/test_lod0_parity.py"),
         ("py_path_neutralization", "tests/test_path_neutralization.py"),
         ("py_hierarchical_culling", "tests/test_regression_hierarchical_culling.py"),
+        ("py_addon_standalone", "tests/test_addon_standalone.py"),
     ]
     for tid, rel_path in py_files:
         full_path = os.path.join(REPO_ROOT, os.path.normpath(rel_path))
