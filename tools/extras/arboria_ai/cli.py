@@ -7,12 +7,18 @@ from .memory import Memory
 from .ollama_client import models, propose
 from .safety import apply_literal_edits, resolve_target, sha, unified_patch
 from .experiment import evaluate, promote, git, assert_clean_file
+from .bench_csv_adapter import get_latest_benchmark_context
 
 
 def settings(repo: Path):
-    config=repo/'tools'/'arboria_ai'/'config.json'
-    if not config.is_file():raise ValueError('Instale o módulo na raiz do projeto. Falta tools/arboria_ai/config.json')
-    return json.loads(config.read_text(encoding='utf-8'))
+    candidates = [
+        repo / 'tools' / 'extras' / 'arboria_ai' / 'config.json',
+        repo / 'tools' / 'arboria_ai' / 'config.json',
+    ]
+    for c in candidates:
+        if c.is_file():
+            return json.loads(c.read_text(encoding='utf-8'))
+    raise ValueError('Configuração não encontrada em tools/extras/arboria_ai/config.json')
 
 
 def state_path(repo: Path, state_opt: str):
@@ -98,8 +104,10 @@ def cli(argv=None):
             raise ValueError('É obrigatório executar dentro de um repositório Git e em arquivo alvo limpo.')
         model=args.model or cfg['ollama'].get('model','')
         if not model:raise ValueError('Informe --model NOME conforme ollama list, ou configure ollama.model.')
+        bench_ctx = get_latest_benchmark_context(repo)
         lessons=db.recent(str(repo),args.target)
-        context='\n'.join(f"- [{r['status']}] {r['goal']}: {r['reason'] or 'sem avaliação'}" for r in lessons)[:4000]
+        lesson_text='\n'.join(f"- [{r['status']}] {r['goal']}: {r['reason'] or 'sem avaliação'}" for r in lessons)[:2000]
+        context = (bench_ctx + "\n\nLIÇÕES ANTERIORES:\n" + (lesson_text or "Nenhum experimento anterior registrado."))[:5000]
         response=propose(cfg['ollama']['url'],model,args.target,preview,args.goal,context,
                          timeout=int(cfg['ollama'].get('timeout_seconds',240)),num_ctx=int(cfg['ollama'].get('num_ctx',8192)))
         edits=response['edits']

@@ -14,14 +14,35 @@ import argparse
 import subprocess
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from tools.arboria_ai.bench import checked_metrics, REQUIRED
-from tools.arboria_ai.visual_compare import compare_png
+from tools.extras.arboria_ai.bench import checked_metrics, REQUIRED
+from tools.extras.arboria_ai.visual_compare import compare_png
+from tools.extras.arboria_ai.bench_csv_adapter import derive
 
-GODOT_BIN = r"D:\ARBORIA_ENGINE\bin\godot.exe"
+def find_godot_bin():
+    if "GODOT_BIN" in os.environ and os.path.isfile(os.environ["GODOT_BIN"]):
+        return os.environ["GODOT_BIN"]
+    import glob, shutil
+    candidates = [
+        shutil.which("godot"),
+        shutil.which("godot4"),
+        shutil.which("godot_console.exe"),
+        str(REPO_ROOT / "bin" / "godot_console.exe"),
+        str(REPO_ROOT / "bin" / "godot.exe"),
+    ]
+    localapp = os.environ.get("LOCALAPPDATA", "")
+    if localapp:
+        candidates.extend(glob.glob(os.path.join(localapp, "Microsoft", "WinGet", "Packages", "GodotEngine.GodotEngine*", "*console.exe")))
+        candidates.extend(glob.glob(os.path.join(localapp, "Microsoft", "WinGet", "Packages", "GodotEngine.GodotEngine*", "Godot*.exe")))
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return os.path.normpath(c)
+    return "godot"
+
+GODOT_BIN = find_godot_bin()
 DEFAULT_OUTPUT_METRICS = REPO_ROOT / "artifacts" / "aeoc_metrics.json"
 DEFAULT_REF_IMAGE = REPO_ROOT / "artifacts" / "baseline_reference.png"
 DEFAULT_CAND_IMAGE = REPO_ROOT / "artifacts" / "candidate_test.png"

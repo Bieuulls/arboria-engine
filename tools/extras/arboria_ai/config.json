@@ -25,7 +25,7 @@
     }
   ],
   "benchmark": {
-    "argv": ["python", "tools/arboria_ai/run_benchmark_metrics.py"],
+    "argv": ["python", "tools/extras/arboria_ai/run_benchmark_metrics.py"],
     "output_json": "artifacts/aeoc_metrics.json",
     "timeout_seconds": 600,
     "repetitions": 3
