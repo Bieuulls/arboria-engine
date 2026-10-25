@@ -34,6 +34,44 @@ signal transform_updated()
 		forced_lod = value
 		notify_pipeline_update()
 
+@export_group("Material Override (StandardMaterial3D)")
+@export var material_override: StandardMaterial3D = null:
+	set(value):
+		if material_override and material_override.changed.is_connected(_on_material_override_changed):
+			material_override.changed.disconnect(_on_material_override_changed)
+		material_override = value
+		if material_override:
+			material_override.changed.connect(_on_material_override_changed)
+			_sync_from_material_override()
+		if _shadow_proxy_node and is_instance_valid(_shadow_proxy_node):
+			_shadow_proxy_node.material_override = material_override
+		notify_pipeline_update()
+
+func _on_material_override_changed() -> void:
+	_sync_from_material_override()
+	notify_pipeline_update()
+
+func _sync_from_material_override() -> void:
+	if not material_override:
+		return
+	base_albedo = material_override.albedo_color
+	roughness = material_override.roughness
+	metallic = material_override.metallic
+	specular = material_override.metallic_specular
+	if material_override.albedo_texture:
+		albedo_texture = material_override.albedo_texture
+	if material_override.normal_enabled and material_override.normal_texture:
+		normal_texture = material_override.normal_texture
+		normal_scale = material_override.normal_scale
+	if material_override.roughness_texture:
+		orm_texture = material_override.roughness_texture
+	uv_scale = Vector2(material_override.uv1_scale.x, material_override.uv1_scale.y)
+	if material_override.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+		alpha_scissor_threshold = material_override.alpha_scissor_threshold
+	if material_override.emission_enabled:
+		emission = material_override.emission
+		emission_energy = material_override.emission_energy_multiplier
+
 @export_group("Material PBR")
 @export var base_albedo: Color = Color(0.80, 0.82, 0.85):
 	set(value):
