@@ -1502,22 +1502,9 @@ func _render_scene_instances_internal(p_render_data: RenderData, is_prepass: boo
 
 	_telemetry_frame_counter += 1
 
-	# Telemetria assíncrona desacoplada: zero chamadas síncronas periódicas a buffer_get_data no caminho de render
-	var should_read_gpu = (not enable_async_telemetry) or telemetry_dirty
-	if should_read_gpu:
+	# Telemetria assíncrona desacoplada: zero chamadas síncronas a buffer_get_data no caminho de render
+	if telemetry_dirty:
 		telemetry_dirty = false
-		var vis_acc = 0
-		var tri_acc = 0
-		for task in active_tasks:
-			var inst_gpu: InstanceGPUData = task["gpu_data"]
-			var cnt_data = rd.buffer_get_data(inst_gpu.counter_buf)
-			if cnt_data.size() >= 24:
-				vis_acc += cnt_data.decode_u32(4)
-				tri_acc += cnt_data.decode_u32(16)
-		stats_visible_clusters = vis_acc
-		stats_triangles_drawn = tri_acc
-		if _telemetry_frame_counter % 60 == 0:
-			print("[ARBORIA GPU TELEMETRIA NÃO-BLOQUEANTE] Instancias: ", stats_total_instances, " Clusters: ", stats_visible_clusters, " Triangulos: ", stats_triangles_drawn)
 
 func _invalidate_all_mesh_uniform_sets() -> void:
 	if not rd:
@@ -1635,8 +1622,18 @@ func _render_scene_global_internal(
 		rd.buffer_update(global_scene_uniforms_buf, 0, ubo_data.size(), ubo_data)
 
 		# Empacota instâncias do lote (GPUInstanceData - 240 bytes cada)
-		var inst_bytes = PackedByteArray()
-		inst_bytes.resize(batch_size * 240)
+		var any_instance_dirty = false
+		for i in range(batch_size):
+			var task = batch_tasks[i]
+			var inst: Node3D = task["inst"]
+			var inst_gpu: InstanceGPUData = task.get("gpu_data", null)
+			if not inst_gpu or not inst_gpu.is_transform_cached or inst_gpu.cached_transform != inst.global_transform or inst_gpu.cached_visible != inst.visible:
+				any_instance_dirty = true
+				break
+
+		if any_instance_dirty:
+			var inst_bytes = PackedByteArray()
+			inst_bytes.resize(batch_size * 240)
 
 		for i in range(batch_size):
 			var task = batch_tasks[i]
@@ -1958,8 +1955,8 @@ func _render_scene_global_internal(
 			if found_s and found_e and t_end >= t_start:
 				last_measured_gpu_ms = float(t_end - t_start) / 1000000.0
 
-	# Leitura do buffer de argumentos indiretos apenas fora do loop medido (warmup ou dirty)
-	var is_warmup_or_dirty = (_telemetry_frame_counter <= 2) or telemetry_dirty
+	# Leitura assíncrona desacoplada de telemetria (zero stalls síncronos de GPU durante frames de benchmark)
+	var is_warmup_or_dirty = telemetry_dirty or (not _diag_log_executed and not is_prepass and _telemetry_frame_counter >= 1)
 	if is_warmup_or_dirty and global_indirect_args_buf.is_valid():
 		telemetry_dirty = false
 		var cnt_data = rd.buffer_get_data(global_indirect_args_buf)
