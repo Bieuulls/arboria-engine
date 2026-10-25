@@ -66,5 +66,6 @@ tests/panel/reports/*.png
 
 project/diag_*.png
 bench/results/captures/*.png
+tests/artifacts/
 
 
