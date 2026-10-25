@@ -56,6 +56,9 @@ set(ARBORIA_HEADERS
 # Compilar Shared Library (DLL)
 add_library(arboria_native SHARED ${ARBORIA_SOURCES} ${ARBORIA_HEADERS})
 target_include_directories(arboria_native PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(MINGW)
+    target_link_options(arboria_native PRIVATE -static)
+endif()
 
 # Compilar Static Library
 add_library(arboria_native_static STATIC ${ARBORIA_SOURCES} ${ARBORIA_HEADERS})

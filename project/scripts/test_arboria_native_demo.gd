@@ -54,6 +54,7 @@ func _process(_delta: float) -> void:
 		if pipeline:
 			pipeline.request_telemetry_read()
 
+	elif frame_count == 27:
 		var img = get_viewport().get_texture().get_image()
 		if img:
 			img.save_png("res://diag_arboria_native_demo_frame.png")
