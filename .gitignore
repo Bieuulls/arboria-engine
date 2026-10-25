@@ -53,6 +53,8 @@ project/assets/
 # Local artifacts, benchmarks & build directories
 artifacts/
 native/renderer/build/
+baker/build/
+tools/baker/build/
 ~*
 .vscode/
 
