@@ -149,6 +149,19 @@ static func get_cluster_color(cluster_id: int) -> Color:
 	var hue = fmod(float(cluster_id) * 0.618033988749895, 1.0)
 	return Color.from_hsv(hue, 0.85, 0.95)
 
+static var _array_mesh_cache: Dictionary = {}
+
+static func get_cached_array_mesh(file_path: String, vg_data: Dictionary = {}, target_lod: int = 0) -> ArrayMesh:
+	var key = file_path + "_lod_" + str(target_lod)
+	if _array_mesh_cache.has(key):
+		return _array_mesh_cache[key]
+	if vg_data.is_empty() or not vg_data.has("normals"):
+		vg_data = load_from_file(file_path)
+	var m = build_mesh_surface(vg_data, target_lod, false)
+	if m:
+		_array_mesh_cache[key] = m
+	return m
+
 # Constroi o ArrayMesh para o LOD solicitado ou cluster isolado
 static func build_mesh_surface(vg_data: Dictionary, target_lod: int, color_clusters: bool = true, isolate_cluster_id: int = -1) -> ArrayMesh:
 	if vg_data.is_empty():

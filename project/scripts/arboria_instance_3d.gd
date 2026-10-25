@@ -126,7 +126,8 @@ var _pipeline: RefCounted = null
 var _aabb: AABB = AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2))
 var _mesh_data: Dictionary = {}
 var _is_registered: bool = false
-var _shadow_proxy_mesh: BoxMesh = null
+var _shadow_proxy_mesh: Mesh = null
+var _shadow_proxy_node: MeshInstance3D = null
 var _physics_body: CollisionObject3D = null
 var _collision_shape_node: CollisionShape3D = null
 
@@ -209,6 +210,9 @@ func _exit_tree() -> void:
 	_unregister_from_pipeline()
 	set_base(RID())
 	_shadow_proxy_mesh = null
+	if _shadow_proxy_node and is_instance_valid(_shadow_proxy_node):
+		_shadow_proxy_node.queue_free()
+		_shadow_proxy_node = null
 	_pipeline = null
 	if _physics_body:
 		_physics_body.queue_free()
@@ -248,6 +252,19 @@ func _load_mesh_if_needed() -> void:
 		emit_signal("mesh_loaded", mesh_path)
 
 func _setup_shadow_proxy() -> void:
+	if mesh_path != "" and not _mesh_data.is_empty():
+		var am = ArboriaMeshLoader.get_cached_array_mesh(mesh_path, _mesh_data, 0)
+		if am:
+			_shadow_proxy_mesh = am
+			if not _shadow_proxy_node or not is_instance_valid(_shadow_proxy_node):
+				_shadow_proxy_node = MeshInstance3D.new()
+				_shadow_proxy_node.name = "_ArboriaShadowProxy"
+				add_child(_shadow_proxy_node)
+			_shadow_proxy_node.mesh = am
+			_shadow_proxy_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+			print("[ArboriaInstance3D] Shadow proxy MeshInstance3D configurado com sucesso: ", mesh_path)
+			return
+
 	if _aabb.size.length_squared() < 0.001:
 		set_base(RID())
 		return
