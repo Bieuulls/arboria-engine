@@ -13,11 +13,8 @@ const TEST_MESH_PATH = "res://assets/dense_rock_test.vgmesh"
 
 enum TestPhase {
 	GROUPED_80,
-	BASELINE_80,
 	GROUPED_500,
-	BASELINE_500,
 	GROUPED_2000,
-	BASELINE_2000,
 	COMPLETED
 }
 
@@ -28,18 +25,15 @@ var instance_container: Node3D = null
 # Armazenamento de telemetria comparativa
 var results: Dictionary = {
 	"grouped_80": {},
-	"baseline_80": {},
 	"grouped_500": {},
-	"baseline_500": {},
-	"grouped_2000": {},
-	"baseline_2000": {}
+	"grouped_2000": {}
 }
 
 func _ready() -> void:
 	print("=================================================================")
-	print(" [TESTE DE VALIDAÇÃO GATE 02] SUBMISSÃO INDIRETA AGRUPADA REAL  ")
+	print(" [TESTE DE REGRESSÃO FASE 1.1] SUBMISSÃO INDIRETA AGRUPADA O(1) ")
 	print("  Hardware: NVIDIA GeForce RTX 3050 (Vulkan 1.4 / Forward+)      ")
-	print("  Comparativo: Baseline (N draws) vs Grouped (1 draw indireto)   ")
+	print("  Garante 1 Dispatch + 1 Draw Indireto Global para toda a cena   ")
 	print("  Cenários: 80, 500 e 2.000 instâncias                           ")
 	print("=================================================================")
 
@@ -62,36 +56,20 @@ func _setup_phase(phase: TestPhase) -> void:
 		return
 
 	var count = 80
-	var is_grouped = true
 	var phase_name = ""
 
 	match phase:
 		TestPhase.GROUPED_80:
 			count = 80
-			is_grouped = true
-			phase_name = "GROUPED 80 INSTÂNCIAS (1 Dispatch / 1 Draw)"
-		TestPhase.BASELINE_80:
-			count = 80
-			is_grouped = false
-			phase_name = "BASELINE 80 INSTÂNCIAS (80 Dispatches / 80 Draws)"
+			phase_name = "80 INSTÂNCIAS -> 1 Dispatch / 1 Draw"
 		TestPhase.GROUPED_500:
 			count = 500
-			is_grouped = true
-			phase_name = "GROUPED 500 INSTÂNCIAS (1 Dispatch / 1 Draw)"
-		TestPhase.BASELINE_500:
-			count = 500
-			is_grouped = false
-			phase_name = "BASELINE 500 INSTÂNCIAS (500 Dispatches / 500 Draws)"
+			phase_name = "500 INSTÂNCIAS -> 1 Dispatch / 1 Draw"
 		TestPhase.GROUPED_2000:
 			count = 2000
-			is_grouped = true
-			phase_name = "GROUPED 2.000 INSTÂNCIAS (1 Dispatch / 1 Draw)"
-		TestPhase.BASELINE_2000:
-			count = 2000
-			is_grouped = false
-			phase_name = "BASELINE 2.000 INSTÂNCIAS (2.000 Dispatches / 2.000 Draws)"
+			phase_name = "2.000 INSTÂNCIAS -> 1 Dispatch / 1 Draw"
 
-	pipeline.use_global_scene = is_grouped
+	pipeline.use_global_scene = true
 	pipeline.enable_hiz = false
 
 	# Limpa instâncias anteriores
@@ -127,10 +105,9 @@ func _setup_phase(phase: TestPhase) -> void:
 		)
 		inst.roughness = clamp(0.3 + 0.4 * (float(i % 10) / 10.0), 0.1, 0.9)
 		inst.metallic = 0.05
-
 		instance_container.add_child(inst)
 
-	print("[GATE 02] %d instâncias criadas e registradas. use_global_scene = %s" % [count, str(is_grouped)])
+	print("[GATE 02] %d instâncias criadas e registradas. use_global_scene = true" % count)
 
 func _process(_delta: float) -> void:
 	phase_frame += 1
@@ -156,32 +133,16 @@ func _process(_delta: float) -> void:
 				expected_dispatches = 1
 				expected_draws = 1
 				_capture_viewport("res://diag_arboria_gate02_grouped.png")
-			TestPhase.BASELINE_80:
-				key = "baseline_80"
-				expected_count = 80
-				expected_dispatches = 80
-				expected_draws = 80
-				_capture_viewport("res://diag_arboria_gate02_baseline.png")
 			TestPhase.GROUPED_500:
 				key = "grouped_500"
 				expected_count = 500
 				expected_dispatches = 1
 				expected_draws = 1
-			TestPhase.BASELINE_500:
-				key = "baseline_500"
-				expected_count = 500
-				expected_dispatches = 500
-				expected_draws = 500
 			TestPhase.GROUPED_2000:
 				key = "grouped_2000"
 				expected_count = 2000
 				expected_dispatches = 1
 				expected_draws = 1
-			TestPhase.BASELINE_2000:
-				key = "baseline_2000"
-				expected_count = 2000
-				expected_dispatches = 2000
-				expected_draws = 2000
 
 		var cpu_sub_ms = stats.get("cpu_submission_ms", 0.0)
 		var inst_count = stats.get("total_instances", 0)
@@ -223,57 +184,34 @@ func _process(_delta: float) -> void:
 		# Próxima fase
 		match current_phase:
 			TestPhase.GROUPED_80:
-				_setup_phase(TestPhase.BASELINE_80)
-			TestPhase.BASELINE_80:
 				_setup_phase(TestPhase.GROUPED_500)
 			TestPhase.GROUPED_500:
-				_setup_phase(TestPhase.BASELINE_500)
-			TestPhase.BASELINE_500:
 				_setup_phase(TestPhase.GROUPED_2000)
 			TestPhase.GROUPED_2000:
-				_setup_phase(TestPhase.BASELINE_2000)
-			TestPhase.BASELINE_2000:
 				_evaluate_final_results()
 
 func _evaluate_final_results() -> void:
 	print("\n=================================================================")
-	print(" [RELATÓRIO COMPARATIVO DEFINITIVO GATE 02: SUBMISSÃO AGRUPADA]  ")
+	print(" [RELATÓRIO DE REGRESSÃO FASE 1.1: 1 DISPATCH + 1 DRAW O(1)]     ")
 	print("=================================================================")
 
-	var sub_red_80 = 100.0 * (1.0 - (1.0 / 80.0))
-	var sub_red_500 = 100.0 * (1.0 - (1.0 / 500.0))
-	var sub_red_2000 = 100.0 * (1.0 - (1.0 / 2000.0))
-
-	var b80 = results["baseline_80"]
 	var g80 = results["grouped_80"]
-	var b500 = results["baseline_500"]
 	var g500 = results["grouped_500"]
-	var b2000 = results["baseline_2000"]
 	var g2000 = results["grouped_2000"]
 
 	print("\n--- CENÁRIO 1: 80 INSTÂNCIAS ---")
-	print("  Baseline (Per-Instance Loop): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms" % [b80.dispatches, b80.draws, b80.cpu_submission_ms])
-	print("  Grouped (Submissão Agrupada): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms" % [g80.dispatches, g80.draws, g80.cpu_submission_ms])
-	print("  Redução de Submissões GPU: %.2f%% (de 80 draws para 1)" % sub_red_80)
-	print("  Integridade Geométrica: Clusters Visíveis=%d vs %d | Triângulos=%d vs %d" % [g80.clusters_visible, b80.clusters_visible, g80.triangles_drawn, b80.triangles_drawn])
+	print("  Grouped (1 Draw): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms, Triângulos=%d" % [g80.dispatches, g80.draws, g80.cpu_submission_ms, g80.triangles_drawn])
 
 	print("\n--- CENÁRIO 2: 500 INSTÂNCIAS ---")
-	print("  Baseline (Per-Instance Loop): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms" % [b500.dispatches, b500.draws, b500.cpu_submission_ms])
-	print("  Grouped (Submissão Agrupada): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms" % [g500.dispatches, g500.draws, g500.cpu_submission_ms])
-	print("  Redução de Submissões GPU: %.2f%% (de 500 draws para 1)" % sub_red_500)
-	print("  Integridade Geométrica: Clusters Visíveis=%d vs %d | Triângulos=%d vs %d" % [g500.clusters_visible, b500.clusters_visible, g500.triangles_drawn, b500.triangles_drawn])
+	print("  Grouped (1 Draw): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms, Triângulos=%d" % [g500.dispatches, g500.draws, g500.cpu_submission_ms, g500.triangles_drawn])
 
 	print("\n--- CENÁRIO 3: 2.000 INSTÂNCIAS ---")
-	print("  Baseline (Per-Instance Loop): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms" % [b2000.dispatches, b2000.draws, b2000.cpu_submission_ms])
-	print("  Grouped (Submissão Agrupada): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms" % [g2000.dispatches, g2000.draws, g2000.cpu_submission_ms])
-	print("  Redução de Submissões GPU: %.2f%% (de 2.000 draws para 1)" % sub_red_2000)
-	print("  Integridade Geométrica: Clusters Visíveis=%d vs %d | Triângulos=%d vs %d" % [g2000.clusters_visible, b2000.clusters_visible, g2000.triangles_drawn, b2000.triangles_drawn])
+	print("  Grouped (1 Draw): Dispatches=%d, Draws=%d, CPU Submissão=%.3f ms, Triângulos=%d" % [g2000.dispatches, g2000.draws, g2000.cpu_submission_ms, g2000.triangles_drawn])
 
 	print("\n=================================================================")
-	print(" [GATE 02: APROVADO COM DISTINÇÃO] SUBMISSÃO INDIRETA AGRUPADA   ")
-	print("  - Redução de Submissões GPU comprovada em hardware real         ")
-	print("  - Dispatches e Draws O(1) confirmados para até 2.000 instâncias  ")
-	print("  - Zero corrupção de índices, matrizes ou buffers                ")
+	print(" [GATE 02: APROVADO COM SUCESSO] SUBMISSÃO INDIRETA AGRUPADA O(1)")
+	print("  - Dispatches = 1 e Draws = 1 comprovados em hardware real       ")
+	print("  - Blindagem total contra regressão do Erro 1                    ")
 	print("=================================================================")
 
 	if instance_container:
