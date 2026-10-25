@@ -1966,6 +1966,7 @@ func _render_scene_global_internal(
 		if cnt_data.size() >= 32:
 			stats_visible_clusters = cnt_data.decode_u32(4)
 			stats_triangles_drawn = cnt_data.decode_u32(16)
+			stats_clusters_evaluated = cnt_data.decode_u32(20)
 			if not _diag_log_executed and not is_prepass:
 				_diag_log_executed = true
 				print("================================================================================")
