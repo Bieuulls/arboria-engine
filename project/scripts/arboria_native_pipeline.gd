@@ -154,6 +154,40 @@ var telemetry_dirty: bool = false
 func get_last_gpu_time_ms() -> float:
 	return last_measured_gpu_ms
 
+func get_independent_primitive_count() -> int:
+	if not rd or not global_visible_items_buf.is_valid() or not global_indirect_args_buf.is_valid():
+		return 0
+	var indirect_data = rd.buffer_get_data(global_indirect_args_buf)
+	if indirect_data.size() < 24:
+		return 0
+	var vis_cluster_count = indirect_data.decode_u32(4)
+	if vis_cluster_count == 0:
+		return 0
+
+	var vis_items_data = rd.buffer_get_data(global_visible_items_buf)
+	var sum_triangles: int = 0
+	var mesh_tri_counts: Array[int] = []
+	for m_res in _mesh_cache.values():
+		var m_dict = ArboriaMeshLoader.load_from_file(m_res.mesh_path)
+		if m_dict.has("clusters"):
+			for c in m_dict["clusters"]:
+				mesh_tri_counts.append(c.get("triangle_count", 0))
+		break
+
+	if mesh_tri_counts.is_empty():
+		return indirect_data.decode_u32(16)
+
+	var total_mesh_clusters = mesh_tri_counts.size()
+	for i in range(vis_cluster_count):
+		var offset = i * 8
+		if offset + 8 > vis_items_data.size():
+			break
+		var cluster_id = vis_items_data.decode_u32(offset + 4)
+		var local_c = cluster_id % total_mesh_clusters
+		sum_triangles += mesh_tri_counts[local_c]
+
+	return sum_triangles
+
 func get_statistics() -> Dictionary:
 	var vram_budget = 0
 	var vram_resident = 0

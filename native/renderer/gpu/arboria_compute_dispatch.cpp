@@ -170,17 +170,17 @@ ComputeDispatchResult VGComputeDispatch::simulate_cull_offline(
         const auto& c = clusters[i];
         const auto& gc = gpu_clusters[i];
 
-        // 1. Frustum Culling
-        if (use_frustum) {
-            if (!test_frustum(c.center, c.radius, ubo.frustum_planes)) {
-                continue;
+        // 1 & 2. Frustum & Cone Culling (apenas quando não é LOD forçado)
+        if (lod_mode != 1u) {
+            if (use_frustum) {
+                if (!test_frustum(c.center, c.radius, ubo.frustum_planes)) {
+                    continue;
+                }
             }
-        }
-
-        // 2. Normal Cone Culling
-        if (use_cone) {
-            if (!test_backface(c.center, c.radius, c.cone, cam_pos)) {
-                continue;
+            if (use_cone) {
+                if (!test_backface(c.center, c.radius, c.cone, cam_pos)) {
+                    continue;
+                }
             }
         }
 

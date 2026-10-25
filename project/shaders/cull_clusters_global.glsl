@@ -219,56 +219,65 @@ void main() {
             if (inst_idx < total_inst) {
                 GPUInstanceData inst = instances[inst_idx];
                 if ((inst.visibility_flags & 1u) != 0u) {
-                    bool inst_visible = true;
-                    if (ubo.count_params.z != 0u) {
-                        inst_visible = ARB_GPU_TestFrustum(inst.bounding_sphere.xyz, inst.bounding_sphere.w);
-                    }
-
-                    if (inst_visible) {
+                    uint lod_mode = uint(inst.aabb_max.w);
+                    if (lod_mode == 1u) {
+                        // LOD Forçado: Paridade geométrica estrita com malha original
+                        uint forced_lod = uint(inst.material_metal_spec.w);
                         uint local_cluster_idx = g_idx % c_count;
                         uint global_cluster_idx = inst.cluster_offset + local_cluster_idx;
                         GPUCluster c = clusters[global_cluster_idx];
-
-                        vec4 world_c4 = inst.model_matrix * vec4(c.center_radius.xyz, 1.0);
-                        vec3 world_center = world_c4.xyz;
-
-                        float sx = length(inst.model_matrix[0].xyz);
-                        float sy = length(inst.model_matrix[1].xyz);
-                        float sz = length(inst.model_matrix[2].xyz);
-                        float max_scale = max(sx, max(sy, sz));
-                        float world_radius = c.center_radius.w * max_scale;
-
-                        bool cluster_visible = true;
-
-                        // 2. Frustum Culling em nível de Cluster
+                        if (c.cluster_info.y == forced_lod) {
+                            is_selected = true;
+                            tri_count = c.data_offsets.w;
+                            out_inst_idx = inst_idx;
+                            out_cluster_idx = global_cluster_idx;
+                        }
+                    } else {
+                        bool inst_visible = true;
                         if (ubo.count_params.z != 0u) {
-                            cluster_visible = ARB_GPU_TestFrustum(world_center, world_radius);
+                            inst_visible = ARB_GPU_TestFrustum(inst.bounding_sphere.xyz, inst.bounding_sphere.w);
                         }
 
-                        // 3. Normal Cone Backface Culling
-                        if (cluster_visible && ubo.count_params.w != 0u) {
-                            vec3 world_cone_axis = normalize(mat3(inst.normal_matrix) * c.cone_axis_cutoff.xyz);
-                            if ((inst.visibility_flags & 4u) != 0u) {
-                                world_cone_axis = -world_cone_axis;
+                        if (inst_visible) {
+                            uint local_cluster_idx = g_idx % c_count;
+                            uint global_cluster_idx = inst.cluster_offset + local_cluster_idx;
+                            GPUCluster c = clusters[global_cluster_idx];
+
+                            vec4 world_c4 = inst.model_matrix * vec4(c.center_radius.xyz, 1.0);
+                            vec3 world_center = world_c4.xyz;
+
+                            float sx = length(inst.model_matrix[0].xyz);
+                            float sy = length(inst.model_matrix[1].xyz);
+                            float sz = length(inst.model_matrix[2].xyz);
+                            float max_scale = max(sx, max(sy, sz));
+                            float world_radius = c.center_radius.w * max_scale;
+
+                            bool cluster_visible = true;
+
+                            // 2. Frustum Culling em nível de Cluster
+                            if (ubo.count_params.z != 0u) {
+                                cluster_visible = ARB_GPU_TestFrustum(world_center, world_radius);
                             }
-                            cluster_visible = ARB_GPU_TestConeCull(world_center, world_radius, world_cone_axis, c.cone_axis_cutoff.w);
-                        }
 
-                        // 4. Hi-Z Occlusion Culling
-                        if (cluster_visible && ubo.render_params.y != 0u) {
-                            cluster_visible = ARB_GPU_TestHiZOcclusion(world_center, world_radius);
-                        }
+                            // 3. Normal Cone Backface Culling
+                            if (cluster_visible && ubo.count_params.w != 0u) {
+                                vec3 world_cone_axis = normalize(mat3(inst.normal_matrix) * c.cone_axis_cutoff.xyz);
+                                if ((inst.visibility_flags & 4u) != 0u) {
+                                    world_cone_axis = -world_cone_axis;
+                                }
+                                cluster_visible = ARB_GPU_TestConeCull(world_center, world_radius, world_cone_axis, c.cone_axis_cutoff.w);
+                            }
 
-                        // 5. DAG LOD Selection
-                        if (cluster_visible) {
-                            uint lod_mode = uint(inst.aabb_max.w);
-                            float max_screen_err = inst.aabb_min.w;
-                            if (max_screen_err < 0.1) max_screen_err = ubo.viewport_params.z;
+                            // 4. Hi-Z Occlusion Culling
+                            if (cluster_visible && ubo.render_params.y != 0u) {
+                                cluster_visible = ARB_GPU_TestHiZOcclusion(world_center, world_radius);
+                            }
 
-                            if (lod_mode == 1u) {
-                                uint forced_lod = uint(inst.material_metal_spec.w);
-                                is_selected = (c.cluster_info.y == forced_lod);
-                            } else {
+                            // 5. DAG LOD Selection
+                            if (cluster_visible) {
+                                float max_screen_err = inst.aabb_min.w;
+                                if (max_screen_err < 0.1) max_screen_err = ubo.viewport_params.z;
+
                                 float fov_factor = max(ubo.camera_pos_fov.w, 0.1);
                                 float vp_h = max(ubo.viewport_params.y, 1.0);
 
@@ -280,12 +289,12 @@ void main() {
                                     r_center_world, c.refined_bounds_error.w * max_scale, int(c.cluster_info.w),
                                     vp_h, fov_factor, max_screen_err
                                 );
-                            }
 
-                            if (is_selected) {
-                                tri_count = c.data_offsets.w;
-                                out_inst_idx = inst_idx;
-                                out_cluster_idx = global_cluster_idx;
+                                if (is_selected) {
+                                    tri_count = c.data_offsets.w;
+                                    out_inst_idx = inst_idx;
+                                    out_cluster_idx = global_cluster_idx;
+                                }
                             }
                         }
                     }

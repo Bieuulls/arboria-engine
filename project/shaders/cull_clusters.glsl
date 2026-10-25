@@ -159,37 +159,36 @@ void main() {
     vec3 center = c.center_radius.xyz;
     float radius = c.center_radius.w;
 
-    // 1. Frustum Culling
-    if (ubo.count_params.z != 0u) {
-        if (!ARB_GPU_TestFrustum(center, radius)) {
-            return;
-        }
-    }
-
-    // 2. Normal Cone Backface Culling
-    if (ubo.count_params.w != 0u) {
-        if (!ARB_GPU_TestConeCull(center, radius, c.cone_axis_cutoff.xyz, c.cone_axis_cutoff.w)) {
-            return;
-        }
-    }
-
-    // 3. Hi-Z Occlusion Culling (Descarte de Geometria Oculta por Reversed-Z)
-    if (ubo.render_params.y != 0u) {
-        if (!ARB_GPU_TestHiZOcclusion(center, radius)) {
-            return;
-        }
-    }
-
-    // 4. Seleção Hierárquica de LOD (DAG Nanite-style ou Manual)
     bool is_selected = false;
     uint lod_mode = uint(ubo.viewport_params.w);
 
     if (lod_mode == 1u) {
-        // Modo Forçado: Desenha apenas o nível de LOD solicitado manualmente
+        // Modo Forçado: Desenha apenas o nível de LOD solicitado manualmente sem descartes
         if (c.cluster_info.y == ubo.count_params.y) {
             is_selected = true;
         }
     } else {
+        // 1. Frustum Culling
+        if (ubo.count_params.z != 0u) {
+            if (!ARB_GPU_TestFrustum(center, radius)) {
+                return;
+            }
+        }
+
+        // 2. Normal Cone Backface Culling
+        if (ubo.count_params.w != 0u) {
+            if (!ARB_GPU_TestConeCull(center, radius, c.cone_axis_cutoff.xyz, c.cone_axis_cutoff.w)) {
+                return;
+            }
+        }
+
+        // 3. Hi-Z Occlusion Culling (Descarte de Geometria Oculta por Reversed-Z)
+        if (ubo.render_params.y != 0u) {
+            if (!ARB_GPU_TestHiZOcclusion(center, radius)) {
+                return;
+            }
+        }
+
         // Modo DAG Automático por Projeção Perspectiva de Erro (ARB-MATH-04)
         float fov_factor = max(ubo.camera_pos_fov.w, 0.1);
         float vp_h = max(ubo.viewport_params.y, 1.0);
