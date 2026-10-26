@@ -40,29 +40,29 @@ mesh = SubResource("BoxMesh_wall")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="OccludedRock1" type="VisualInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -1)
+transform = Transform3D(0.08, 0, 0, 0, 0.08, 0, 0, 0, 0.08, -2.5, 0, -1)
 script = ExtResource("2_arboria")
-mesh_path = "res://assets/dense_rock_test.vgmesh"
+mesh_path = "res://assets/dense_rock.vgmesh"
 max_screen_error = 1.5
 base_albedo = Color(0.8, 0.3, 0.3, 1)
 
 [node name="OccludedRock2" type="VisualInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -2)
+transform = Transform3D(0.08, 0, 0, 0, 0.08, 0, 0, 0, 0.08, -2.5, 0, -4)
 script = ExtResource("2_arboria")
-mesh_path = "res://assets/dense_rock_test.vgmesh"
+mesh_path = "res://assets/dense_rock.vgmesh"
 max_screen_error = 1.5
 base_albedo = Color(0.8, 0.4, 0.3, 1)
 
 [node name="VisibleRock1" type="VisualInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0)
+transform = Transform3D(0.08, 0, 0, 0, 0.08, 0, 0, 0, 0.08, 3.0, 0, 0)
 script = ExtResource("2_arboria")
-mesh_path = "res://assets/dense_rock_test.vgmesh"
+mesh_path = "res://assets/dense_rock.vgmesh"
 max_screen_error = 1.5
 base_albedo = Color(0.3, 0.7, 0.4, 1)
 
 [node name="VisibleRock2" type="VisualInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.2, 0, -2.5)
+transform = Transform3D(0.08, 0, 0, 0, 0.08, 0, 0, 0, 0.08, 3.0, 0, -3)
 script = ExtResource("2_arboria")
-mesh_path = "res://assets/dense_rock_test.vgmesh"
+mesh_path = "res://assets/dense_rock.vgmesh"
 max_screen_error = 1.5
 base_albedo = Color(0.3, 0.5, 0.8, 1)

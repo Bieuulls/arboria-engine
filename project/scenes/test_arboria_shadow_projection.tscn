@@ -43,7 +43,7 @@ mesh = SubResource("PlaneMesh_ground")
 [node name="ArboriaRock" type="VisualInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.0, 0)
 script = ExtResource("2_arboria")
-mesh_path = "res://assets/dense_rock_test.vgmesh"
+mesh_path = "res://assets/dense_rock.vgmesh"
 base_albedo = Color(0.7, 0.45, 0.3, 1)
 metallic = 0.1
 roughness = 0.6

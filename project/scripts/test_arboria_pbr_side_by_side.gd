@@ -60,14 +60,14 @@ func _ready() -> void:
 
 	# 3. Configura MeshInstance3D nativo (Esquerda)
 	var native_mesh_node: MeshInstance3D = $NativeMeshInstance
-	var vg_data = ArboriaMeshLoader.load_from_file("res://assets/dense_rock_test.vgmesh")
+	var vg_data = ArboriaMeshLoader.load_from_file("res://assets/dense_rock.vgmesh")
 	var am = ArboriaMeshLoader.build_mesh_surface(vg_data, 0, false)
 	native_mesh_node.mesh = am
 	native_mesh_node.material_override = mat
 
 	# 4. Configura ArboriaInstance3D (Direita) com o mesmo StandardMaterial3D via material_override
 	var arboria_node: ArboriaInstance3D = $ArboriaInstance
-	arboria_node.mesh_path = "res://assets/dense_rock_test.vgmesh"
+	arboria_node.mesh_path = "res://assets/dense_rock.vgmesh"
 	arboria_node.lod_mode = 1 # Forca LOD0 para paridade geometrica exata
 	arboria_node.forced_lod = 0
 	arboria_node.material_override = mat

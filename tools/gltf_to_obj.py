@@ -85,7 +85,7 @@ def convert_gltf_to_obj(gltf_path, obj_path):
     total_f = 0
     
     with open(obj_path, 'w', encoding='utf-8') as out:
-        out.write("# Arboria Engine OBJ Exporter - New Sponza Curtains\n")
+        out.write("# Arboria Engine OBJ Exporter - New DenseRock Curtains\n")
         
         v_offset = 1
         vt_offset = 1

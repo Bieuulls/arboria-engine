@@ -1,0 +1,89 @@
+[gd_scene load_steps=2 format=3 uid="uid://arboriadock01"]
+
+[ext_resource type="Script" path="res://addons/arboria/ui/arboria_dock.gd" id="1_dock"]
+
+[node name="ArboriaBaker" type="Control"]
+custom_minimum_size = Vector2(280, 400)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_dock")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Arboria Virtual Geometry Baker"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="SourceLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Malha de Origem (.obj / .glb):"
+
+[node name="SourceBox" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="LineEdit" type="LineEdit" parent="VBox/SourceBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "res://assets/model.obj"
+
+[node name="BrowseBtn" type="Button" parent="VBox/SourceBox"]
+layout_mode = 2
+text = "..."
+
+[node name="OutputLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Saída .vgmesh:"
+
+[node name="OutputBox" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="LineEdit" type="LineEdit" parent="VBox/OutputBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "res://assets/model.vgmesh"
+
+[node name="BakeBtn" type="Button" parent="VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Gerar Malha Virtual (.vgmesh)"
+
+[node name="LogLabelTitle" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Log de Operação:"
+
+[node name="LogBox" type="PanelContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LogLabel" type="RichTextLabel" parent="VBox/LogBox"]
+layout_mode = 2
+bbcode_enabled = true
+scroll_following = true
+
+[node name="FileDialog" type="FileDialog" parent="."]
+title = "Selecionar Malha 3D"
+initial_position = 2
+size = Vector2i(700, 450)
+ok_button_text = "Abrir"
+file_mode = 0
+access = 2

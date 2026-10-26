@@ -91,8 +91,11 @@ func _ready() -> void:
 		camera_rig.target_offset = Vector3(0, 3.2, 0)
 		camera_rig.pitch = -0.10
 		camera_rig.yaw = 0.20
-		camera_rig.target_distance = 32.0
 		camera_rig.update_camera_transform()
+
+func _exit_tree() -> void:
+	if pipeline:
+		pipeline.cleanup()
 
 func _setup_compositor() -> void:
 	if not world_env.compositor:
@@ -107,90 +110,49 @@ func _setup_compositor() -> void:
 	print("[ArboriaMassiveWorld] ArboriaCompositorEffect registrado.")
 
 func _spawn_rock_valley() -> void:
-	# Limpa instâncias anteriores se houver
 	for c in rocks_container.get_children():
 		c.queue_free()
 	active_rocks.clear()
 
-	var rng = RandomNumberGenerator.new()
-	rng.seed = 42
+	# 1. PALÁCIO SPONZA MONUMENTAL (CENTRO ABSOLUTO)
+	var dense_rock = ArboriaInstance3D.new()
+	dense_rock.name = "DenseRockMaster"
+	dense_rock.mesh_path = "res://assets/dense_rock.vgmesh"
+	dense_rock.position = Vector3(0.0, 0.0, 0.0)
+	dense_rock.scale = Vector3.ONE
+	dense_rock.base_albedo = Color(0.88, 0.82, 0.74)
+	dense_rock.roughness = 0.65
+	dense_rock.metallic = 0.02
+	dense_rock.max_screen_error = 1.5
+	dense_rock.lod_mode = 0
+	rocks_container.add_child(dense_rock)
+	active_rocks.append(dense_rock)
 
-	# 1. PONTO FOCAL CENTRAL: 3 Pinheiros Ancestrais Monumentais (Perfeitamente Aprumados)
-	var pine_positions = [
-		Vector3(0.0, 0.0, 0.0),
-		Vector3(-5.2, 0.0, -2.8),
-		Vector3(5.6, 0.0, -3.4)
-	]
-	var pine_rotations = [0.2, 1.8, 3.6]
-	var pine_scales = [2.9, 2.6, 2.7]
+	# 2. 60 PEDESTAIS E URNAS ARQUITETURAIS ALINHADOS NAS COLUNATAS
+	var total_plinths = 60
+	for i in range(total_plinths):
+		var plinth = ArboriaInstance3D.new()
+		plinth.name = "Plinth_%02d" % i
+		plinth.mesh_path = "res://assets/boulder_granite.vgmesh"
+		
+		# Distribui 30 ao norte e 30 ao sul, ao longo dos corredores
+		var side = -1.0 if (i % 2 == 0) else 1.0
+		var idx_in_row = i / 2
+		var px = lerp(-8.0, 7.5, float(idx_in_row) / 29.0)
+		var pz = side * 2.2 # Alinhado exatamente na linha de base das colunas
+		var py = 0.0
 
-	for i in range(pine_positions.size()):
-		var pine = ArboriaInstance3D.new()
-		pine.name = "HeroPine_%02d" % i
-		pine.mesh_path = "res://assets/pine_trunk_complex.vgmesh"
-		pine.position = pine_positions[i]
-		pine.rotation = Vector3(0.0, pine_rotations[i], 0.0) # Vertical, sem inclinações caóticas
-		pine.scale = Vector3.ONE * pine_scales[i]
-		pine.base_albedo = Color(0.40, 0.30, 0.22) # Casca rica de pinheiro florestal
-		pine.roughness = 0.90
-		pine.metallic = 0.01
-		pine.max_screen_error = 1.5
-		pine.lod_mode = 0
-		rocks_container.add_child(pine)
-		active_rocks.append(pine)
+		plinth.position = Vector3(px, py, pz)
+		plinth.scale = Vector3.ONE * 0.22 # Escala elegante de urna decorativa
+		plinth.base_albedo = Color(0.72, 0.68, 0.62)
+		plinth.roughness = 0.50
+		plinth.metallic = 0.05
+		plinth.max_screen_error = 1.5
+		plinth.lod_mode = 0
+		rocks_container.add_child(plinth)
+		active_rocks.append(plinth)
 
-	# 2. ANFITEATRO DE ROCHEDOS: 18 Penhascos Monumentais em Ferradura (Cenário de Desfiladeiro)
-	var num_cliff_rocks = 18
-	var cliff_radius = 21.0
-	for i in range(num_cliff_rocks):
-		var rock = ArboriaInstance3D.new()
-		rock.name = "CliffRock_%02d" % i
-		rock.mesh_path = "res://assets/dense_rock_test.vgmesh"
-
-		# Arco harmonioso de -130° a +130° ao redor do centro
-		var angle = lerp(-2.3, 2.3, float(i) / float(num_cliff_rocks - 1))
-		var r_dist = cliff_radius + (sin(float(i) * 1.5) * 1.8)
-		var rx = sin(angle) * r_dist
-		var rz = -cos(angle) * r_dist - 2.5
-		var ry = 0.4 + sin(float(i) * 0.8) * 1.2 # Encosta terraceada
-
-		rock.position = Vector3(rx, ry, rz)
-		rock.rotation = Vector3(0.0, angle + PI * 0.5, 0.0)
-		var s = 2.4 + (cos(float(i) * 1.2) * 0.5 + 0.5) * 1.0 # 2.4x a 3.4x
-		rock.scale = Vector3.ONE * s
-		rock.base_albedo = Color(0.60, 0.63, 0.66)
-		rock.roughness = 0.72
-		rock.metallic = 0.03
-		rock.max_screen_error = 1.5
-		rock.lod_mode = 0
-		rocks_container.add_child(rock)
-		active_rocks.append(rock)
-
-	# 3. CAMPO DE GRANITO: 30 Pedregulhos Naturais Espalhados no Solo
-	var num_boulders = 30
-	for i in range(num_boulders):
-		var bld = ArboriaInstance3D.new()
-		bld.name = "Boulder_%02d" % i
-		bld.mesh_path = "res://assets/boulder_granite.vgmesh"
-
-		var b_angle = float(i) * 1.75
-		var b_dist = 5.0 + (float(i) / float(num_boulders)) * 14.0
-		var bx = cos(b_angle) * b_dist
-		var bz = sin(b_angle) * b_dist * 0.85
-
-		bld.position = Vector3(bx, 0.0, bz)
-		bld.rotation = Vector3(0.0, b_angle * 2.0, 0.0)
-		var bs = 0.9 + sin(float(i) * 3.0) * 0.4 # 0.5x a 1.3x
-		bld.scale = Vector3.ONE * bs
-		bld.base_albedo = Color(0.52, 0.55, 0.58)
-		bld.roughness = 0.58
-		bld.metallic = 0.02
-		bld.max_screen_error = 1.5
-		bld.lod_mode = 0
-		rocks_container.add_child(bld)
-		active_rocks.append(bld)
-
-	print("[ArboriaMassiveWorld] Composição majestosa gerada com %d entidades organizadas." % active_rocks.size())
+	print("[ArboriaMassiveWorld] Palácio DenseRock e %d pedestais arquiteturais instanciados." % active_rocks.size())
 
 func _setup_ui() -> void:
 	if shading_option:

@@ -12,7 +12,7 @@ const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd"
 const ArboriaCompositorEffect = preload("res://scripts/arboria_compositor_effect.gd")
 const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 
-const TEST_MESH_PATH = "res://assets/dense_rock_test.vgmesh"
+const TEST_MESH_PATH = "res://assets/dense_rock.vgmesh"
 
 var current_frame: int = 0
 var instance_container: Node3D = null
@@ -50,22 +50,24 @@ func _ready() -> void:
 
 	for i in range(count):
 		var inst = ArboriaInstance3D.new()
+		inst.name = "StreamingPavilion_%02d" % i
 		inst.mesh_path = TEST_MESH_PATH
 		inst.max_screen_error = 1.5
 
 		var row = i / cols
 		var col = i % cols
 		var x = (col - cols * 0.5) * spacing
-		var z = -5.0 - row * spacing
-		var y = sin(float(i) * 0.4) * 0.7
+		var z = -8.0 - row * spacing
+		var y = 0.0
 
+		var s = 0.08
 		inst.transform = Transform3D(
-			Basis().scaled(Vector3(1.2, 1.2, 1.2)),
+			Basis().scaled(Vector3(s, s, s)),
 			Vector3(x, y, z)
 		)
-		inst.base_albedo = Color(0.65, 0.62, 0.58)
+		inst.base_albedo = Color(0.80, 0.76, 0.70)
 		inst.roughness = 0.6
-		inst.metallic = 0.1
+		inst.metallic = 0.05
 
 		instance_container.add_child(inst)
 

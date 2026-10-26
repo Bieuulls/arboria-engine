@@ -68,6 +68,10 @@ elif [ -f "project/bin/libarboria_native.dll" ]; then
     cp project/bin/libarboria_native.dll addons/arboria/bin/
 fi
 
+echo "[Extra 0] Sincronizando canonical addons/arboria para project/addons/arboria..."
+mkdir -p project/addons/arboria
+cp -r addons/arboria/* project/addons/arboria/ 2>/dev/null || true
+
 echo "[Extra] Sincronizando assets/ com project/assets/ para o Godot..."
 mkdir -p project/assets
 cp -u assets/*.vgmesh project/assets/ 2>/dev/null || true

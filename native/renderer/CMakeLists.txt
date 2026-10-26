@@ -77,7 +77,7 @@ endif()
 
 enable_testing()
 add_test(NAME arboria_native_core
-    COMMAND test_native_core "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/dense_rock_verified.vgmesh")
+    COMMAND test_native_core "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/dense_rock.vgmesh")
 set_tests_properties(arboria_native_core PROPERTIES
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 

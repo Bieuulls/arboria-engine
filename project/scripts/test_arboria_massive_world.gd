@@ -32,7 +32,8 @@ func _process(_delta: float) -> void:
 			img.save_png("res://diag_arboria_massive_world.png")
 			print("[BENCHMARK] Captura de tela massiva salva em diag_arboria_massive_world.png")
 
-	if frame_count >= max_frames:
+
+	if frame_count == max_frames:
 		var pipeline = ArboriaNativePipeline.get_active_instance()
 		if not pipeline:
 			push_error("[FALHA] Pipeline nao ativo.")

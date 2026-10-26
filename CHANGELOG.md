@@ -9,7 +9,7 @@ O formato segue as diretrizes do [Keep a Changelog](https://keepachangelog.com/p
 ## [0.2.0] - 2026-10-25
 
 ### Adicionado
-- **Projeção de Sombras Direcionais (FASE 3.1):** Adicionado proxy interno `GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY` em `ArboriaInstance3D`, permitindo que malhas virtualizadas projetem sombras dinâmicas completas no Shadow Atlas e Cascaded Shadow Maps (CSM) do Godot Forward+.
+- **Projeção de Sombras Direcionais (FASE 3.1):** Adicionado proxy interno `GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY` em `ArboriaInstance3D`, permitindo que malhas virtualizadas projetem sombras dinâmicas no Shadow Atlas e Cascaded Shadow Maps (CSM) do Godot Forward+ sobre o cenário (recebimento de sombras sobre a malha customizada permanece via iluminação direta do shader PBR).
 - **Compatibilidade PBR StandardMaterial3D (FASE 3.2):** Implementada propriedade `material_override: StandardMaterial3D` em `ArboriaInstance3D` com sincronização automática de Albedo, Normal Texture, Roughness, Metallic, Specular e UV Scale.
 - **Suíte de Testes Expandida (FASE 4.1):** 27 testes automatizados executáveis via CLI (`tests/panel/panel.py --cli`), incluindo testes de regressão de neutralização de caminhos locais e integridade hierárquica.
 - **CI Local Unificado (FASE 4.2):** Scripts `ci_local.bat` e `ci_local.ps1` executando compilação C++, testes CTest, 27 testes do painel, benchmark rápido e verificação de caminhos locais com código de saída determinístico.

@@ -36,8 +36,8 @@ struct GPUInstanceData {
     uint resource_generation;
     uint cluster_offset;
     uint cluster_count;
-    uint pad0;
-    uint pad1;
+    uint root_cluster_offset;
+    uint lod_count;
 };
 
 struct VisibleClusterItem {
@@ -230,13 +230,45 @@ vec3 F_Schlick(float VoH, vec3 f0) {
     return f0 + (vec3(1.0) - f0) * f;
 }
 
+// Fast deterministic 3D hash
+float hash3D(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+// 3D Value Noise com interpolação cúbica suave
+float noise3D(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+        mix(mix(hash3D(i + vec3(0,0,0)), hash3D(i + vec3(1,0,0)), f.x),
+            mix(hash3D(i + vec3(0,1,0)), hash3D(i + vec3(1,1,0)), f.x), f.y),
+        mix(mix(hash3D(i + vec3(0,0,1)), hash3D(i + vec3(1,0,1)), f.x),
+            mix(hash3D(i + vec3(0,1,1)), hash3D(i + vec3(1,1,1)), f.x), f.y), f.z);
+}
+
+// FBM para granulação geológica e erosão milenar de pedra
+float stoneFBM(vec3 p) {
+    float v = 0.0;
+    float a = 0.5;
+    vec3 shift = vec3(100.0);
+    for (int i = 0; i < 3; ++i) {
+        v += a * noise3D(p);
+        p = p * 2.08 + shift;
+        a *= 0.5;
+    }
+    return v;
+}
+
 void main() {
     GPUInstanceData inst = instances[v_instance_id];
-    vec3 N = normalize(v_world_normal);
+    vec3 N_geom = normalize(v_world_normal);
     bool is_mirrored = (inst.visibility_flags & 4u) != 0u;
     bool front = is_mirrored ? !gl_FrontFacing : gl_FrontFacing;
     if (!front) {
-        N = -N;
+        N_geom = -N_geom;
     }
 
     uint shading_mode = ubo.render_params.x;
@@ -249,7 +281,7 @@ void main() {
 
     if (shading_mode == 1u) {
         // Normal View
-        out_color = vec4(N * 0.5 + 0.5, 1.0);
+        out_color = vec4(N_geom * 0.5 + 0.5, 1.0);
         return;
     }
 
@@ -259,13 +291,53 @@ void main() {
         return;
     }
 
-    // PBR Shading (Cook-Torrance GGX)
-    vec3 albedo = inst.material_albedo_rough.rgb;
-    float roughness = clamp(inst.material_albedo_rough.w, 0.04, 0.98);
-    float metallic = clamp(inst.material_metal_spec.x, 0.0, 1.0);
-    float specular_intensity = inst.material_metal_spec.y;
+    // =========================================================================
+    // ARBORIA ULTRA PBR — SÍNTESE DE MATERIAIS DE PEDRA ARQUITETÔNICA CLÁSSICA
+    // =========================================================================
+    vec3 wp = v_world_pos;
+    bool is_floor = (wp.y < 0.25 && N_geom.y > 0.65);
 
-    vec3 L = normalize(vec3(0.5, 0.8, 0.6));
+    // 1. Textura e Albedo de Pedra (Istrian Stone / Travertino Ancestral)
+    vec3 base_stone_col = inst.material_albedo_rough.rgb;
+    float grain = stoneFBM(wp * 1.2);
+    float fine_grain = noise3D(vec3(v_uv * 40.0, wp.y * 2.0)) * 0.10;
+
+    // Paleta de pedra nobre clássica: tons de mármore quente e calcário travertino (Reflectância física real 38%)
+    vec3 warm_limestone = mix(vec3(0.48, 0.44, 0.38), vec3(0.38, 0.34, 0.29), grain);
+    vec3 ochre_patina   = mix(vec3(0.44, 0.40, 0.34), vec3(0.34, 0.30, 0.26), grain * 0.6 + fine_grain);
+    vec3 albedo = mix(warm_limestone, ochre_patina, 0.45) * (base_stone_col * 0.85);
+
+    // Pavimentação de lajes de pedra no pátio central
+    if (is_floor) {
+        vec2 floor_tile = fract(wp.xz * 0.5);
+        float border = step(0.02, floor_tile.x) * step(0.02, floor_tile.y) * step(floor_tile.x, 0.98) * step(floor_tile.y, 0.98);
+        vec3 tile_shade = (mod(floor(wp.x * 0.5) + floor(wp.z * 0.5), 2.0) > 0.5) ? vec3(0.42, 0.39, 0.34) : vec3(0.35, 0.32, 0.28);
+        albedo = mix(vec3(0.24, 0.22, 0.19), tile_shade, border) * base_stone_col;
+    }
+
+    // 2. Perturbação de Normais (Micro-relevo natural da pedra)
+    float h_c = stoneFBM(wp * 3.0);
+    float h_x = stoneFBM((wp + vec3(0.015, 0.0, 0.0)) * 3.0) - h_c;
+    float h_y = stoneFBM((wp + vec3(0.0, 0.015, 0.0)) * 3.0) - h_c;
+    float h_z = stoneFBM((wp + vec3(0.0, 0.0, 0.015)) * 3.0) - h_c;
+    vec3 stone_relief = vec3(h_x, h_y, h_z) * 0.5;
+    vec3 N = normalize(N_geom - stone_relief);
+
+    // 3. Rugosidade (Roughness) e Metálico
+    float roughness = is_floor ? 0.38 : mix(0.55, 0.85, grain);
+    float metallic = clamp(inst.material_metal_spec.x, 0.0, 1.0);
+    float specular_intensity = max(0.04, inst.material_metal_spec.y);
+
+    // Se o objeto for configurado como metal/escultura antiga (ex: Dragão de Bronze, Elmo, Relíquia)
+    if (inst.material_metal_spec.x > 0.15) {
+        albedo = inst.material_albedo_rough.rgb * (grain * 0.25 + 0.85);
+        metallic = inst.material_metal_spec.x;
+        roughness = clamp(inst.material_albedo_rough.a, 0.20, 0.90);
+        specular_intensity = max(0.5, inst.material_metal_spec.y);
+    }
+
+    // 4. Iluminação Cook-Torrance GGX PBR
+    vec3 L = normalize(vec3(0.55, 0.75, 0.35)); // Luz solar descendente com ângulo cinematográfico
     vec3 V = normalize(ubo.camera_pos_fov.xyz - v_world_pos);
     vec3 H = normalize(L + V);
 
@@ -281,22 +353,26 @@ void main() {
 
     vec3 specular_brdf = (D * G) * F;
     vec3 k_dielectric = (vec3(1.0) - F) * (1.0 - metallic);
-
-    // Conservação de Energia Master: Partição estrita entre Reflexão Difusa e Transmissão Foliar
-    const float transmission_ratio = 0.30; // 30% transmitido pelo mesófilo foliar, 70% difuso refletido
-    vec3 kd = k_dielectric * (1.0 - transmission_ratio);
-    vec3 kt = k_dielectric * transmission_ratio;
+    vec3 kd = k_dielectric * 0.95;
 
     vec3 diffuse_brdf = kd * (albedo / PI);
-    vec3 direct_light = (diffuse_brdf + specular_brdf) * vec3(1.2) * (NoL * PI);
+    vec3 direct_light = (diffuse_brdf + specular_brdf) * vec3(0.95) * (NoL * PI);
 
-    // Subsurface Scattering / Translucência Foliar Conservativa (Two-Sided Thin Slab)
-    float back_light = clamp(dot(-N, L), 0.0, 1.0);
-    vec3 foliage_filter = vec3(1.15, 1.10, 0.75); // Deslocamento de cor pela clorofila
-    vec3 sss_light = kt * ((albedo * foliage_filter) / PI) * vec3(1.2) * (back_light * PI);
+    // Iluminação Ambiente Hemisférica Realista com Oclusão de Contato
+    float hemi = clamp(N.y * 0.5 + 0.5, 0.0, 1.0);
+    vec3 ambient_sky = vec3(0.38, 0.46, 0.58) * 0.40;
+    vec3 ambient_ground = vec3(0.24, 0.20, 0.17) * 0.35;
+    vec3 ambient_col = mix(ambient_ground, ambient_sky, hemi);
+    float contact_ao = clamp(0.55 + 0.45 * N.y, 0.35, 1.0);
+    vec3 ambient_light = albedo * ambient_col * contact_ao * (1.0 - metallic * 0.8);
 
-    vec3 ambient_light = albedo * vec3(0.18, 0.20, 0.25) * (1.0 - metallic);
+    vec3 final_rgb = direct_light + ambient_light;
 
-    vec3 final_rgb = direct_light + ambient_light + sss_light;
-    out_color = vec4(final_rgb, 1.0);
+    // 5. Tonemapping Filmic ACES + Correção Gamma (Evita estouro de branco)
+    vec3 x = max(vec3(0.0), final_rgb);
+    vec3 aces = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
+    aces = clamp(aces, 0.0, 1.0);
+    vec3 srgb = pow(aces, vec3(1.0 / 2.2));
+
+    out_color = vec4(srgb, 1.0);
 }

@@ -14,8 +14,8 @@ const ArboriaCompositorEffect = preload("res://scripts/arboria_compositor_effect
 const ArboriaAssetImporter = preload("res://scripts/arboria_asset_importer.gd")
 const VirtualMeshInstance3D = preload("res://scripts/virtual_mesh_instance_3d.gd")
 
-const SOURCE_ASSET = "res://assets/rock_cluster.obj"
-const TARGET_VGMESH = "res://assets/rock_cluster_baked.vgmesh"
+const SOURCE_ASSET = "res://assets/dense_rock_test.obj"
+const TARGET_VGMESH = "res://assets/dense_rock_imported.vgmesh"
 
 var current_frame: int = 0
 var instance_container: Node3D = null
@@ -54,33 +54,18 @@ func _ready() -> void:
 
 	# 3. Cria instâncias usando a classe VirtualMeshInstance3D
 	print("\n[PASSO 3] Criando instâncias de VirtualMeshInstance3D na cena...")
-	var count = 24
-	var cols = 6
-	var spacing = 4.0
+	var count = 1
+	var v_inst = VirtualMeshInstance3D.new()
+	v_inst.name = "DenseRockImported"
+	v_inst.mesh_path = TARGET_VGMESH
+	v_inst.max_screen_error = 1.5
+	v_inst.transform = Transform3D.IDENTITY
+	v_inst.base_albedo = Color(0.85, 0.82, 0.76)
+	v_inst.roughness = 0.65
+	v_inst.metallic = 0.02
+	instance_container.add_child(v_inst)
 
-	for i in range(count):
-		var v_inst = VirtualMeshInstance3D.new()
-		v_inst.mesh_path = TARGET_VGMESH
-		v_inst.max_screen_error = 1.5
-
-		var row = i / cols
-		var col = i % cols
-		var x = (col - cols * 0.5) * spacing
-		var z = -4.0 - row * spacing
-		var y = sin(float(i) * 0.5) * 0.5
-
-		v_inst.transform = Transform3D(
-			Basis().scaled(Vector3(1.0, 1.0, 1.0)),
-			Vector3(x, y, z)
-		)
-
-		v_inst.base_albedo = Color(0.7, 0.65, 0.6)
-		v_inst.roughness = 0.5
-		v_inst.metallic = 0.05
-
-		instance_container.add_child(v_inst)
-
-	print("[PASSO 3] %d instâncias de VirtualMeshInstance3D criadas e registradas." % count)
+	print("[PASSO 3] 1 instância mestre de DenseRock criada e registrada.")
 
 func _process(_delta: float) -> void:
 	if failed_init:

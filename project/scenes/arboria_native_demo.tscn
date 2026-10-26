@@ -58,16 +58,16 @@ mesh = SubResource("PlaneMesh_floor")
 surface_material_override/0 = SubResource("StandardMaterial3D_floor")
 
 [node name="VirtualMesh_Rock1" type="VisualInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.2, 0, -0.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 script = ExtResource("2_vmesh")
-mesh_path = "res://assets/dense_rock_test.vgmesh"
+mesh_path = "res://assets/dense_rock.vgmesh"
 max_screen_error = 1.5
-base_albedo = Color(0.75, 0.78, 0.82, 1)
+base_albedo = Color(0.88, 0.82, 0.74, 1)
 
 [node name="VirtualMesh_Rock2" type="VisualInstance3D" parent="."]
-transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 2.5, 0, -0.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 150)
 script = ExtResource("2_vmesh")
-mesh_path = "res://assets/dense_rock_test.vgmesh"
+mesh_path = "res://assets/dense_rock.vgmesh"
 max_screen_error = 1.5
 base_albedo = Color(0.85, 0.8, 0.7, 1)
 

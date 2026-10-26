@@ -49,6 +49,7 @@ func _process(_delta: float) -> void:
 		cam.global_position = Vector3(8.0 + offset_x, 4.0 + offset_y, 8.0)
 		cam.look_at(Vector3(0.0, 0.5, 0.0), Vector3.UP)
 
+
 	elif frame_count == 25:
 		# Retorna à posição de enquadramento canônico original
 		var cam: Camera3D = demo_scene.get_node("OrbitCamera")
@@ -130,6 +131,8 @@ func _process(_delta: float) -> void:
 		var width = img.get_width()
 		var height = img.get_height()
 		var cube_pixels = 0
+		var cube_x_sum: int = 0
+		var cube_y_sum: int = 0
 		var rock_pixels = 0
 		var floor_pixels = 0
 		var sky_pixels = 0
@@ -140,6 +143,8 @@ func _process(_delta: float) -> void:
 				# Cubo convencional (vermelho em sombra / iluminação Forward+)
 				if c.r > 0.12 and c.r > c.g * 1.8 and c.r > c.b * 1.8:
 					cube_pixels += 1
+					cube_x_sum += x
+					cube_y_sum += y
 				# Céu / background
 				elif abs(c.r - 0.12) < 0.04 and abs(c.g - 0.14) < 0.04 and abs(c.b - 0.18) < 0.04:
 					sky_pixels += 1
@@ -164,9 +169,11 @@ func _process(_delta: float) -> void:
 		print("[TESTE] 4. Pixels de geometria virtualizada e cubo convencional presentes: OK")
 
 		# 5. Validacao de oclusao bidirecional de profundidade
-		var cube_center_sample = img.get_pixel(495, 391)
-		var rock_left_sample = img.get_pixel(350, 391)
-		var rock_right_sample = img.get_pixel(580, 391)
+		var cx = int(cube_x_sum / cube_pixels)
+		var cy = int(cube_y_sum / cube_pixels)
+		var cube_center_sample = img.get_pixel(cx, cy)
+		var rock_left_sample = img.get_pixel(clampi(cx - 150, 0, width - 1), cy)
+		var rock_right_sample = img.get_pixel(clampi(cx + 150, 0, width - 1), cy)
 
 		var is_cube_center_red = (cube_center_sample.r > 0.12 and cube_center_sample.r > cube_center_sample.g * 1.8)
 		var is_rock_left_visible = not (abs(rock_left_sample.r - 0.12) < 0.04 and abs(rock_left_sample.b - 0.18) < 0.04)

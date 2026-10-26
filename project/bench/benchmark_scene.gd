@@ -206,6 +206,11 @@ func _setup_variant_arboria(transforms: Array[Transform3D], force_lod0: bool = f
 		comp.compositor_effects = [eff]
 	camera.compositor = comp
 
+	var pipe = ArboriaNativePipeline.get_or_create_shared()
+	if pipe and force_lod0:
+		pipe.enable_hiz = false
+		pipe.enable_frustum_culling = false
+
 	for i in range(transforms.size()):
 		var vmi = ArboriaInstance3D.new()
 		vmi.mesh_path = mesh_path_vg

@@ -110,6 +110,10 @@ if not exist "project\bin\libarboria_native.dll" (
 if not exist "addons\arboria\bin" mkdir "addons\arboria\bin"
 copy /Y "project\bin\libarboria_native.dll" "addons\arboria\bin\" >nul
 
+echo [Extra 0] Sincronizando canonical addons/arboria para project/addons/arboria...
+if not exist "project\addons\arboria" mkdir "project\addons\arboria"
+xcopy /E /I /Y /Q "addons\arboria" "project\addons\arboria" >nul
+
 echo [Extra] Sincronizando assets/ com project/assets/ para o Godot...
 if not exist "project\assets" mkdir "project\assets"
 for %%f in (assets\*.vgmesh) do (

@@ -1,14 +1,12 @@
 #[compute]
 #version 450
 
-#extension GL_KHR_shader_subgroup_basic : enable
-#extension GL_KHR_shader_subgroup_ballot : enable
-#extension GL_KHR_shader_subgroup_arithmetic : enable
-
 // ============================================================================
-// ARBORIA VIRTUAL GEOMETRY — GPU SCENE GLOBAL CLUSTER CULLING & DAG LOD
-// Arquitetura Global Batelada (1 Dispatch para Toda a Cena)
-// Layout Binário Estrito std430 compatível com arboria_gpu_scene_types.h
+// ARBORIA VIRTUAL GEOMETRY — GPU SCENE GLOBAL CLUSTER CULLING & HIERARCHICAL DAG
+// Arquitetura Global Batelada Verdadeira:
+// - 1 ÚNICO Compute Dispatch para TODA a cena (independente de tipos de malha)
+// - Travessia Hierárquica Top-Down do DAG com Early-Out
+// - Layout Binário Estrito std430 compatível com arboria_gpu_scene_types.h
 // ============================================================================
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -34,10 +32,10 @@ struct GPUInstanceData {
     uint mesh_id;
     uint visibility_flags;
     uint resource_generation;
-    uint cluster_offset;
-    uint cluster_count;
-    uint pad0;
-    uint pad1;
+    uint cluster_offset;        // offset no buffer global unificado de clusters
+    uint cluster_count;         // total de clusters da malha instanciada
+    uint root_cluster_offset;   // offset dos clusters raiz (LOD mais grosseiro)
+    uint lod_count;             // total de niveis LOD desta malha
 };
 
 struct VisibleClusterItem {
@@ -45,7 +43,7 @@ struct VisibleClusterItem {
     uint cluster_id;
 };
 
-// 0: Buffer de clusters de geometria compartilhada de todas as malhas registradas
+// 0: Buffer unificado de clusters de geometria de todas as malhas da cena
 layout(set = 0, binding = 0, std430) readonly buffer InClusters {
     GPUCluster clusters[];
 };
@@ -79,7 +77,7 @@ layout(set = 0, binding = 3, std140) uniform GlobalSceneUniforms {
     vec4 wind_direction;        // xyz = dir_norm, w = unused
 } ubo;
 
-// 4: Buffer de instâncias globais ativas na cena
+// 4: Buffer de instâncias globais ativas na cena (todas as instâncias de todas as malhas)
 layout(set = 0, binding = 4, std430) readonly buffer InInstances {
     GPUInstanceData instances[];
 };
@@ -100,261 +98,228 @@ bool ARB_GPU_TestFrustum(vec3 center, float radius) {
     return true;
 }
 
-bool ARB_GPU_TestConeCull(vec3 center, float radius, vec3 cone_axis, float cutoff) {
-    if (cutoff >= 1.0) return true;
-    vec3 c_to_cam = center - ubo.camera_pos_fov.xyz;
-    float dist = length(c_to_cam);
-    return dot(c_to_cam, cone_axis) < (cutoff * dist + radius);
+bool ARB_GPU_TestConeCull(vec3 center, float radius, vec3 cone_axis, float cone_cutoff) {
+    vec3 cam_pos = ubo.camera_pos_fov.xyz;
+    vec3 to_cluster = center - cam_pos;
+    float dist = length(to_cluster);
+    if (dist <= radius * 2.5) return true; // Proximidade guard
+    vec3 v = to_cluster / max(dist, 0.0001);
+    return (dot(cone_axis, v) < cone_cutoff);
 }
 
-float ARB_GPU_ProjectScreenError(vec3 center, float radius, float mesh_error, float vp_height, float fov_factor) {
-    float dist = length(center - ubo.camera_pos_fov.xyz);
-    float d_eff = max(dist - radius, 0.05);
-    return (mesh_error * vp_height) / (2.0 * d_eff * fov_factor);
+float ARB_GPU_ProjectScreenError(vec3 center, float radius, float error, float vp_h, float fov_factor) {
+    vec3 cam_pos = ubo.camera_pos_fov.xyz;
+    float d = length(center - cam_pos);
+    float d_clamped = max(d - radius, 0.1);
+    return (error * vp_h * fov_factor) / d_clamped;
 }
 
-bool ARB_GPU_EvaluateDAGCut(
-    vec3 p_center, float p_error,
-    vec3 r_center, float r_error, int refined_group_id,
-    float vp_height, float fov_factor, float max_screen_err
-) {
-    bool parent_needed;
-    if (p_error > 10000.0) {
-        parent_needed = true;
-    } else {
-        float p_err_px = ARB_GPU_ProjectScreenError(p_center, 0.0, p_error, vp_height, fov_factor);
-        parent_needed = (p_err_px > max_screen_err);
-    }
-
-    bool child_satisfied = true;
-    if (refined_group_id >= 0) {
-        float r_err_px = ARB_GPU_ProjectScreenError(r_center, 0.0, r_error, vp_height, fov_factor);
-        child_satisfied = (r_err_px <= max_screen_err);
-    }
-
-    return parent_needed && child_satisfied;
-}
-
-// [ARB_MATH_05] Teste de Oclusão Hi-Z Hierárquico em Reversed-Z (Vulkan 1.4)
 bool ARB_GPU_TestHiZOcclusion(vec3 center, float radius) {
-    vec3 c_to_cam = ubo.camera_pos_fov.xyz - center;
-    float dist = length(c_to_cam);
+    vec3 cam_pos = ubo.camera_pos_fov.xyz;
+    vec3 to_center = center - cam_pos;
+    float dist = length(to_center);
+    if (dist <= radius * 2.0) return true;
 
-    // Se a câmera estiver dentro da esfera do cluster ou cruzando o near plane, nunca ocluir (conservador)
-    if (dist <= radius + 0.1) return true;
+    vec3 v_norm = to_center / max(dist, 0.0001);
+    vec3 right_pt = center + cross(v_norm, vec3(0.0, 1.0, 0.0)) * radius;
+    vec3 up_pt    = center + cross(v_norm, vec3(1.0, 0.0, 0.0)) * radius;
 
-    vec4 clip_center = ubo.view_proj * vec4(center, 1.0);
-    if (clip_center.w - radius <= 0.05) return true; // Near clip guard
+    vec4 p0 = ubo.view_proj * vec4(center, 1.0);
+    vec4 p1 = ubo.view_proj * vec4(right_pt, 1.0);
+    vec4 p2 = ubo.view_proj * vec4(up_pt, 1.0);
 
-    vec2 vp = ubo.viewport_params.xy;
-    vec3 v_norm = c_to_cam / dist;
+    if (p0.w <= 0.0 || p1.w <= 0.0 || p2.w <= 0.0) return true;
 
-    // Vetores ortogonais à linha de visão para obter os 4 pontos de silhueta extrema
-    vec3 up_guide = (abs(v_norm.y) < 0.99) ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-    vec3 right_vec = normalize(cross(up_guide, v_norm));
-    vec3 up_vec = cross(v_norm, right_vec);
+    vec3 ndc0 = p0.xyz / p0.w;
+    vec3 ndc1 = p1.xyz / p1.w;
+    vec3 ndc2 = p2.xyz / p2.w;
 
-    // 4 pontos extremos no horizonte da esfera
-    vec4 cp0 = ubo.view_proj * vec4(center - right_vec * radius, 1.0);
-    vec4 cp1 = ubo.view_proj * vec4(center + right_vec * radius, 1.0);
-    vec4 cp2 = ubo.view_proj * vec4(center - up_vec * radius, 1.0);
-    vec4 cp3 = ubo.view_proj * vec4(center + up_vec * radius, 1.0);
+    float r_ndc = max(length(ndc1.xy - ndc0.xy), length(ndc2.xy - ndc0.xy));
+    vec2 min_ndc = clamp(ndc0.xy - vec2(r_ndc), vec2(-1.0), vec2(1.0));
+    vec2 max_ndc = clamp(ndc0.xy + vec2(r_ndc), vec2(-1.0), vec2(1.0));
 
-    if (cp0.w <= 0.0 || cp1.w <= 0.0 || cp2.w <= 0.0 || cp3.w <= 0.0) return true;
+    vec2 uv_min = min_ndc * 0.5 + 0.5;
+    vec2 uv_max = max_ndc * 0.5 + 0.5;
 
-    vec2 s0 = (cp0.xy / cp0.w * 0.5 + 0.5) * vp;
-    vec2 s1 = (cp1.xy / cp1.w * 0.5 + 0.5) * vp;
-    vec2 s2 = (cp2.xy / cp2.w * 0.5 + 0.5) * vp;
-    vec2 s3 = (cp3.xy / cp3.w * 0.5 + 0.5) * vp;
+    vec2 box_size_px = (uv_max - uv_min) * ubo.viewport_params.xy;
+    float max_dim_px = max(box_size_px.x, box_size_px.y);
 
-    vec2 bbox_min = clamp(min(min(s0, s1), min(s2, s3)), vec2(0.0), vp);
-    vec2 bbox_max = clamp(max(max(s0, s1), max(s2, s3)), vec2(0.0), vp);
-    vec2 bbox_size = bbox_max - bbox_min;
+    float mip = clamp(ceil(log2(max(max_dim_px, 1.0))), 0.0, 11.0);
 
-    float max_dim = max(bbox_size.x, bbox_size.y);
-    if (max_dim < 1.0) return true; // Conservador para micropolígonos
+    vec4 depths;
+    depths.x = textureLod(hiz_depth_pyramid, vec2(uv_min.x, uv_min.y), mip).r;
+    depths.y = textureLod(hiz_depth_pyramid, vec2(uv_max.x, uv_min.y), mip).r;
+    depths.z = textureLod(hiz_depth_pyramid, vec2(uv_min.x, uv_max.y), mip).r;
+    depths.w = textureLod(hiz_depth_pyramid, vec2(uv_max.x, uv_max.y), mip).r;
 
-    float mip = clamp(ceil(log2(max_dim)), 0.0, 10.0);
-    vec2 uv_min = bbox_min / vp;
-    vec2 uv_max = bbox_max / vp;
+    float ocl_furthest_z = min(min(depths.x, depths.y), min(depths.z, depths.w));
+    if (ocl_furthest_z >= 0.999 || ocl_furthest_z <= 0.0001) return true;
 
-    float d0 = textureLod(hiz_depth_pyramid, uv_min, mip).r;
-    float d1 = textureLod(hiz_depth_pyramid, vec2(uv_max.x, uv_min.y), mip).r;
-    float d2 = textureLod(hiz_depth_pyramid, vec2(uv_min.x, uv_max.y), mip).r;
-    float d3 = textureLod(hiz_depth_pyramid, uv_max, mip).r;
-
-    float ocl_furthest_z = min(min(d0, d1), min(d2, d3));
-
-    // Ponto mais próximo da câmera na esfera do cluster
-    vec3 closest_pt = center + v_norm * min(radius, dist * 0.95);
+    vec3 closest_pt = center - v_norm * min(radius, dist * 0.95);
     vec4 clip_closest = ubo.view_proj * vec4(closest_pt, 1.0);
     if (clip_closest.w <= 0.0) return true;
     float cluster_closest_z = clamp(clip_closest.z / clip_closest.w, 0.0, 1.0);
 
-    // Em Reversed-Z: se o ponto mais próximo do cluster for menor que a profundidade do oclusor,
-    // o cluster está totalmente oculto
-    return (cluster_closest_z >= ocl_furthest_z);
+    return (cluster_closest_z + 0.001 >= ocl_furthest_z);
 }
 
+// ============================================================================
+// MAIN COMPUTE DISPATCH (1 THREAD POR INSTÂNCIA — 1 DISPATCH PARA TODA A CENA)
+// ============================================================================
+
 void main() {
-    uint g_idx = gl_GlobalInvocationID.x;
-    bool in_bounds = (g_idx < ubo.count_params.y);
+    uint inst_idx = gl_GlobalInvocationID.x;
+    if (inst_idx >= ubo.count_params.x) {
+        return; // Fora do intervalo de instâncias da cena
+    }
 
-    bool was_evaluated = false;
-    bool is_selected = false;
-    uint tri_count = 0u;
-    uint out_inst_idx = 0u;
-    uint out_cluster_idx = 0u;
+    GPUInstanceData inst = instances[inst_idx];
 
-    if (in_bounds) {
-        uint total_inst = ubo.count_params.x;
-        uint c_count = instances[0].cluster_count;
-        if (total_inst > 0u && c_count > 0u) {
-            uint inst_idx = g_idx / c_count;
-            if (inst_idx < total_inst) {
-                GPUInstanceData inst = instances[inst_idx];
-                if ((inst.visibility_flags & 1u) != 0u) {
-                    bool inst_visible = true;
-                    if (ubo.count_params.z != 0u) {
-                        inst_visible = ARB_GPU_TestFrustum(inst.bounding_sphere.xyz, inst.bounding_sphere.w);
-                    }
+    // 1. Verificação de Visibilidade Básica
+    if ((inst.visibility_flags & 1u) == 0u) {
+        return; // Instância explicitamente invisível
+    }
 
-                    if (inst_visible) {
-                        uint lod_mode = uint(inst.aabb_max.w);
-                        if (lod_mode == 1u) {
-                            // LOD Forçado: Paridade geométrica estrita com malha original
-                            was_evaluated = true;
-                            uint forced_lod = uint(inst.material_metal_spec.w);
-                            uint local_cluster_idx = g_idx % c_count;
-                            uint global_cluster_idx = inst.cluster_offset + local_cluster_idx;
-                            GPUCluster c = clusters[global_cluster_idx];
-                            if (c.cluster_info.y == forced_lod) {
-                                is_selected = true;
-                                tri_count = c.data_offsets.w;
-                                out_inst_idx = inst_idx;
-                                out_cluster_idx = global_cluster_idx;
-                            }
-                        } else {
-                            // DAG Dinâmico com Travessia Hierárquica e Early-Out
-                            uint local_cluster_idx = g_idx % c_count;
-                            uint global_cluster_idx = inst.cluster_offset + local_cluster_idx;
-                            GPUCluster c = clusters[global_cluster_idx];
+    // 2. Frustum Culling em Nível de Instância
+    if (ubo.count_params.z != 0u) {
+        if (!ARB_GPU_TestFrustum(inst.bounding_sphere.xyz, inst.bounding_sphere.w)) {
+            return; // Instância totalmente fora do frustum da câmera
+        }
+    }
 
-                            float sx = length(inst.model_matrix[0].xyz);
-                            float sy = length(inst.model_matrix[1].xyz);
-                            float sz = length(inst.model_matrix[2].xyz);
-                            float max_scale = max(sx, max(sy, sz));
+    // 3. Hi-Z Occlusion Culling em Nível de Instância
+    if (ubo.render_params.y != 0u) {
+        if (!ARB_GPU_TestHiZOcclusion(inst.bounding_sphere.xyz, inst.bounding_sphere.w)) {
+            return; // Instância ocluída pelo buffer de profundidade
+        }
+    }
 
-                            float max_screen_err = inst.aabb_min.w;
-                            if (max_screen_err < 0.1) max_screen_err = ubo.viewport_params.z;
-                            float fov_factor = max(ubo.camera_pos_fov.w, 0.1);
-                            float vp_h = max(ubo.viewport_params.y, 1.0);
+    float sx = length(inst.model_matrix[0].xyz);
+    float sy = length(inst.model_matrix[1].xyz);
+    float sz = length(inst.model_matrix[2].xyz);
+    float max_scale = max(sx, max(sy, sz));
 
-                            // 1. Poda Hierárquica da DAG por Erro do Grupo Pai (Early-out de sub-árvores)
-                            vec3 p_center_world = (inst.model_matrix * vec4(c.group_bounds_error.xyz, 1.0)).xyz;
-                            float p_error = c.group_bounds_error.w * max_scale;
+    float max_screen_err = inst.aabb_min.w;
+    if (max_screen_err < 0.1) max_screen_err = ubo.viewport_params.z;
+    float fov_factor = max(ubo.camera_pos_fov.w, 0.1);
+    float vp_h = max(ubo.viewport_params.y, 1.0);
 
-                            bool parent_needed = true;
-                            if (p_error <= 10000.0) {
-                                float p_err_px = ARB_GPU_ProjectScreenError(p_center_world, 0.0, p_error, vp_h, fov_factor);
-                                if (p_err_px <= max_screen_err) {
-                                    parent_needed = false; // Poda: grupo pai já é suficientemente refinado na tela
-                                }
-                            }
+    uint lod_mode = uint(inst.aabb_max.w);
 
-                            // 2. Poda por Frustum do Grupo Pai (Early-out de clusters fora do frustum)
-                            bool parent_in_frustum = true;
-                            if (parent_needed && ubo.count_params.z != 0u && p_error <= 10000.0) {
-                                float p_rad = c.center_radius.w * max_scale * 2.0;
-                                parent_in_frustum = ARB_GPU_TestFrustum(p_center_world, p_rad);
-                            }
+    if (lod_mode == 1u) {
+        // LOD FORÇADO: Apenas clusters do nível requisitado
+        uint forced_lod = uint(inst.material_metal_spec.w);
+        for (uint i = 0u; i < inst.cluster_count; ++i) {
+            uint global_cluster_idx = inst.cluster_offset + i;
+            GPUCluster c = clusters[global_cluster_idx];
+            if (c.cluster_info.y == forced_lod) {
+                atomicAdd(total_clusters_evaluated, 1u);
 
-                            if (parent_needed && parent_in_frustum) {
-                                was_evaluated = true;
+                vec3 world_center = (inst.model_matrix * vec4(c.center_radius.xyz, 1.0)).xyz;
+                float world_radius = c.center_radius.w * max_scale;
 
-                                vec4 world_c4 = inst.model_matrix * vec4(c.center_radius.xyz, 1.0);
-                                vec3 world_center = world_c4.xyz;
-                                float world_radius = c.center_radius.w * max_scale;
+                bool visible = true;
+                if (ubo.count_params.z != 0u) {
+                    visible = ARB_GPU_TestFrustum(world_center, world_radius);
+                }
+                if (visible && ubo.count_params.w != 0u) {
+                    vec3 world_cone_axis = normalize(mat3(inst.normal_matrix) * c.cone_axis_cutoff.xyz);
+                    if ((inst.visibility_flags & 4u) != 0u) world_cone_axis = -world_cone_axis;
+                    visible = ARB_GPU_TestConeCull(world_center, world_radius, world_cone_axis, c.cone_axis_cutoff.w);
+                }
+                if (visible && ubo.render_params.y != 0u) {
+                    visible = ARB_GPU_TestHiZOcclusion(world_center, world_radius);
+                }
 
-                                bool cluster_visible = true;
-
-                                // 3. Frustum Culling em nível de Cluster
-                                if (ubo.count_params.z != 0u) {
-                                    cluster_visible = ARB_GPU_TestFrustum(world_center, world_radius);
-                                }
-
-                                // 4. Normal Cone Backface Culling
-                                if (cluster_visible && ubo.count_params.w != 0u) {
-                                    vec3 world_cone_axis = normalize(mat3(inst.normal_matrix) * c.cone_axis_cutoff.xyz);
-                                    if ((inst.visibility_flags & 4u) != 0u) {
-                                        world_cone_axis = -world_cone_axis;
-                                    }
-                                    cluster_visible = ARB_GPU_TestConeCull(world_center, world_radius, world_cone_axis, c.cone_axis_cutoff.w);
-                                }
-
-                                // 5. Hi-Z Occlusion Culling
-                                if (cluster_visible && ubo.render_params.y != 0u) {
-                                    cluster_visible = ARB_GPU_TestHiZOcclusion(world_center, world_radius);
-                                }
-
-                                // 6. DAG Cut Selection (Verificação do nó refinado/filho)
-                                if (cluster_visible) {
-                                    vec3 r_center_world = (inst.model_matrix * vec4(c.refined_bounds_error.xyz, 1.0)).xyz;
-                                    float r_error = c.refined_bounds_error.w * max_scale;
-
-                                    bool child_satisfied = true;
-                                    if (int(c.cluster_info.w) >= 0) {
-                                        float r_err_px = ARB_GPU_ProjectScreenError(r_center_world, 0.0, r_error, vp_h, fov_factor);
-                                        child_satisfied = (r_err_px <= max_screen_err);
-                                    }
-
-                                    is_selected = child_satisfied;
-                                    if (is_selected) {
-                                        tri_count = c.data_offsets.w;
-                                        out_inst_idx = inst_idx;
-                                        out_cluster_idx = global_cluster_idx;
-                                    }
-                                }
-                            }
-                        }
+                if (visible) {
+                    uint slot = atomicAdd(instance_count, 1u);
+                    if (slot < max_capacity) {
+                        visible_items[slot].instance_id = inst_idx;
+                        visible_items[slot].cluster_id = global_cluster_idx;
+                        atomicAdd(total_triangles_drawn, c.data_offsets.w);
+                    } else {
+                        overflow_flag = 1u;
                     }
                 }
             }
         }
-    }
+    } else {
+        // ====================================================================
+        // HIERARCHICAL TOP-DOWN DAG CULLING COM EARLY-OUT
+        // Começa do nível mais grosseiro (raiz da árvore) descendo até LOD 0.
+        // Se um nível satisfaz a tolerância de erro de tela,
+        // seleciona os clusters e INTERROMPE (Early-Out) a descida!
+        // ====================================================================
+        uint max_lod = (inst.lod_count > 0u) ? (inst.lod_count - 1u) : 0u;
 
-    // Agregação atômica no Subgroup para total_clusters_evaluated (contagem real após poda e early-out)
-    uint eval_count = subgroupAdd(was_evaluated ? 1u : 0u);
-    if (subgroupElect() && eval_count > 0u) {
-        atomicAdd(total_clusters_evaluated, eval_count);
-    }
+        for (int current_lod = int(max_lod); current_lod >= 0; --current_lod) {
+            bool any_selected_at_this_lod = false;
 
-    // ========================================================================
-    // ALOCAÇÃO ATÔMICA MASTER VIA SUBGROUP / WAVE INTRINSICS (ZERO CONTENÇÃO)
-    // ========================================================================
-    uvec4 selected_ballot = subgroupBallot(is_selected);
-    uint subgroup_selected_count = subgroupBallotBitCount(selected_ballot);
+            for (uint i = 0u; i < inst.cluster_count; ++i) {
+                uint global_cluster_idx = inst.cluster_offset + i;
+                GPUCluster c = clusters[global_cluster_idx];
 
-    uint base_slot = 0u;
-    if (subgroupElect() && subgroup_selected_count > 0u) {
-        base_slot = atomicAdd(instance_count, subgroup_selected_count);
-        if (base_slot + subgroup_selected_count > max_capacity) {
-            overflow_flag = 1u;
+                if (int(c.cluster_info.y) == current_lod) {
+                    // Avalia cluster deste nível
+                    atomicAdd(total_clusters_evaluated, 1u);
+
+                    vec3 world_center = (inst.model_matrix * vec4(c.center_radius.xyz, 1.0)).xyz;
+                    float world_radius = c.center_radius.w * max_scale;
+
+                    // Frustum culling do cluster
+                    if (ubo.count_params.z != 0u) {
+                        if (!ARB_GPU_TestFrustum(world_center, world_radius)) {
+                            continue;
+                        }
+                    }
+
+                    // Erro projetado em pixels do grupo pai na tela e Frustum Culling do Grupo Pai
+                    float p_error = c.group_bounds_error.w * max_scale;
+                    vec3 p_center_world = (inst.model_matrix * vec4(c.group_bounds_error.xyz, 1.0)).xyz;
+                    bool parent_in_frustum = true;
+                    if (ubo.count_params.z != 0u) {
+                        parent_in_frustum = ARB_GPU_TestFrustum(p_center_world, world_radius);
+                    }
+                    if (!parent_in_frustum) {
+                        continue;
+                    }
+                    float p_err_px = ARB_GPU_ProjectScreenError(p_center_world, 0.0, p_error, vp_h, fov_factor);
+
+                    // Condição de aceitação: erro na tela <= max_screen_err OU estamos na base (LOD 0)
+                    if (p_err_px <= max_screen_err || current_lod == 0) {
+                        // Backface cone culling
+                        bool visible = true;
+                        if (ubo.count_params.w != 0u) {
+                            vec3 world_cone_axis = normalize(mat3(inst.normal_matrix) * c.cone_axis_cutoff.xyz);
+                            if ((inst.visibility_flags & 4u) != 0u) world_cone_axis = -world_cone_axis;
+                            visible = ARB_GPU_TestConeCull(world_center, world_radius, world_cone_axis, c.cone_axis_cutoff.w);
+                        }
+
+                        // Hi-Z Occlusion culling
+                        if (visible && ubo.render_params.y != 0u) {
+                            visible = ARB_GPU_TestHiZOcclusion(world_center, world_radius);
+                        }
+
+                        if (visible) {
+                            uint slot = atomicAdd(instance_count, 1u);
+                            if (slot < max_capacity) {
+                                visible_items[slot].instance_id = inst_idx;
+                                visible_items[slot].cluster_id = global_cluster_idx;
+                                atomicAdd(total_triangles_drawn, c.data_offsets.w);
+                            } else {
+                                overflow_flag = 1u;
+                            }
+                        }
+                        any_selected_at_this_lod = true;
+                    }
+                }
+            }
+
+            // EARLY-OUT: Se este nível hierárquico atendeu à fidelidade visual exigida,
+            // PARADA ANTECIPADA! Não avalia os clusters dos níveis filhos mais densos.
+            if (any_selected_at_this_lod) {
+                break;
+            }
         }
-    }
-    base_slot = subgroupBroadcastFirst(base_slot);
-
-    if (is_selected) {
-        uint local_idx = subgroupBallotExclusiveBitCount(selected_ballot);
-        uint final_slot = base_slot + local_idx;
-        if (final_slot < max_capacity) {
-            visible_items[final_slot].instance_id = out_inst_idx;
-            visible_items[final_slot].cluster_id = out_cluster_idx;
-        }
-    }
-
-    uint subgroup_tris = subgroupAdd(tri_count);
-    if (subgroupElect() && subgroup_tris > 0u) {
-        atomicAdd(total_triangles_drawn, subgroup_tris);
     }
 }

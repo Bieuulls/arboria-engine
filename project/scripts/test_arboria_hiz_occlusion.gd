@@ -59,7 +59,7 @@ func _process(_delta: float) -> void:
 			clusters_with_hiz, triangles_with_hiz
 		])
 
-	elif frame_count >= 30:
+	elif frame_count == 30:
 		print("====================================================")
 		print("            RELATORIO DE VALIDACAO HI-Z             ")
 		print("====================================================")

@@ -16,9 +16,17 @@ class MeshGPUResource:
 	var total_vertices: int = 0
 	var total_triangles: int = 0
 	var total_groups: int = 0
+	var lod_count: int = 1
+	var root_cluster_offset: int = 0
+	var global_cluster_offset: int = 0
+	var global_vertex_offset: int = 0
+	var global_triangle_offset: int = 0
 	var groups_x: int = 1
 	var bbox_min: Vector3 = Vector3.ZERO
 	var bbox_max: Vector3 = Vector3.ZERO
+	var raw_cluster_bytes: PackedByteArray = PackedByteArray()
+	var raw_vertex_bytes: PackedByteArray = PackedByteArray()
+	var raw_triangle_bytes: PackedByteArray = PackedByteArray()
 
 	# Buffers geométricos compartilhados
 	var in_clusters_buf: RID
@@ -115,6 +123,10 @@ var global_indirect_args_buf: RID
 var global_scene_uniforms_buf: RID
 var global_instances_buf: RID
 var global_instances_capacity: int = 0
+var global_clusters_buf: RID
+var global_vertices_buf: RID
+var global_triangles_buf: RID
+var global_geometry_dirty: bool = true
 
 var global_compute_uniform_set: RID
 var global_raster_uniform_set: RID
@@ -130,8 +142,8 @@ var cached_fb_depth: RID
 # Configuracoes globais
 var global_shading_mode: int = 0 # 0 = PBR, 1 = Normal, 2 = Unshaded, 3 = Cluster Colors
 var enable_frustum_culling: bool = true
-var enable_cone_culling: bool = true
-var enable_wind: bool = true
+var enable_cone_culling: bool = false
+var enable_wind: bool = false
 var wind_strength: float = 0.8
 var wind_frequency: float = 1.2
 var wind_gust: float = 0.5
@@ -647,9 +659,9 @@ func _compile_global_shaders() -> void:
 func _ensure_global_buffers(num_instances: int) -> bool:
 	if not rd: return false
 
-	# 1. Buffer de Visibilidade Compactado (65.536 itens * 8 bytes = 524.288 bytes)
+	# 1. Buffer de Visibilidade Compactado (524.288 itens * 8 bytes = 4.194.304 bytes)
 	if not global_visible_items_buf.is_valid():
-		global_visible_items_buf = rd.storage_buffer_create(65536 * 8)
+		global_visible_items_buf = rd.storage_buffer_create(524288 * 8)
 
 	# 2. Buffer de Argumentos Indiretos e Contadores (32 bytes)
 	if not global_indirect_args_buf.is_valid():
@@ -706,7 +718,7 @@ func setup_raster_pipeline(color_fmt: int, depth_fmt: int) -> bool:
 	depth_state.depth_compare_operator = RenderingDevice.COMPARE_OP_GREATER_OR_EQUAL
 
 	var raster_state = RDPipelineRasterizationState.new()
-	raster_state.cull_mode = RenderingDevice.POLYGON_CULL_BACK
+	raster_state.cull_mode = RenderingDevice.POLYGON_CULL_DISABLED
 	raster_state.front_face = RenderingDevice.POLYGON_FRONT_FACE_CLOCKWISE
 
 	raster_pipeline = rd.render_pipeline_create(
@@ -810,6 +822,15 @@ func _upload_mesh_to_gpu(path: String, data: Dictionary) -> MeshGPUResource:
 	res.bbox_min = data.get("bbox_min", Vector3(-1, -1, -1))
 	res.bbox_max = data.get("bbox_max", Vector3(1, 1, 1))
 	res.groups_x = int(ceil(float(res.total_clusters) / 64.0))
+
+	var lods = data.get("lods", [])
+	if lods.size() > 0:
+		res.lod_count = lods.size()
+		var coarsest = lods[lods.size() - 1]
+		res.root_cluster_offset = coarsest.get("cluster_offset", 0)
+	else:
+		res.lod_count = 1
+		res.root_cluster_offset = 0
 
 	if not rd:
 		res.is_valid = true
@@ -918,9 +939,72 @@ func _upload_mesh_to_gpu(path: String, data: Dictionary) -> MeshGPUResource:
 		var c_clusters = native_core.get_mesh_clusters_count(res.c_mesh_id)
 		print("[ArboriaNativePipeline C++] Malha registrada no VGRuntime: Handle/ID %d, Clusters: %d" % [res.c_mesh_id, c_clusters])
 
+	res.raw_cluster_bytes = c_bytes
+	res.raw_vertex_bytes = raw_v_bytes
+	res.raw_triangle_bytes = t_bytes
+	global_geometry_dirty = true
+
 	res.is_valid = true
 	print("[ArboriaNativePipeline] Upload GPU concluido: ", path, " (", res.total_clusters, " clusters, ", (c_bytes.size() + raw_v_bytes.size() + t_bytes.size()) / 1024, " KB)")
 	return res
+
+func _rebuild_unified_geometry_buffers() -> bool:
+	if not rd or _mesh_cache.is_empty():
+		return false
+
+	var all_clusters_bytes = PackedByteArray()
+	var all_vertices_bytes = PackedByteArray()
+	var all_triangles_bytes = PackedByteArray()
+
+	var current_cluster_offset = 0
+	var current_vertex_offset = 0
+	var current_triangle_offset = 0
+
+	for m_res in _mesh_cache.values():
+		m_res.global_cluster_offset = current_cluster_offset
+		m_res.global_vertex_offset = current_vertex_offset
+		m_res.global_triangle_offset = current_triangle_offset
+
+		var c_bytes = m_res.raw_cluster_bytes.duplicate()
+		for ci in range(m_res.total_clusters):
+			var b = ci * 96
+			var orig_v_off = c_bytes.decode_u32(b + 64)
+			var orig_t_off = c_bytes.decode_u32(b + 72)
+			c_bytes.encode_u32(b + 64, orig_v_off + current_vertex_offset)
+			c_bytes.encode_u32(b + 72, orig_t_off + current_triangle_offset)
+
+		all_clusters_bytes.append_array(c_bytes)
+		all_vertices_bytes.append_array(m_res.raw_vertex_bytes)
+		all_triangles_bytes.append_array(m_res.raw_triangle_bytes)
+
+		current_cluster_offset += m_res.total_clusters
+		current_vertex_offset += m_res.total_vertices
+		current_triangle_offset += m_res.raw_triangle_bytes.size()
+
+	if all_clusters_bytes.is_empty() or all_vertices_bytes.is_empty() or all_triangles_bytes.is_empty():
+		return false
+
+	if global_clusters_buf.is_valid():
+		rd.free_rid(global_clusters_buf)
+	if global_vertices_buf.is_valid():
+		rd.free_rid(global_vertices_buf)
+	if global_triangles_buf.is_valid():
+		rd.free_rid(global_triangles_buf)
+
+	global_clusters_buf = rd.storage_buffer_create(all_clusters_bytes.size(), all_clusters_bytes)
+	global_vertices_buf = rd.storage_buffer_create(all_vertices_bytes.size(), all_vertices_bytes)
+	global_triangles_buf = rd.storage_buffer_create(all_triangles_bytes.size(), all_triangles_bytes)
+
+	if global_compute_uniform_set.is_valid():
+		rd.free_rid(global_compute_uniform_set)
+		global_compute_uniform_set = RID()
+	if global_raster_uniform_set.is_valid():
+		rd.free_rid(global_raster_uniform_set)
+		global_raster_uniform_set = RID()
+
+	global_geometry_dirty = false
+	return true
+
 
 func _get_or_create_instance_gpu_data(inst: Node3D, mesh_res: MeshGPUResource) -> InstanceGPUData:
 	var inst_id = inst.get_instance_id()
@@ -1599,320 +1683,269 @@ func _render_scene_global_internal(
 	var frame_vis_clusters: int = 0
 	var frame_triangles: int = 0
 
-	# 3. Execução em lotes por Malha (1 Compute Dispatch + 1 Draw Indirect por malha distinta)
+	# 3. Submissão Global Consolidada da Cena (1 Compute Dispatch + 1 Draw Indirect Único O(1))
+	if global_geometry_dirty or not global_clusters_buf.is_valid():
+		_rebuild_unified_geometry_buffers()
+
+	var total_instances: int = active_tasks.size()
+	if total_instances == 0 or not global_clusters_buf.is_valid():
+		return
+
+	# Garante capacidade do buffer de instâncias para todas as instâncias da cena
+	var required_cap = max(256, nearest_po2(total_instances))
+	if not global_instances_buf.is_valid() or global_instances_capacity < required_cap:
+		if global_instances_buf.is_valid():
+			rd.free_rid(global_instances_buf)
+		global_instances_capacity = required_cap
+		global_instances_buf = rd.storage_buffer_create(global_instances_capacity * 240)
+		if global_compute_uniform_set.is_valid():
+			rd.free_rid(global_compute_uniform_set)
+			global_compute_uniform_set = RID()
+		if global_raster_uniform_set.is_valid():
+			rd.free_rid(global_raster_uniform_set)
+			global_raster_uniform_set = RID()
+
+	# Atualiza count_params e render_params para a cena global completa
+	var ubo_data = ubo_base.duplicate()
+	ubo_data.encode_u32(192, total_instances)
+	ubo_data.encode_u32(196, total_instances)
+	ubo_data.encode_u32(200, 1 if enable_frustum_culling else 0)
+	ubo_data.encode_u32(204, 1 if enable_cone_culling else 0)
+	ubo_data.encode_u32(208, global_shading_mode)
+	ubo_data.encode_u32(212, 1 if (enable_hiz and hiz_texture.is_valid()) else 0)
+	ubo_data.encode_u32(216, 524288)
+	ubo_data.encode_u32(220, 1 if enable_wind else 0)
+	rd.buffer_update(global_scene_uniforms_buf, 0, ubo_data.size(), ubo_data)
+
+	# Empacota TODAS as instâncias da cena (de todas as malhas) em um único buffer contíguo
+	var inst_bytes = PackedByteArray()
+	inst_bytes.resize(total_instances * 240)
+
+	for i in range(total_instances):
+		var task = active_tasks[i]
+		var inst: Node3D = task["inst"]
+		var m_res: MeshGPUResource = task["mesh_res"]
+		var inst_gpu: InstanceGPUData = task.get("gpu_data", null)
+		var base_off = i * 240
+
+		var model_xform: Transform3D = inst.global_transform
+		var vis: bool = inst.visible
+		var alb: Color = inst.base_albedo if "base_albedo" in inst else Color(0.8, 0.82, 0.85)
+		var rgh: float = inst.roughness if "roughness" in inst else 0.5
+		var mtl: float = inst.metallic if "metallic" in inst else 0.0
+		var spc: float = inst.specular if "specular" in inst else 0.5
+		var lod_mode: float = float(inst.lod_mode if "lod_mode" in inst else 0)
+		var forced_lod: float = float(inst.forced_lod if "forced_lod" in inst else 0)
+
+		# Matriz de modelo e inversão para normal
+		var b = model_xform.basis
+		var model_proj = Projection(model_xform)
+
+		for col in range(4):
+			for row in range(4):
+				inst_bytes.encode_float(base_off + (col * 4 + row) * 4, model_proj[col][row])
+
+		var c00 = b.y.y * b.z.z - b.y.z * b.z.y
+		var c01 = b.y.z * b.z.x - b.y.x * b.z.z
+		var c02 = b.y.x * b.z.y - b.y.y * b.z.x
+		var det = b.x.x * c00 + b.x.y * c01 + b.x.z * c02
+		var inv_det = 1.0 / det if abs(det) > 1e-7 else 1.0
+
+		var n00 = c00 * inv_det
+		var n01 = (b.x.z * b.z.y - b.x.y * b.z.z) * inv_det
+		var n02 = (b.x.y * b.y.z - b.x.z * b.y.y) * inv_det
+		var n10 = c01 * inv_det
+		var n11 = (b.x.x * b.z.z - b.x.z * b.z.x) * inv_det
+		var n12 = (b.x.z * b.y.x - b.x.x * b.y.z) * inv_det
+		var n20 = c02 * inv_det
+		var n21 = (b.x.y * b.z.x - b.x.x * b.z.y) * inv_det
+		var n22 = (b.x.x * b.y.y - b.x.y * b.x.x) * inv_det
+
+		inst_bytes.encode_float(base_off + 64, n00)
+		inst_bytes.encode_float(base_off + 68, n10)
+		inst_bytes.encode_float(base_off + 72, n20)
+		inst_bytes.encode_float(base_off + 76, 0.0)
+
+		inst_bytes.encode_float(base_off + 80, n01)
+		inst_bytes.encode_float(base_off + 84, n11)
+		inst_bytes.encode_float(base_off + 88, n21)
+		inst_bytes.encode_float(base_off + 92, 0.0)
+
+		inst_bytes.encode_float(base_off + 96, n02)
+		inst_bytes.encode_float(base_off + 100, n12)
+		inst_bytes.encode_float(base_off + 104, n22)
+		inst_bytes.encode_float(base_off + 108, 0.0)
+
+		inst_bytes.encode_float(base_off + 112, 0.0)
+		inst_bytes.encode_float(base_off + 116, 0.0)
+		inst_bytes.encode_float(base_off + 120, 0.0)
+		inst_bytes.encode_float(base_off + 124, 1.0)
+
+		var local_c = (m_res.bbox_min + m_res.bbox_max) * 0.5
+		var local_r = (m_res.bbox_max - local_c).length()
+		var w_c = model_xform * local_c
+		var sx = b.x.length()
+		var sy = b.y.length()
+		var sz = b.z.length()
+		var max_s = max(sx, max(sy, sz))
+		var w_r = local_r * max_s
+		inst_bytes.encode_float(base_off + 128, w_c.x)
+		inst_bytes.encode_float(base_off + 132, w_c.y)
+		inst_bytes.encode_float(base_off + 136, w_c.z)
+		inst_bytes.encode_float(base_off + 140, w_r)
+
+		var local_ext = (m_res.bbox_max - m_res.bbox_min) * 0.5
+		var w_ext = Vector3(
+			abs(b.x.x) * local_ext.x + abs(b.y.x) * local_ext.y + abs(b.z.x) * local_ext.z,
+			abs(b.x.y) * local_ext.x + abs(b.y.y) * local_ext.y + abs(b.z.y) * local_ext.z,
+			abs(b.x.z) * local_ext.x + abs(b.y.z) * local_ext.y + abs(b.z.z) * local_ext.z
+		)
+		var w_min = w_c - w_ext
+		var w_max = w_c + w_ext
+
+		var max_err = inst.max_screen_error if "max_screen_error" in inst else 1.5
+
+		inst_bytes.encode_float(base_off + 144, w_min.x)
+		inst_bytes.encode_float(base_off + 148, w_min.y)
+		inst_bytes.encode_float(base_off + 152, w_min.z)
+		inst_bytes.encode_float(base_off + 156, max_err)
+
+		inst_bytes.encode_float(base_off + 160, w_max.x)
+		inst_bytes.encode_float(base_off + 164, w_max.y)
+		inst_bytes.encode_float(base_off + 168, w_max.z)
+		inst_bytes.encode_float(base_off + 172, lod_mode)
+
+		var alb_out = alb.srgb_to_linear() if global_shading_mode == 2 else alb
+		inst_bytes.encode_float(base_off + 176, alb_out.r)
+		inst_bytes.encode_float(base_off + 180, alb_out.g)
+		inst_bytes.encode_float(base_off + 184, alb_out.b)
+		inst_bytes.encode_float(base_off + 188, rgh)
+
+		inst_bytes.encode_float(base_off + 192, mtl)
+		inst_bytes.encode_float(base_off + 196, spc)
+		inst_bytes.encode_float(base_off + 200, 0.0)
+		inst_bytes.encode_float(base_off + 204, forced_lod)
+
+		var is_mirrored = (det < 0.0)
+		var vis_flag = (1 if vis else 0) | (2 if (not "cast_shadow" in inst or inst.cast_shadow) else 0) | (4 if is_mirrored else 0)
+		inst_bytes.encode_u32(base_off + 208, i)
+		inst_bytes.encode_u32(base_off + 212, m_res.c_mesh_id)
+		inst_bytes.encode_u32(base_off + 216, vis_flag)
+		inst_bytes.encode_u32(base_off + 220, 1)
+
+		inst_bytes.encode_u32(base_off + 224, m_res.global_cluster_offset)
+		inst_bytes.encode_u32(base_off + 228, m_res.total_clusters)
+		inst_bytes.encode_u32(base_off + 232, m_res.root_cluster_offset)
+		inst_bytes.encode_u32(base_off + 236, m_res.lod_count)
+
+	rd.buffer_update(global_instances_buf, 0, inst_bytes.size(), inst_bytes)
+
+	# Reseta Contadores e Argumentos Indiretos
+	var reset_args = PackedByteArray()
+	reset_args.resize(32)
+	reset_args.encode_u32(0, 384)   # vertex_count
+	reset_args.encode_u32(4, 0)     # instance_count
+	reset_args.encode_u32(8, 0)     # first_vertex
+	reset_args.encode_u32(12, 0)    # first_instance
+	reset_args.encode_u32(16, 0)    # total_triangles_drawn
+	reset_args.encode_u32(20, 0)    # total_clusters_evaluated
+	reset_args.encode_u32(24, 524288)# max_capacity
+	reset_args.encode_u32(28, 0)    # overflow_flag
+	rd.buffer_update(global_indirect_args_buf, 0, reset_args.size(), reset_args)
+
+	# Criação/Validação de Uniform Sets Globais Unificados
+	if _global_cached_hiz_tex != target_hiz_tex:
+		if global_compute_uniform_set.is_valid() and rd.uniform_set_is_valid(global_compute_uniform_set):
+			rd.free_rid(global_compute_uniform_set)
+		global_compute_uniform_set = RID()
+		_global_cached_hiz_tex = target_hiz_tex
+
+	if not global_compute_uniform_set.is_valid() or not rd.uniform_set_is_valid(global_compute_uniform_set):
+		var cu0 = RDUniform.new()
+		cu0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		cu0.binding = 0
+		cu0.add_id(global_clusters_buf)
+
+		var cu1 = RDUniform.new()
+		cu1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		cu1.binding = 1
+		cu1.add_id(global_visible_items_buf)
+
+		var cu2 = RDUniform.new()
+		cu2.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		cu2.binding = 2
+		cu2.add_id(global_indirect_args_buf)
+
+		var cu3 = RDUniform.new()
+		cu3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+		cu3.binding = 3
+		cu3.add_id(global_scene_uniforms_buf)
+
+		var cu4 = RDUniform.new()
+		cu4.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		cu4.binding = 4
+		cu4.add_id(global_instances_buf)
+
+		var cu5 = RDUniform.new()
+		cu5.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
+		cu5.binding = 5
+		cu5.add_id(target_hiz_sampler)
+		cu5.add_id(target_hiz_tex)
+
+		global_compute_uniform_set = rd.uniform_set_create([cu0, cu1, cu2, cu3, cu4, cu5], global_compute_shader_rid, 0)
+
+	if not global_raster_uniform_set.is_valid() or not rd.uniform_set_is_valid(global_raster_uniform_set):
+		var ru0 = RDUniform.new()
+		ru0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru0.binding = 0
+		ru0.add_id(global_clusters_buf)
+
+		var ru1 = RDUniform.new()
+		ru1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru1.binding = 1
+		ru1.add_id(global_visible_items_buf)
+
+		var ru3 = RDUniform.new()
+		ru3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
+		ru3.binding = 3
+		ru3.add_id(global_scene_uniforms_buf)
+
+		var ru4 = RDUniform.new()
+		ru4.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru4.binding = 4
+		ru4.add_id(global_instances_buf)
+
+		var ru5 = RDUniform.new()
+		ru5.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru5.binding = 5
+		ru5.add_id(global_vertices_buf)
+
+		var ru6 = RDUniform.new()
+		ru6.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		ru6.binding = 6
+		ru6.add_id(global_triangles_buf)
+
+		global_raster_uniform_set = rd.uniform_set_create([ru0, ru1, ru3, ru4, ru5, ru6], global_raster_shader_rid, 0)
+
+	# 1 ÚNICO DISPATCH DE COMPUTE CULLING PARA TODA A CENA
 	if rd:
 		rd.capture_timestamp("arboria_dispatch_start")
-	for m_res in tasks_by_mesh.keys():
-		var batch_tasks: Array = tasks_by_mesh[m_res]
-		var batch_size: int = batch_tasks.size()
-		var batch_work_items: int = batch_size * m_res.total_clusters
-		if batch_work_items == 0:
-			continue
 
-		# Atualiza count_params e render_params para o lote da malha
-		var ubo_data = ubo_base.duplicate()
-		ubo_data.encode_u32(192, batch_size)
-		ubo_data.encode_u32(196, batch_work_items)
-		ubo_data.encode_u32(200, 1 if enable_frustum_culling else 0)
-		ubo_data.encode_u32(204, 1 if enable_cone_culling else 0)
-		ubo_data.encode_u32(208, global_shading_mode)
-		ubo_data.encode_u32(212, 1 if (enable_hiz and hiz_texture.is_valid()) else 0)
-		ubo_data.encode_u32(216, 65536)
-		ubo_data.encode_u32(220, 1 if enable_wind else 0)
-		rd.buffer_update(global_scene_uniforms_buf, 0, ubo_data.size(), ubo_data)
+	var cl = rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(cl, global_compute_pipeline)
+	rd.compute_list_bind_uniform_set(cl, global_compute_uniform_set, 0)
+	var gx = int(ceil(float(total_instances) / 64.0))
+	rd.compute_list_dispatch(cl, gx, 1, 1)
+	rd.compute_list_end()
+	total_dispatches = 1
 
-		# Empacota instâncias do lote (GPUInstanceData - 240 bytes cada)
-		var inst_bytes = PackedByteArray()
-		inst_bytes.resize(batch_size * 240)
-
-		for i in range(batch_size):
-			var task = batch_tasks[i]
-			var inst: Node3D = task["inst"]
-			var inst_gpu: InstanceGPUData = task.get("gpu_data", null)
-			var base_off = i * 240
-
-			var model_xform: Transform3D = inst.global_transform
-			var vis: bool = inst.visible
-			var alb: Color = inst.base_albedo if "base_albedo" in inst else Color(0.8, 0.82, 0.85)
-			var rgh: float = inst.roughness if "roughness" in inst else 0.5
-			var mtl: float = inst.metallic if "metallic" in inst else 0.0
-			var spc: float = inst.specular if "specular" in inst else 0.5
-			var lod_mode: float = float(inst.lod_mode if "lod_mode" in inst else 0)
-			var forced_lod: float = float(inst.forced_lod if "forced_lod" in inst else 0)
-
-			var is_dirty: bool = true
-			if inst_gpu and inst_gpu.is_transform_cached:
-				if inst_gpu.cached_transform == model_xform and inst_gpu.cached_visible == vis and inst_gpu.cached_albedo == alb and inst_gpu.cached_roughness == rgh and inst_gpu.cached_metallic == mtl and inst_gpu.cached_specular == spc and inst_gpu.cached_lod_mode == lod_mode and inst_gpu.cached_forced_lod == forced_lod:
-					is_dirty = false
-
-			if not is_dirty:
-				# ALVO 4: Cópia rápida O(1) de bloco pré-calculado para instâncias estáticas (Zero recálculos na CPU)
-				var c_bytes: PackedByteArray = inst_gpu.cached_inst_bytes
-				for off_64 in range(0, 240, 8):
-					inst_bytes.encode_u64(base_off + off_64, c_bytes.decode_u64(off_64))
-				inst_bytes.encode_u32(base_off + 208, i)
-				inst_bytes.encode_u32(base_off + 228, m_res.total_clusters)
-				continue
-
-			# Cálculo completo apenas para instâncias modificadas (dirty)
-			var b = model_xform.basis
-			var model_proj = Projection(model_xform)
-
-			for col in range(4):
-				for row in range(4):
-					inst_bytes.encode_float(base_off + (col * 4 + row) * 4, model_proj[col][row])
-
-			var c00 = b.y.y * b.z.z - b.y.z * b.z.y
-			var c01 = b.y.z * b.z.x - b.y.x * b.z.z
-			var c02 = b.y.x * b.z.y - b.y.y * b.z.x
-			var det = b.x.x * c00 + b.x.y * c01 + b.x.z * c02
-			var inv_det = 1.0 / det if abs(det) > 1e-7 else 1.0
-
-			var n00 = c00 * inv_det
-			var n01 = (b.x.z * b.z.y - b.x.y * b.z.z) * inv_det
-			var n02 = (b.x.y * b.y.z - b.x.z * b.y.y) * inv_det
-			var n10 = c01 * inv_det
-			var n11 = (b.x.x * b.z.z - b.x.z * b.z.x) * inv_det
-			var n12 = (b.x.z * b.y.x - b.x.x * b.y.z) * inv_det
-			var n20 = c02 * inv_det
-			var n21 = (b.x.y * b.z.x - b.x.x * b.z.y) * inv_det
-			var n22 = (b.x.x * b.y.y - b.x.y * b.x.x) * inv_det
-
-			inst_bytes.encode_float(base_off + 64, n00)
-			inst_bytes.encode_float(base_off + 68, n10)
-			inst_bytes.encode_float(base_off + 72, n20)
-			inst_bytes.encode_float(base_off + 76, 0.0)
-
-			inst_bytes.encode_float(base_off + 80, n01)
-			inst_bytes.encode_float(base_off + 84, n11)
-			inst_bytes.encode_float(base_off + 88, n21)
-			inst_bytes.encode_float(base_off + 92, 0.0)
-
-			inst_bytes.encode_float(base_off + 96, n02)
-			inst_bytes.encode_float(base_off + 100, n12)
-			inst_bytes.encode_float(base_off + 104, n22)
-			inst_bytes.encode_float(base_off + 108, 0.0)
-
-			inst_bytes.encode_float(base_off + 112, 0.0)
-			inst_bytes.encode_float(base_off + 116, 0.0)
-			inst_bytes.encode_float(base_off + 120, 0.0)
-			inst_bytes.encode_float(base_off + 124, 1.0)
-
-			var local_c = (m_res.bbox_min + m_res.bbox_max) * 0.5
-			var local_r = (m_res.bbox_max - local_c).length()
-			var w_c = model_xform * local_c
-			var sx = b.x.length()
-			var sy = b.y.length()
-			var sz = b.z.length()
-			var max_s = max(sx, max(sy, sz))
-			var w_r = local_r * max_s
-			inst_bytes.encode_float(base_off + 128, w_c.x)
-			inst_bytes.encode_float(base_off + 132, w_c.y)
-			inst_bytes.encode_float(base_off + 136, w_c.z)
-			inst_bytes.encode_float(base_off + 140, w_r)
-
-			# 2. AABB no espaço de mundo via Método de Jim Arvo (O(1) sem branches ou 8 transformações)
-			var local_ext = (m_res.bbox_max - m_res.bbox_min) * 0.5
-			var w_ext = Vector3(
-				abs(b.x.x) * local_ext.x + abs(b.y.x) * local_ext.y + abs(b.z.x) * local_ext.z,
-				abs(b.x.y) * local_ext.x + abs(b.y.y) * local_ext.y + abs(b.z.y) * local_ext.z,
-				abs(b.x.z) * local_ext.x + abs(b.y.z) * local_ext.y + abs(b.z.z) * local_ext.z
-			)
-			var w_min = w_c - w_ext
-			var w_max = w_c + w_ext
-
-			var max_err = inst.max_screen_error if "max_screen_error" in inst else 1.5
-
-			inst_bytes.encode_float(base_off + 144, w_min.x)
-			inst_bytes.encode_float(base_off + 148, w_min.y)
-			inst_bytes.encode_float(base_off + 152, w_min.z)
-			inst_bytes.encode_float(base_off + 156, max_err)
-
-			inst_bytes.encode_float(base_off + 160, w_max.x)
-			inst_bytes.encode_float(base_off + 164, w_max.y)
-			inst_bytes.encode_float(base_off + 168, w_max.z)
-			inst_bytes.encode_float(base_off + 172, lod_mode)
-
-			var alb_out = alb.srgb_to_linear() if global_shading_mode == 2 else alb
-			inst_bytes.encode_float(base_off + 176, alb_out.r)
-			inst_bytes.encode_float(base_off + 180, alb_out.g)
-			inst_bytes.encode_float(base_off + 184, alb_out.b)
-			inst_bytes.encode_float(base_off + 188, rgh)
-
-			inst_bytes.encode_float(base_off + 192, mtl)
-			inst_bytes.encode_float(base_off + 196, spc)
-			inst_bytes.encode_float(base_off + 200, 0.0)
-			inst_bytes.encode_float(base_off + 204, forced_lod)
-
-			var is_mirrored = (det < 0.0)
-			var vis_flag = (1 if vis else 0) | (2 if (not "cast_shadow" in inst or inst.cast_shadow) else 0) | (4 if is_mirrored else 0)
-			inst_bytes.encode_u32(base_off + 208, i)
-			inst_bytes.encode_u32(base_off + 212, 0)
-			inst_bytes.encode_u32(base_off + 216, vis_flag)
-			inst_bytes.encode_u32(base_off + 220, 1)
-
-			inst_bytes.encode_u32(base_off + 224, 0)
-			inst_bytes.encode_u32(base_off + 228, m_res.total_clusters)
-			inst_bytes.encode_u32(base_off + 232, 0)
-			inst_bytes.encode_u32(base_off + 236, 0)
-
-			if inst_gpu:
-				inst_gpu.cached_transform = model_xform
-				inst_gpu.cached_visible = vis
-				inst_gpu.cached_albedo = alb
-				inst_gpu.cached_roughness = rgh
-				inst_gpu.cached_metallic = mtl
-				inst_gpu.cached_specular = spc
-				inst_gpu.cached_lod_mode = lod_mode
-				inst_gpu.cached_forced_lod = forced_lod
-				inst_gpu.cached_inst_bytes = inst_bytes.slice(base_off, base_off + 240)
-				inst_gpu.is_transform_cached = true
-
-		rd.buffer_update(global_instances_buf, 0, inst_bytes.size(), inst_bytes)
-
-		# Reseta Contadores e Argumentos Indiretos para o Lote
-		var reset_args = PackedByteArray()
-		reset_args.resize(32)
-		reset_args.encode_u32(0, 384)   # vertex_count
-		reset_args.encode_u32(4, 0)     # instance_count
-		reset_args.encode_u32(8, 0)     # first_vertex
-		reset_args.encode_u32(12, 0)    # first_instance
-		reset_args.encode_u32(16, 0)    # total_triangles_drawn
-		reset_args.encode_u32(20, 0)    # total_clusters_evaluated
-		reset_args.encode_u32(24, 65536)# max_capacity
-		reset_args.encode_u32(28, 0)    # overflow_flag
-		rd.buffer_update(global_indirect_args_buf, 0, reset_args.size(), reset_args)
-
-		# Uniform Sets específicos para este MeshGPUResource
-		var m_cache = _mesh_uniform_sets.get(m_res, null)
-		var is_cache_valid = false
-		if m_cache is Dictionary:
-			var c_set: RID = m_cache.get("compute", RID())
-			var r_set: RID = m_cache.get("raster", RID())
-			if c_set.is_valid() and r_set.is_valid() and rd.uniform_set_is_valid(c_set) and rd.uniform_set_is_valid(r_set):
-				if m_cache.get("hiz_tex", RID()) == target_hiz_tex \
-					and m_cache.get("clusters_buf", RID()) == m_res.in_clusters_buf \
-					and m_cache.get("instances_buf", RID()) == global_instances_buf \
-					and m_cache.get("scene_uniforms_buf", RID()) == global_scene_uniforms_buf \
-					and m_cache.get("visible_items_buf", RID()) == global_visible_items_buf \
-					and m_cache.get("indirect_args_buf", RID()) == global_indirect_args_buf \
-					and m_cache.get("vertices_buf", RID()) == m_res.in_vertices_buf \
-					and m_cache.get("triangles_buf", RID()) == m_res.in_triangles_buf:
-					is_cache_valid = true
-
-		if not is_cache_valid:
-			if m_cache is Dictionary:
-				if m_cache.has("compute") and m_cache["compute"].is_valid() and rd.uniform_set_is_valid(m_cache["compute"]):
-					rd.free_rid(m_cache["compute"])
-				if m_cache.has("raster") and m_cache["raster"].is_valid() and rd.uniform_set_is_valid(m_cache["raster"]):
-					rd.free_rid(m_cache["raster"])
-
-			var cu0 = RDUniform.new()
-			cu0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			cu0.binding = 0
-			cu0.add_id(m_res.in_clusters_buf)
-
-			var cu1 = RDUniform.new()
-			cu1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			cu1.binding = 1
-			cu1.add_id(global_visible_items_buf)
-
-			var cu2 = RDUniform.new()
-			cu2.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			cu2.binding = 2
-			cu2.add_id(global_indirect_args_buf)
-
-			var cu3 = RDUniform.new()
-			cu3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
-			cu3.binding = 3
-			cu3.add_id(global_scene_uniforms_buf)
-
-			var cu4 = RDUniform.new()
-			cu4.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			cu4.binding = 4
-			cu4.add_id(global_instances_buf)
-
-			var cu5 = RDUniform.new()
-			cu5.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
-			cu5.binding = 5
-			cu5.add_id(target_hiz_sampler)
-			cu5.add_id(target_hiz_tex)
-
-			var comp_set = rd.uniform_set_create([cu0, cu1, cu2, cu3, cu4, cu5], global_compute_shader_rid, 0)
-
-			var ru0 = RDUniform.new()
-			ru0.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			ru0.binding = 0
-			ru0.add_id(m_res.in_clusters_buf)
-
-			var ru1 = RDUniform.new()
-			ru1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			ru1.binding = 1
-			ru1.add_id(global_visible_items_buf)
-
-			var ru3 = RDUniform.new()
-			ru3.uniform_type = RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER
-			ru3.binding = 3
-			ru3.add_id(global_scene_uniforms_buf)
-
-			var ru4 = RDUniform.new()
-			ru4.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			ru4.binding = 4
-			ru4.add_id(global_instances_buf)
-
-			var ru5 = RDUniform.new()
-			ru5.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			ru5.binding = 5
-			ru5.add_id(m_res.in_vertices_buf)
-
-			var ru6 = RDUniform.new()
-			ru6.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-			ru6.binding = 6
-			ru6.add_id(m_res.in_triangles_buf)
-
-			var rast_set = rd.uniform_set_create([ru0, ru1, ru3, ru4, ru5, ru6], global_raster_shader_rid, 0)
-			m_cache = {
-				"compute": comp_set,
-				"raster": rast_set,
-				"hiz_tex": target_hiz_tex,
-				"clusters_buf": m_res.in_clusters_buf,
-				"instances_buf": global_instances_buf,
-				"scene_uniforms_buf": global_scene_uniforms_buf,
-				"visible_items_buf": global_visible_items_buf,
-				"indirect_args_buf": global_indirect_args_buf,
-				"vertices_buf": m_res.in_vertices_buf,
-				"triangles_buf": m_res.in_triangles_buf
-			}
-			_mesh_uniform_sets[m_res] = m_cache
-
-		var comp_uniform_set: RID = m_cache["compute"]
-		var rast_uniform_set: RID = m_cache["raster"]
-
-		# Validação estrita de integridade antes do dispatch e draw
-		if not comp_uniform_set.is_valid() or not rd.uniform_set_is_valid(comp_uniform_set):
-			push_error("[ArboriaNativePipeline] comp_uniform_set inválido para submissão compute!")
-			continue
-		if not rast_uniform_set.is_valid() or not rd.uniform_set_is_valid(rast_uniform_set):
-			push_error("[ArboriaNativePipeline] rast_uniform_set inválido para submissão draw indireto!")
-			continue
-
-		# Dispatch Compute
-		var cl = rd.compute_list_begin()
-		rd.compute_list_bind_compute_pipeline(cl, global_compute_pipeline)
-		rd.compute_list_bind_uniform_set(cl, comp_uniform_set, 0)
-		var gx = int(ceil(float(batch_work_items) / 64.0))
-		rd.compute_list_dispatch(cl, gx, 1, 1)
-		rd.compute_list_end()
-
-		# Draw Indirect do Lote
-		var dl = rd.draw_list_begin(cached_fb, 0, PackedColorArray())
-		rd.draw_list_bind_render_pipeline(dl, active_pipe)
-		rd.draw_list_bind_uniform_set(dl, rast_uniform_set, 0)
-		rd.draw_list_draw_indirect(dl, false, global_indirect_args_buf, 0, 1, 16)
-		rd.draw_list_end()
-
-		total_dispatches += 1
-		total_draws += 1
+	# 1 ÚNICO DRAW INDIRECT PARA TODA A CENA
+	var dl = rd.draw_list_begin(cached_fb, 0, PackedColorArray())
+	rd.draw_list_bind_render_pipeline(dl, active_pipe)
+	rd.draw_list_bind_uniform_set(dl, global_raster_uniform_set, 0)
+	rd.draw_list_draw_indirect(dl, false, global_indirect_args_buf, 0, 1, 16)
+	rd.draw_list_end()
+	total_draws = 1
 
 	if rd:
 		rd.capture_timestamp("arboria_draw_end")
@@ -1920,11 +1953,10 @@ func _render_scene_global_internal(
 	var t1_submit = Time.get_ticks_usec()
 	stats_cpu_submission_ms = (t1_submit - t0_submit) / 1000.0
 
-	# 4. Atualização de Telemetria Consolidada e Desacoplada (Zero stalls GPU recorrentes no frame)
-	stats_total_instances = active_tasks.size()
+	# 4. Atualização de Telemetria Consolidada e Desacoplada
+	stats_total_instances = total_instances
 	stats_dispatches = total_dispatches
 	stats_indirect_draws = total_draws
-	stats_clusters_evaluated = total_scene_clusters
 
 	# Leitura e cálculo de tempo real de GPU via Vulkan Timestamps do RenderingDevice
 	if rd:
@@ -1986,6 +2018,16 @@ func cleanup() -> void:
 		if rd.uniform_set_is_valid(global_raster_uniform_set):
 			rd.free_rid(global_raster_uniform_set)
 		global_raster_uniform_set = RID()
+
+	if global_clusters_buf.is_valid():
+		rd.free_rid(global_clusters_buf)
+		global_clusters_buf = RID()
+	if global_vertices_buf.is_valid():
+		rd.free_rid(global_vertices_buf)
+		global_vertices_buf = RID()
+	if global_triangles_buf.is_valid():
+		rd.free_rid(global_triangles_buf)
+		global_triangles_buf = RID()
 
 	if global_visible_items_buf.is_valid():
 		rd.free_rid(global_visible_items_buf)

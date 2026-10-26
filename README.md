@@ -12,7 +12,7 @@ Ele permite instanciar e renderizar cenários densos contendo dezenas de milhõe
 ---
 
 ## Para quem é?
-- Projetos em Godot 4 que exploram renderização contínua de clusters Nanite DAG com transições contínuas sem *popping* abrupto de LOD.
+- Projetos em Godot 4 que exploram renderização de geometria virtualizada baseada em clusters Nanite-like DAG com seleção por erro projetado de tela.
 - Desenvolvedores que precisam de malhas densas sem sobrecarregar o rasterizador de triângulos sub-pixel.
 - Projetos que necessitam de simulação física robusta via Jolt Physics sem que as trocas de LOD visual afetem colisores físicos.
 

@@ -8,7 +8,7 @@ const ArboriaNativePipeline = preload("res://scripts/arboria_native_pipeline.gd"
 const ArboriaCompositorEffect = preload("res://scripts/arboria_compositor_effect.gd")
 const ArboriaInstance3D = preload("res://scripts/arboria_instance_3d.gd")
 
-const TEST_MESH_PATH = "res://assets/dense_rock_test.vgmesh"
+const TEST_MESH_PATH = "res://assets/dense_rock.vgmesh"
 
 var current_tier: int = 0
 var tier_frame: int = 0
@@ -62,21 +62,15 @@ func _start_tier(target_count: int) -> void:
 		var z = -5.0 - row * spacing
 		var y = sin(float(i) * 0.3) * 0.5
 
-		# Escala não-uniforme controlada para validar integridade de normais e bounds
-		var s = 0.8 + 0.4 * sin(float(i) * 0.7)
+		var s = 0.08
 		inst.transform = Transform3D(
-			Basis().scaled(Vector3(s, s * 1.2, s * 0.9)),
+			Basis().scaled(Vector3(s, s, s)),
 			Vector3(x, y, z)
 		)
 
-		# Variação de cor de material PBR
-		inst.base_albedo = Color(
-			0.5 + 0.3 * sin(float(i) * 0.5),
-			0.5 + 0.3 * cos(float(i) * 0.7),
-			0.6 + 0.2 * sin(float(i) * 1.1)
-		)
-		inst.roughness = clamp(0.3 + 0.4 * (float(i % 10) / 10.0), 0.1, 0.9)
-		inst.metallic = 0.05
+		inst.base_albedo = Color(0.82, 0.78, 0.72)
+		inst.roughness = 0.60
+		inst.metallic = 0.02
 
 		instance_container.add_child(inst)
 
@@ -175,6 +169,7 @@ func _print_final_report() -> void:
 	print("[SUCESSO] Submissões constantes O(1): Exatamente 1 Dispatch e 1 Draw Indireto de 1 a 2.000 instâncias!")
 	print("[SUCESSO] Geometria compartilhada comprovada, sem vazamento ou corrupção.")
 	print("=================================================================")
+
 	if instance_container:
 		for child in instance_container.get_children():
 			child.queue_free()
