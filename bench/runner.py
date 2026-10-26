@@ -5,6 +5,7 @@ import subprocess
 import time
 import platform
 import csv
+import shutil
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -50,7 +51,7 @@ GODOT_BIN = find_godot()
 
 # 2. Coleta dados de hardware e ambiente
 def get_system_environment():
-    gpu_name = "NVIDIA GeForce RTX 3050 Laptop GPU (6 GB VRAM)"
+    gpu_name = "Não detectada"
     driver_version = "Desconhecido"
     try:
         smi = subprocess.run(["nvidia-smi", "--query-gpu=gpu_name,driver_version", "--format=csv,noheader"], capture_output=True, text=True)
@@ -62,7 +63,7 @@ def get_system_environment():
     except Exception:
         pass
 
-    godot_ver = "4.7.2.stable.official"
+    godot_ver = "Não detectado"
     try:
         gv = subprocess.run([GODOT_BIN, "--version"], capture_output=True, text=True)
         if gv.returncode == 0 and gv.stdout.strip():
@@ -75,8 +76,8 @@ def get_system_environment():
         "gpu": gpu_name,
         "driver": driver_version,
         "godot": godot_ver,
-        "api": "Vulkan 1.4 / Forward+",
-        "resolution": "1920x1080 (VSync OFF, FPS Ilimitado)"
+        "api": "Não verificada (configuração esperada: Vulkan / Forward+)",
+        "resolution": "Não verificada"
     }
 
 def main():
@@ -101,8 +102,7 @@ def main():
 
     # Prepara raw.csv
     if os.path.exists(RAW_CSV_PATH):
-        try: os.remove(RAW_CSV_PATH)
-        except: pass
+        os.remove(RAW_CSV_PATH)
 
     all_results = []
     project_dir = os.path.join(REPO_ROOT, "project")
@@ -148,6 +148,8 @@ def main():
 
                 temp_json_abs = os.path.join(RESULTS_DIR, f"temp_{sc_id}_{var_id}_{inst_count}.json")
                 temp_json_godot = f"res://../bench/results/temp_{sc_id}_{var_id}_{inst_count}.json"
+                if os.path.exists(temp_json_abs):
+                    os.remove(temp_json_abs)
 
                 raw_csv_godot = "res://../bench/results/raw.csv"
 
@@ -169,6 +171,7 @@ def main():
                 ]
 
                 start_time = time.time()
+                previous_rows = count_rows(RAW_CSV_PATH)
                 timeout_sec = 180 # 3 minutos de timeout maximo por combinacao
                 timed_out = False
                 crashed = False
@@ -208,9 +211,16 @@ def main():
                     try:
                         with open(temp_json_abs, "r", encoding="utf-8") as jf:
                             data = json.load(jf)
-                            res_entry.update(data)
-                            res_entry["status"] = "OK"
-                            print(f"  -> SUCESSO: p95 Frame Time={data.get('frame_time_p95', 0.0):.2f} ms | VRAM={data.get('vram_avg_mb', 0.0):.1f} MB")
+                            new_rows = count_rows(RAW_CSV_PATH) - previous_rows
+                            if new_rows != measured:
+                                res_entry["status"] = f"FALHOU (CSV: {new_rows} amostras; esperado {measured})"
+                                print(f"  -> {res_entry['status']}")
+                            elif data.get("status") != "OK":
+                                res_entry["status"] = "FALHOU (JSON sem status OK)"
+                            else:
+                                res_entry.update(data)
+                                res_entry["status"] = "OK"
+                                print(f"  -> SUCESSO: p95 Frame Time={data.get('frame_time_p95', 0.0):.2f} ms | VRAM={data.get('vram_avg_mb', 0.0):.1f} MB")
                     except Exception as e:
                         res_entry["status"] = f"FALHOU (JSON corrompido: {e})"
                     finally:
@@ -226,6 +236,18 @@ def main():
     print("GERANDO RELATÓRIO CONSOLIDADO: bench/results/summary.md")
     print("=" * 80)
     generate_summary_markdown(all_results, env_info, config)
+    actual_rows = count_rows(RAW_CSV_PATH)
+    expected_rows = total_runs * measured
+    failures = [r for r in all_results if r.get("status") != "OK"]
+    print(f"AMOSTRAS RAW: atual={actual_rows}, esperado={expected_rows}; combinações falhas={len(failures)}")
+    if failures or actual_rows != expected_rows:
+        sys.exit(1)
+
+def count_rows(path):
+    if not os.path.exists(path):
+        return 0
+    with open(path, newline="", encoding="utf-8") as f:
+        return max(0, sum(1 for _ in csv.reader(f)) - 1)
 
 def generate_summary_markdown(results, env, config):
     crit = config["go_decision_criteria"]

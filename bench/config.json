@@ -31,11 +31,11 @@
       "instances": [1, 80, 500, 2000]
     },
     {
-      "id": "pine_trunk",
-      "name": "Malha B: Pine Trunk Complex (~82k tris)",
-      "mesh_path_vg": "res://assets/pine_trunk_complex.vgmesh",
-      "mesh_path_obj": "res://assets/pine_trunk_complex.obj",
-      "triangles_lod0": 82000,
+      "id": "procedural_1m",
+      "name": "Malha B: Terreno Procedural (~1.002.528 tris)",
+      "mesh_path_vg": "res://assets/procedural_1m.vgmesh",
+      "mesh_path_obj": "res://assets/procedural_1m.obj",
+      "triangles_lod0": 1002528,
       "instances": [1, 80, 500, 2000]
     }
   ],

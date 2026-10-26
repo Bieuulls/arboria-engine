@@ -3,101 +3,116 @@
 [![Godot Engine](https://img.shields.io/badge/Godot-4.7%2B-blue.svg)](https://godotengine.org/)
 [![Vulkan](https://img.shields.io/badge/Graphics-Vulkan%201.4%20Forward%2B-red.svg)](https://www.vulkan.org/)
 [![Physics](https://img.shields.io/badge/Physics-Jolt%20Physics%203D-orange.svg)](https://github.com/godot-jolt/godot-jolt)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Roadmap](https://img.shields.io/badge/Community-Roadmap-purple.svg)](ROADMAP.md)
+[![Docs (PT-BR)](https://img.shields.io/badge/Docs-Portugu%C3%AAs-informational.svg)](docs/README_PT.md)
 
-**ARBORIA ENGINE** é um complemento de geometria virtualizada (*Cluster-based Continuous Level of Detail / Nanite-like DAG*) para **Godot 4.7+ Forward+**.
+**ARBORIA ENGINE** is an experimental GPU-driven virtualized-geometry renderer (*Cluster-based Continuous Level of Detail / Nanite-like DAG*) for **Godot 4.7+ Forward+**.
 
-Ele permite instanciar e renderizar cenários densos contendo dezenas de milhões de triângulos com **submissão GPU constante $O(1)$** (1 Compute Dispatch e 1 Draw Indireto global para o conjunto de instâncias), *Hierarchical Z-Buffer (Hi-Z) Occlusion Culling* em hardware, *Depth Prepass com Reversed-Z*, projeção de sombras dinâmicas via proxy e física 3D real integrada via **Jolt Physics**.
+It enables instancing and rendering massive scenes containing tens of millions of triangles with **constant $O(1)$ GPU submission** (a single compute dispatch and a single global indirect raster draw for the active batch), hardware **Hierarchical Z-Buffer (Hi-Z) Occlusion Culling**, a **Reversed-Z Depth Prepass**, native dynamic shadow projection via internal proxies, and integrated 3D physical collisions powered by **Jolt Physics**.
 
----
-
-## Para quem é?
-- Projetos em Godot 4 que exploram renderização de geometria virtualizada baseada em clusters Nanite-like DAG com seleção por erro projetado de tela.
-- Desenvolvedores que precisam de malhas densas sem sobrecarregar o rasterizador de triângulos sub-pixel.
-- Projetos que necessitam de simulação física robusta via Jolt Physics sem que as trocas de LOD visual afetem colisores físicos.
-
-## O que NÃO é?
-- **Não** é um fork fechado ou motor independente: opera como addon nativo (GDExtension + Compositor Effect).
-- **Não** é uma bala de prata de desempenho em qualquer cenário: em cenas com contagem moderada de instâncias, o renderizador nativo do Godot é altamente eficiente e o overhead de submissão do pipeline customizado pode anular os ganhos de rasterização de clusters da GPU.
-- **Não** substitui a totalidade do pipeline nativo do Godot: focado em malhas estáticas ou instanciadas rígidas.
+> [!NOTE]
+> **Engineering Philosophy:** No unsupported benchmark claims, no hidden tricks, and no speedup accepted at the expense of correct geometry. We publish reproducible measurements, known limitations, and active research questions.
 
 ---
 
-## Funcionalidades Principais
+## Architecture Overview
 
-1. **Baker C++ com Meshoptimizer:**
-   - Utilitário CLI nativo (`arboria_baker_cli.exe`).
-   - Converte malhas `.obj` em `.vgmesh` binário particionado em clusters de 128 triângulos com hierarquia DAG monotônica.
-2. **GPU Scene Global & Submissão $O(1)$:**
-   - Agrupamento global de instâncias em GPU Storage Buffers unificados.
-   - 1 Compute Dispatch de Frustum + Occlusion Culling e 1 Draw Indireto Raster Global.
-3. **Hi-Z Occlusion Culling em Hardware:**
-   - Pirâmide hierárquica de profundidade conservadora com *Reversed-Z*.
-4. **Projeção de Sombras Dinâmicas:**
-   - Suporte nativo à projeção de sombras em luzes direcionais (`DirectionalLight3D`) via proxy interno `SHADOWS_ONLY` integrado ao Shadow Atlas e CSM do Godot Forward+.
-5. **Compatibilidade PBR com StandardMaterial3D:**
-   - Suporte a `material_override: StandardMaterial3D` em nós `ArboriaInstance3D` com sincronização automática de cores, texturas (Albedo, Normal Map, Roughness, Metallic) e parâmetros PBR.
-6. **Integração Jolt Physics 3D Real:**
-   - Suporte a colisões estáticas (`ArboriaStaticBody3D`) e dinâmicas (`ArboriaRigidBody3D`) com persistência estrita independente do nível de LOD visual.
+```
+                      +-----------------------------+
+                      |   C++ Baker CLI (Offline)   |
+                      |   Meshoptimizer + DAG Gen   |
+                      +--------------+--------------+
+                                     | .vgmesh
+                                     v
+                      +-----------------------------+
+                      |  Global GPU Scene Buffers   |
+                      | (Clusters, Transforms, PBR) |
+                      +--------------+--------------+
+                                     |
+                                     v
++------------------------+   Compute Dispatch    +-------------------------+
+| Hi-Z Depth Mip-Pyramid | <-------------------  | GPU Frustum + Occlusion |
+|     (Reversed-Z)       |                       |        Culling          |
++------------------------+                       +------------+------------+
+                                                              |
+                                                              v Visible Clusters
+                                                 +-------------------------+
+                                                 | Global Indirect Raster  |
+                                                 |        Draw Call        |
+                                                 +------------+------------+
+                                                              |
+                                                              v
+                                                 +-------------------------+
+                                                 | Forward+ G-Buffer / CSM |
+                                                 +-------------------------+
+```
+
+### Core Subsystems
+
+1. **Native C++ Baker with Meshoptimizer:**
+   - Standalone CLI tool (`arboria_baker_cli.exe`).
+   - Partitions arbitrary `.obj` triangle meshes into bounded 128-triangle clusters with a monotonic directed acyclic graph (DAG) hierarchy for seamless projected error LOD selection.
+2. **GPU Scene Global & $O(1)$ Submission:**
+   - Global instance aggregation inside unified GPU Storage Buffers (`RenderingDevice`).
+   - 1 Compute dispatch for culling + 1 indirect draw command for the entire visible cluster stream.
+3. **Hardware Hi-Z Occlusion Culling:**
+   - Conservative hierarchical depth pyramid constructed from the Godot Forward+ depth texture with Reversed-Z semantics.
+4. **Dynamic Shadow Projection:**
+   - Directional light shadow casting (`DirectionalLight3D`) through an internal `SHADOWS_ONLY` proxy pass integrated directly into Godot's Cascaded Shadow Maps (CSM) and Shadow Atlas.
+5. **Full PBR Fidelity:**
+   - Automatic material binding and synchronization with Godot's `StandardMaterial3D` (Albedo, Normal maps, Roughness, Metallic, and emission).
+6. **Jolt Physics 3D Integration:**
+   - Static (`ArboriaStaticBody3D`) and dynamic (`ArboriaRigidBody3D`) rigid body physics decoupled from visual LOD transitions to guarantee collision stability.
 
 ---
 
-## Resultados Oficiais do Benchmark e Decisão Técnica
+## Measured Benchmarks & Engineering Findings
 
-O ARBORIA Engine é validado sob uma suíte de benchmark reproduzível de 1.000 frames por cenário, medindo tempos reais de main thread, CPU Render e GPU Render via Vulkan timestamps na GPU física (NVIDIA GeForce RTX 3050 6GB):
+ARBORIA is validated under an automated, reproducible benchmark harness running 1,000 frames per configuration, measuring physical Vulkan timestamp queries on an NVIDIA GeForce RTX 3050 6GB:
 
-### Resultados Medidos (dense_rock, Resolução 1920x1080 Forward+):
-| Cenário | Instâncias | Variante | Frame Time p95 (ms) | CPU Render p95 (ms) | GPU Render p95 (ms) | VRAM Média (MB) | Draws | Tris Renderizados |
+### Results: `dense_rock` Scene (1920x1080 Forward+)
+
+| Scenario | Instances | Variant | Frame Time p95 | CPU Render p95 | GPU Render p95 | VRAM Avg | Draws | Rendered Tris |
 | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| dense_rock | 1 | MeshInstance3D | 1.24 | 0.19 | 0.26 | 111.7 | 1 | 15.800 |
-| dense_rock | 1 | MultiMeshInstance3D | 1.67 | 0.11 | 0.26 | 111.7 | 1 | 15.800 |
-| dense_rock | 1 | **ARBORIA (DAG)** | **1.15** | 0.31 | 0.26 | 130.2 | 1 (indireto) | 3.866 |
-| dense_rock | 500 | MeshInstance3D | 6.69 | 0.24 | 6.09 | 111.7 | 3 | 7.900.000 |
-| dense_rock | 500 | MultiMeshInstance3D | 7.24 | 0.27 | 6.36 | 111.7 | 1 | 7.900.000 |
-| dense_rock | 500 | **ARBORIA (DAG)** | **8.06** | 7.01 | **0.63** | 131.1 | 1 (indireto) | 337.374 |
+| dense_rock | 1 | MeshInstance3D | 1.24 ms | 0.19 ms | 0.26 ms | 111.7 MB | 1 | 15,800 |
+| dense_rock | 1 | MultiMeshInstance3D | 1.67 ms | 0.11 ms | 0.26 ms | 111.7 MB | 1 | 15,800 |
+| dense_rock | 1 | **ARBORIA (DAG)** | **1.15 ms** | 0.31 ms | 0.26 ms | 130.2 MB | 1 (indirect) | **3,866** |
+| dense_rock | 500 | MeshInstance3D | 6.69 ms | 0.24 ms | 6.09 ms | 111.7 MB | 3 | 7,900,000 |
+| dense_rock | 500 | MultiMeshInstance3D | 7.24 ms | 0.27 ms | 6.36 ms | 111.7 MB | 1 | 7,900,000 |
+| dense_rock | 500 | **ARBORIA (DAG)** | **8.06 ms** | 7.01 ms | **0.63 ms** | 131.1 MB | 1 (indirect) | **337,374** |
 
-### Parecer Técnico Honesto: `NO-GO (Sem Vantagem Mensurável)`
-- **Vantagem de GPU Comprovada:** O pipeline do ARBORIA reduz drasticamente o trabalho de GPU em cenas densas (0.63 ms vs 6.09 ms do Godot em 500 instâncias — **redução de ~9.6x no tempo de GPU** e redução de 7.900.000 para 337.374 triângulos rasterizados).
-- **Gargalo de CPU Identificado:** Em Godot GDScript/RenderingDevice, o overhead de submissão de CPU para atualizar buffers de instâncias (7.01 ms CPU) supera a economia de GPU, resultando em tempo de frame ligeiramente superior (8.06 ms vs 6.69 ms).
-- **Decisão:** Por não atender ao critério estrito de frame time $\le 67\%$ em múltiplas combinações, o projeto registrou decisão formal de **NO-GO** para substituição automática do renderizador nativo.
+### Honest Technical Evaluation
 
----
-
-## Validação e CI Local Unificado
-
-O repositório inclui suíte completa de testes e validação contínua local em um único comando:
-
-```cmd
-# Executa as 5 etapas da CI Local:
-ci_local.bat
-```
-
-Etapas verificadas automaticamente:
-1. **Compilação C++:** Build incremental do backend nativo (`native/renderer/build`).
-2. **Testes CTest:** Execução dos testes unitários C++ do renderizador nativo.
-3. **Painel de Testes (27 testes):** Execução da suíte completa de testes Godot e Python (`tests/panel/panel.py --cli`).
-4. **Benchmark Rápido:** Execução determinística e gravação de telemetria em `bench/results/raw.csv` e `summary.md`.
-5. **Verificação de Regressão:** Neutralização completa de caminhos absolutos locais de desenvolvimento (0 ocorrências em todo o código rastreado).
+- **Measured GPU Advantage:** In high-density scenes, ARBORIA drops GPU rendering time from 6.09 ms to 0.63 ms (**~9.6x GPU reduction**) by culling sub-pixel detail and rasterizing only 337,374 triangles compared to 7.9 million triangles in Godot native.
+- **Identified CPU Bottleneck:** In the current GDScript/RenderingDevice binding layer, per-frame CPU submission and instance buffer updates take 7.01 ms CPU time, which exceeds the GPU savings and leads to a slightly higher total frame time (8.06 ms vs 6.69 ms).
+- **Engineering Conclusion:** We documented a **NO-GO** on claiming full replacement of native meshes today. Fixing this bottleneck via persistent dirty-range instance buffers and heterogeneous batching is the #1 priority in [ROADMAP.md](ROADMAP.md) (Phase B).
 
 ---
 
-## Instalação Rápida do Addon
+## Quickstart & Installation
 
-### 1. Copiar o plugin para o seu projeto
-Copie a pasta `addons/arboria` para a pasta do seu projeto Godot:
-```cmd
-install_addon.bat "C:\Caminho\Para\SeuProjeto"
-```
+### Requirements
 
-### 2. Ativar no Godot
-1. Abra o projeto no **Godot 4.7+**.
-2. Vá em **Project -> Project Settings -> Plugins** e ative o plugin **Arboria Virtual Geometry**.
-3. Em **Project Settings -> Rendering -> Renderer**, utilize **Forward+** (`forward_plus`).
-4. (Opcional) Em **Project Settings -> Physics -> 3D**, selecione **Jolt Physics**.
+- **Godot Engine:** 4.7+ (Forward+ / Vulkan 1.4).
+- **GPU:** Dedicated GPU with Vulkan 1.2+ and Subgroup Operations (NVIDIA RTX / GTX 1060+, AMD Radeon RX 5000+, Intel Arc).
+- **Operating System:** Windows 10/11 (64-bit) or Linux (x86_64).
+- **Build Tools (from source):** CMake 3.20+, MSVC 2022 (v143+) or GCC 11+ / Clang 15+.
+
+### Using the Addon
+
+1. Copy or install the addon into your project:
+   ```cmd
+   install_addon.bat "C:\Path\To\YourGodotProject"
+   ```
+2. In Godot, navigate to **Project -> Project Settings -> Plugins** and enable **Arboria Virtual Geometry**.
+3. In **Project Settings -> Rendering -> Renderer**, ensure **Forward+** is selected.
 
 ---
 
-## Compilação do Código-Fonte
+## Building from Source
+
+The repository provides automated, single-command build scripts that compile the baker, convert reference assets, build the native GDExtension library, run CTest unit tests, and warm the Godot editor cache:
 
 ```cmd
 # Windows (MSVC 2022 + CMake + Ninja)
@@ -107,19 +122,37 @@ build.bat
 ./build.sh
 ```
 
+### Local Continuous Integration (Unified CI)
+
+Run the 5-stage local validation suite before opening pull requests:
+
+```cmd
+ci_local.bat
+```
+
+Stages verified:
+1. Native C++ backend incremental compilation.
+2. CTest unit test suite.
+3. 27-test Godot & Python integration suite (`tests/panel/panel.py --cli`).
+4. Deterministic benchmark telemetry recording.
+5. Regression & path leak auditor (0 local absolute paths permitted).
+
 ---
 
-## Requisitos do Sistema
+## Contributing & Roadmap
 
-- **Motor:** Godot Engine 4.7+ (Forward+ / Vulkan 1.4).
-- **GPU:** GPU dedicada compatível com Vulkan 1.2+ e Subgroup Operations (NVIDIA RTX / GTX 1060+, AMD Radeon RX 5000+, Intel Arc).
-- **Sistema Operacional:** Windows 10/11 (64-bit) ou Linux (x86_64).
-- **Compilador:** CMake 3.20+, MSVC v143+ (Visual Studio 2022) ou GCC 11+ / Clang 15+.
+We are building ARBORIA in the open and welcome graphics engineers, Godot contributors, shader specialists, technical artists, and testers:
+
+- 📋 [**Community Roadmap**](ROADMAP.md) — Strategic phases and research milestones.
+- 🎯 [**Contributor Task Board**](CONTRIBUTOR_TASKS.md) — Concrete, scoped issues ready to be claimed.
+- 🤝 [**Contributing Guide**](CONTRIBUTING.md) — Guidelines, code standards, and PR process.
+- 🛡️ [**Code of Conduct**](CODE_OF_CONDUCT.md) & [**Security Policy**](SECURITY.md).
+- 🌐 [**Landing Page (GitHub Pages)**](docs/index.html) — Visual overview of the project.
 
 ---
 
-## Licença
+## License
 
-Este projeto é disponibilizado sob a licença [MIT](LICENSE).  
-Componentes de terceiros e agradecimentos encontram-se documentados em [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).  
-Proveniência e licença de todos os assets 3D encontram-se em [assets/README.md](assets/README.md).
+This project is licensed under the [MIT License](LICENSE).  
+Third-party libraries and notices are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).  
+3D reference asset origins and licenses are documented in [assets/README.md](assets/README.md).

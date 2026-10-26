@@ -1,0 +1,35 @@
+name: "Benchmark Verification Report"
+description: "Submit or challenge a benchmark run with reproducible evidence."
+title: "[Benchmark]: "
+labels: ["benchmark", "repro needed"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We require unmodified, reproducible benchmark reports with explicit hardware IDs.
+  - type: input
+    id: scene_name
+    attributes:
+      label: Tested Scene & Preset
+      placeholder: "e.g. dense_rock / 500 instances / Forward+"
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: System Specifications
+      placeholder: "CPU, GPU, RAM, OS, Driver version"
+    validations:
+      required: true
+  - type: textarea
+    id: raw_metrics
+    attributes:
+      label: Raw Telemetry Data
+      description: "Paste CSV lines from `bench/results/raw.csv` or summary table."
+    validations:
+      required: true
+  - type: textarea
+    id: observations
+    attributes:
+      label: Analysis & Discrepancies
+      description: "Any discrepancies observed compared to published numbers?"
