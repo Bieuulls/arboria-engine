@@ -147,7 +147,6 @@ We are building ARBORIA in the open and welcome graphics engineers, Godot contri
 - 🎯 [**Contributor Task Board**](CONTRIBUTOR_TASKS.md) — Concrete, scoped issues ready to be claimed.
 - 🤝 [**Contributing Guide**](CONTRIBUTING.md) — Guidelines, code standards, and PR process.
 - 🛡️ [**Code of Conduct**](CODE_OF_CONDUCT.md) & [**Security Policy**](SECURITY.md).
-- 🌐 [**Landing Page (GitHub Pages)**](docs/index.html) — Visual overview of the project.
 
 ---
 
