@@ -2,6 +2,9 @@
 #include "arboria_mesh_resource.h"
 #include "arboria_logger.h"
 #include <algorithm>
+#include <vector>
+#include <queue>
+#include <string>
 #include <cstring>
 #include <cmath>
 #include <fstream>
