@@ -987,6 +987,8 @@ int main(int argc, char** argv) {
             std::string path_rock = resolve_test_mesh("assets/dense_rock.vgmesh");
             std::string path_boulder = resolve_test_mesh("assets/boulder_granite.vgmesh");
             std::string path_pine = resolve_test_mesh("assets/pine_trunk_complex.vgmesh");
+            if (!std::filesystem::exists(path_pine)) path_pine = resolve_test_mesh("assets/rock_cluster_baked.vgmesh");
+            if (!std::filesystem::exists(path_pine)) path_pine = resolve_test_mesh("assets/small_mesh.vgmesh");
 
             auto res_rock = Arboria::ArboriaRenderWorld::instance().register_mesh(path_rock);
             auto res_boulder = Arboria::ArboriaRenderWorld::instance().register_mesh(path_boulder);
