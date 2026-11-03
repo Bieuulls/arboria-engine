@@ -1,6 +1,7 @@
 # ARBORIA ENGINE — Geometria Virtualizada para Godot 4 (Forward+ / Vulkan 1.4)
 *(Versão em Português / Portuguese Version — For English, see [README.md](../README.md))*
 
+[![CI & Build](https://github.com/Bieuulls/arboria-engine/actions/workflows/benchmark-regression.yml/badge.svg)](https://github.com/Bieuulls/arboria-engine/actions/workflows/benchmark-regression.yml)
 [![Godot Engine](https://img.shields.io/badge/Godot-4.7%2B-blue.svg)](https://godotengine.org/)
 [![Vulkan](https://img.shields.io/badge/Graphics-Vulkan%201.4%20Forward%2B-red.svg)](https://www.vulkan.org/)
 [![Physics](https://img.shields.io/badge/Physics-Jolt%20Physics%203D-orange.svg)](https://github.com/godot-jolt/godot-jolt)
