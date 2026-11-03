@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://joltshapes02"]
+
+[ext_resource type="Script" path="res://scripts/test_jolt_complex_shapes.gd" id="1_script"]
+
+[node name="TestJoltComplexShapes" type="Node3D"]
+script = ExtResource("1_script")

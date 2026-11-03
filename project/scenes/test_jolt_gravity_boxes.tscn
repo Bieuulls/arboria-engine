@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://c83joltgrav01"]
+
+[ext_resource type="Script" path="res://scripts/test_jolt_gravity_boxes.gd" id="1_script"]
+
+[node name="TestJoltGravityBoxes" type="Node3D"]
+script = ExtResource("1_script")

@@ -1,0 +1,12 @@
+[configuration]
+entry_symbol = "arboria_native_init"
+compatibility_minimum = "4.7"
+
+[libraries]
+windows.editor.x86_64 = "res://addons/arboria/bin/libarboria_native.dll"
+windows.template_debug.x86_64 = "res://addons/arboria/bin/libarboria_native.dll"
+windows.template_release.x86_64 = "res://addons/arboria/bin/libarboria_native.dll"
+windows.debug.x86_64 = "res://addons/arboria/bin/libarboria_native.dll"
+windows.release.x86_64 = "res://addons/arboria/bin/libarboria_native.dll"
+windows.x86_64 = "res://addons/arboria/bin/libarboria_native.dll"
+

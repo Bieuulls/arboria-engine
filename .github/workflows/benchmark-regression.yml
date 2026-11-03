@@ -1,0 +1,53 @@
+name: ARBORIA Benchmark Regression
+
+on:
+  push:
+    branches: [main, release/*]
+  pull_request:
+    branches: [main, release/*]
+
+jobs:
+  benchmark:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup LLVM-MinGW + CMake + Ninja
+        run: |
+          winget install MartinStorsjo.LLVM-MinGW.UCRT
+          winget install CMake.CMake
+          winget install Ninja-build.Ninja
+
+      - name: Build Release
+        run: |
+          cmake -S native/renderer -B native/renderer/build_release -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build native/renderer/build_release --config Release
+
+      - name: Run Benchmarks (TESTE 27)
+        run: |
+          native/renderer/build_release/test_native_core.exe assets/dense_rock.vgmesh
+          copy validation/final_certification/BENCHMARK_RESULTS.csv benchmark_results_pr.csv
+
+      - name: Compare Against Baseline
+        id: compare
+        run: |
+          python scripts/compare_benchmarks.py ^
+            --baseline validation/final_certification/BENCHMARK_RESULTS.csv ^
+            --current benchmark_results_pr.csv ^
+            --threshold 10 ^
+            --output benchmark_diff.json
+
+      - name: Fail on Regression
+        if: steps.compare.outcome == 'failure'
+        run: |
+          echo "::error::Regressão de benchmark detectada!"
+          exit 1
+
+      - name: Publish Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark_results_pr.csv
+            benchmark_diff.json

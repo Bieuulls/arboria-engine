@@ -1,0 +1,59 @@
+# Godot 4 specific ignores
+.godot/
+**/.godot/
+*.translation
+*.uid
+*.import
+extension_api.json
+
+# C++ & CMake build artifacts
+build/
+**/build/
+*.o
+*.a
+*.lib
+*.pdb
+*.ilk
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Precompiled Release Binaries (whitelisted for plug-and-play Godot integration)
+!bin/arboria_baker_cli.exe
+!bin/vg_baker_cli.exe
+!addons/arboria/bin/*.dll
+!addons/arboria/bin/*.so
+!project/bin/*.dll
+!project/addons/arboria/bin/*.dll
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.sqlite3
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archives & Temporary files
+*.rar
+*.zip
+*.7z
+*.tar
+*.gz
+*.tmp
+*.log
+
+# Large heavy assets (downloaded separately via GitHub Releases)
+assets/downloads/
+assets/procedural_1m.*
+assets/sponza*
+
+# Editor / IDE settings
+.vscode/
+.idea/
+~*

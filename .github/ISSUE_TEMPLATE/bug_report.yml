@@ -1,0 +1,47 @@
+name: "Bug Report"
+description: "Report a reproducible defect, rendering error, or build failure."
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please provide detailed, reproducible steps so graphics engineers can investigate.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment & Hardware
+      description: "Operating System, Godot version, GPU model, and graphics driver version."
+      placeholder: "e.g. Windows 11 64-bit, Godot 4.7-dev, NVIDIA GeForce RTX 3050 (Driver 551.86)"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: "Clear and concise explanation of what the bug is."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: "Step-by-step instructions to reproduce the behavior."
+      placeholder: |
+        1. Open scene '...'
+        2. Set camera position to '...'
+        3. Notice clusters disappearing / rendering artifacts
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: "What did you expect to happen?"
+    validations:
+      required: true
+  - type: textarea
+    id: logs_screenshots
+    attributes:
+      label: Screenshots & Logs
+      description: "Attach relevant screenshots, terminal logs, or Vulkan validation layer output."

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://joltccd04"]
+
+[ext_resource type="Script" path="res://scripts/test_jolt_ccd_fast_collisions.gd" id="1_script"]
+
+[node name="TestJoltCCDFastCollisions" type="Node3D"]
+script = ExtResource("1_script")

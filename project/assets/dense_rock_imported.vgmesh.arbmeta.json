@@ -1,0 +1,16 @@
+{
+	"nodes": [],
+	"schema": 1,
+	"source": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/project/assets/dense_rock_test.obj",
+	"source_sha256": "cdcb11fd9ac81ae62e4a5617c2d79695dea976db02cfe250c8ff52ca4849fac7",
+	"surfaces": [
+		{
+			"node": "root",
+			"surface_index": 0,
+			"triangle_count": 16000,
+			"vertex_count": 8181
+		}
+	],
+	"unsupported": [],
+	"warnings": []
+}

@@ -1,0 +1,30 @@
+name: "Feature / Research Proposal"
+description: "Propose an architectural enhancement, shader technique, or streaming strategy."
+title: "[Proposal]: "
+labels: ["enhancement", "graphics"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please refer to [ROADMAP.md](../../ROADMAP.md) to check existing milestones before proposing major changes.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: "What limitation or inefficiency does this proposal address?"
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution / Architecture
+      description: "Describe the proposed technique, Vulkan synchronization model, or shader approach."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Measurable Acceptance Criteria
+      description: "How can we objectively verify that this enhancement works without degrading visual parity?"
+    validations:
+      required: true
