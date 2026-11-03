@@ -7,8 +7,8 @@ class_name ArboriaTypes
 # --- Constantes de Culling e Renderização ---
 
 const FRUSTUM_PLANE_COUNT: int = 6
-const MAX_LOD_LEVELS: int = 8
-const DEFAULT_MAX_SCREEN_ERROR: float = 1.5
+const MAX_LOD_LEVELS: int = 6
+const DEFAULT_MAX_SCREEN_ERROR: float = 3.0
 const HI_Z_TEMPORAL_BIAS: float = 0.001
 const INVALID_HANDLE: int = 0xFFFFFFFF
 

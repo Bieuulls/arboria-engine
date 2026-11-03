@@ -14,7 +14,7 @@ if not exist "%BUILD_DIR%" (
 )
 
 echo [1/3] Configurando CMake com compilador Clang++ e Ninja...
-cmake -B "%BUILD_DIR%" -S "%ROOT_DIR%" -G "Ninja" -DCMAKE_CXX_COMPILER=clang++
+cmake -B "%BUILD_DIR%" -S "%ROOT_DIR%" -G "Ninja" -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
 if %ERRORLEVEL% neq 0 (
     echo [ERRO] Falha na configuracao do CMake.
     exit /b %ERRORLEVEL%
