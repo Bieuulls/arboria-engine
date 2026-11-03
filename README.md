@@ -5,6 +5,8 @@
 [![Physics](https://img.shields.io/badge/Physics-Jolt%20Physics%203D-orange.svg)](https://github.com/godot-jolt/godot-jolt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Roadmap](https://img.shields.io/badge/Community-Roadmap-purple.svg)](ROADMAP.md)
+[![Testers Needed](https://img.shields.io/badge/Testers-Needed%20(NVIDIA%20%7C%20AMD%20%7C%20Intel)-brightgreen.svg)](#-call-for-hardware-testers--community-feedback)
+[![Discussions](https://img.shields.io/badge/Community-Discussions-blueviolet.svg)](https://github.com/Bieuulls/arboria-engine/discussions)
 [![Docs (PT-BR)](https://img.shields.io/badge/Docs-Portugu%C3%AAs-informational.svg)](docs/README_PT.md)
 
 **ARBORIA ENGINE** is an experimental GPU-driven virtualized-geometry renderer (*Cluster-based Continuous Level of Detail / Nanite-like DAG*) for **Godot 4.7+ Forward+**.
@@ -13,6 +15,17 @@ It enables instancing and rendering massive scenes containing tens of millions o
 
 > [!NOTE]
 > **Engineering Philosophy:** No unsupported benchmark claims, no hidden tricks, and no speedup accepted at the expense of correct geometry. We publish reproducible measurements, known limitations, and active research questions.
+
+---
+
+## 📢 Call for Hardware Testers & Community Feedback
+
+We are actively developing **ARBORIA ENGINE** in the open and invite graphics programmers, engine developers, technical artists, and hardware testers to collaborate!
+
+* 🧪 **Hardware Testing Needed:** We need real-world benchmark metrics on diverse hardware configurations (**NVIDIA GeForce GTX / RTX, AMD Radeon RX, Intel Arc, and Apple Silicon/Vulkan via MoltenVK**).
+  * Run the project demo and submit your telemetry using our [GPU Benchmark Report](../../issues/new?template=benchmark_report.yml) or [Driver Issue Report](../../issues/new?template=gpu_driver_report.yml).
+* 💡 **Proposals & Suggestions:** Have suggestions for the continuous LOD algorithm, cluster partitioning, or compute pipelines? Join the conversation in [GitHub Discussions](../../discussions) or submit a [Feature Request](../../issues/new?template=feature_request.yml).
+* 🛠️ **Contributor Tasks:** Ready to write C++, GLSL or GDScript? See [CONTRIBUTOR_TASKS.md](CONTRIBUTOR_TASKS.md) for prioritized, scoped tasks from Phase B to F.
 
 ---
 

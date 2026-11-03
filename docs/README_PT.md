@@ -5,10 +5,23 @@
 [![Vulkan](https://img.shields.io/badge/Graphics-Vulkan%201.4%20Forward%2B-red.svg)](https://www.vulkan.org/)
 [![Physics](https://img.shields.io/badge/Physics-Jolt%20Physics%203D-orange.svg)](https://github.com/godot-jolt/godot-jolt)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
+[![Testadores](https://img.shields.io/badge/Testadores-Necess%C3%A1rios%20(NVIDIA%20%7C%20AMD%20%7C%20Intel)-brightgreen.svg)](#-chamado-para-testadores-e-comunidade)
+[![Discussões](https://img.shields.io/badge/Comunidade-Discuss%C3%B5es-blueviolet.svg)](https://github.com/Bieuulls/arboria-engine/discussions)
 
 **ARBORIA ENGINE** é um complemento de geometria virtualizada (*Cluster-based Continuous Level of Detail / Nanite-like DAG*) para **Godot 4.7+ Forward+**.
 
 Ele permite instanciar e renderizar cenários densos contendo dezenas de milhões de triângulos com **submissão GPU constante $O(1)$** (1 Compute Dispatch e 1 Draw Indireto global para o conjunto de instâncias), *Hierarchical Z-Buffer (Hi-Z) Occlusion Culling* em hardware, *Depth Prepass com Reversed-Z*, projeção de sombras dinâmicas via proxy e física 3D real integrada via **Jolt Physics**.
+
+---
+
+## 📢 Chamado para Testadores e Comunidade
+
+O **ARBORIA ENGINE** está sendo desenvolvido abertamente e convidamos engenheiros gráficos, desenvolvedores Godot, artistas técnicos e testadores a participarem:
+
+* 🧪 **Testes de Hardware:** Precisamos de métricas de benchmark reais em diferentes GPUs (**NVIDIA GeForce GTX / RTX, AMD Radeon RX, Intel Arc e Apple Silicon via MoltenVK**).
+  * Baixe e execute a cena demo e envie seus resultados usando o [Template de Relatório de GPU](../.github/ISSUE_TEMPLATE/benchmark_report.yml) ou abrindo uma Issue.
+* 💡 **Sugestões e Dicas de Melhoria:** Tem sugestões sobre algoritmos de LOD contínuo, particionamento de clusters ou pipelines de compute? Participe das conversas nas [Discussões do GitHub](https://github.com/Bieuulls/arboria-engine/discussions) ou abra uma sugestão em [Issues](https://github.com/Bieuulls/arboria-engine/issues).
+* 🛠️ **Quero Programar (C++, GLSL, GDScript):** Consulte nosso quadro de tarefas [CONTRIBUTOR_TASKS.md](../CONTRIBUTOR_TASKS.md) para tarefas detalhadas das fases B a F.
 
 ---
 
