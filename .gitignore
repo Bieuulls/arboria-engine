@@ -57,3 +57,7 @@ assets/sponza*
 .vscode/
 .idea/
 ~*
+
+# Local marketing / divulgacao (not for public repo)
+divulgacao/
+
