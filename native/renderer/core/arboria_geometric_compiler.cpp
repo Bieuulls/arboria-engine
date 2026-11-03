@@ -13,6 +13,7 @@
 #include <set>
 #include <utility>
 #include <limits>
+#include <filesystem>
 
 namespace {
 
@@ -709,6 +710,13 @@ CompiledMesh ArboriaGeometricCompiler::recompile(const VGMeshResource& source) {
 
 bool ArboriaGeometricCompiler::write_vgmesh(const CompiledMesh& mesh, const std::string& filepath) const {
     if (!mesh.is_valid()) return false;
+
+    try {
+        std::filesystem::path p(filepath);
+        if (p.has_parent_path()) {
+            std::filesystem::create_directories(p.parent_path());
+        }
+    } catch (...) {}
 
     std::ofstream file(filepath, std::ios::binary);
     if (!file.is_open()) {
