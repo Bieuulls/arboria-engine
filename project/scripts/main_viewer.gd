@@ -52,6 +52,9 @@ var current_model_name: String = ""
 var current_vg_path: String = ""
 var is_dynamic_lod: bool = false
 var orbit_base_distance: float = 6.0
+# Limite de FPS considerado fluido
+FLUID_FPS_THRESHOLD: float = 30.0
+
 var stats_frame_counter: int = 0
 
 # Materiais Legados / CPU
@@ -291,14 +294,24 @@ func update_stats_display() -> void:
 		var vis_tris = native_pipeline.stats_triangles_drawn
 		var vis_c = native_pipeline.stats_visible_clusters
 		var tot_c = current_vg_data["clusters"].size()
+		var stats = native_pipeline.get_statistics()
+		var vis_tris = stats.get("triangles_drawn", native_pipeline.stats_triangles_drawn)
+		var vis_c = stats.get("visible_clusters", native_pipeline.stats_visible_clusters)
+		var tot_c = current_vg_data["clusters"].size()
 		var ratio = (float(vis_tris) / max(1.0, float(base_triangles))) * 100.0
+		var gpu_ms = stats.get("gpu_time_ms", 0.0)
+		var cull_ms = stats.get("culling_gpu_ms", 0.0)
+		var raster_ms = stats.get("raster_gpu_ms", 0.0)
+		var cpu_ms = stats.get("cpu_submission_ms", 0.0)
+		var clusters_eval = stats.get("clusters_evaluated", 0)
+		var clusters_sub = stats.get("clusters_submitted", 0)
 
 		stat_triangles.text = "Triangulos GPU: %s / %s" % [str(vis_tris), str(base_triangles)]
 		stat_clusters.text = "Clusters GPU: %d / %d" % [vis_c, tot_c]
-		stat_error.text = "Tolerancia Erro: %.2f px" % (1.5 if dynamic_lod_check.button_pressed else 0.0)
+		stat_error.text = "Avaliados: %d | Submetidos: %d" % [clusters_eval, clusters_sub]
 		stat_ratio.text = "Reducao Geometria: %.1f%% do base" % ratio
-		stat_gpu_time.text = "Forward+ Nativo: Reversed-Z Ativo"
-		stat_vram.text = "Memoria VRAM: Compartilhada"
+		stat_gpu_time.text = "GPU: %.2f ms | Cull: %.2f ms | Raster: %.2f ms" % [gpu_ms, cull_ms, raster_ms]
+		stat_vram.text = "CPU: %.2f ms | VRAM: Compartilhada" % cpu_ms
 		var reduction_percent = 100.0 - ratio
 		stat_comparison.text = "vs Convencional: -%.1f%% triangulos (%s vs %s)" % [reduction_percent, str(vis_tris), str(base_triangles)]
 	else:
@@ -326,7 +339,10 @@ func update_stats_display() -> void:
 
 func _process(delta: float) -> void:
 	var fps = Engine.get_frames_per_second()
-	stat_fps.text = "FPS: %d (%.2f ms)" % [fps, 1000.0 / max(1, fps)]
+	var fluido = fps >= FLUID_FPS_THRESHOLD
+	var status_txt = "FLUIDO" if fluido else "TRAVANDO"
+	var status_color = "[color=00ff00]" if fluido else "[color=ff0000]"
+	stat_fps.text = "FPS: %d (%.2f ms) %s%s[/color]" % [fps, 1000.0 / max(1, fps), status_color, status_txt]
 	var cam_dist = orbit_cam.target_distance
 	stat_cam_dist.text = "Distancia Camera: %.2f m" % cam_dist
 
