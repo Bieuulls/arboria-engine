@@ -1,0 +1,16 @@
+{
+	"nodes": [],
+	"schema": 1,
+	"source": "D:/ARBORIA_ENGINE/ARBORIA_ENGINE_OFFICIAL/project/assets/rock_cluster.obj",
+	"source_sha256": "4f2d287103c933b77145fa9fb6cb45a375e9d95118bc80d0438d5091340adffd",
+	"surfaces": [
+		{
+			"node": "root",
+			"surface_index": 0,
+			"triangle_count": 320,
+			"vertex_count": 960
+		}
+	],
+	"unsupported": [],
+	"warnings": []
+}

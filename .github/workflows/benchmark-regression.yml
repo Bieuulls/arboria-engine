@@ -16,6 +16,11 @@ jobs:
       - name: Setup MSVC Developer Command Prompt
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Prepare Test Assets
+        run: |
+          if (!(Test-Path "assets")) { New-Item -ItemType Directory -Path "assets" }
+          Copy-Item -Path "project/assets/*" -Destination "assets/" -Recurse -Force
+
       - name: Build Release (Native Renderer & Tests)
         run: |
           cmake -S native/renderer -B native/renderer/build_release -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -23,7 +28,8 @@ jobs:
 
       - name: Run Native Advanced & Stress Tests
         run: |
-          native\renderer\build_release\test_native_advanced.exe
+          ctest --test-dir native/renderer/build_release --output-on-failure
+
 
       - name: Upload Precompiled DLLs
         uses: actions/upload-artifact@v4
